@@ -1,0 +1,601 @@
+ARM GAS  /tmp/ccweP980.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jcapistd.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.jpeg_start_compress,"ax",%progbits
+  18              		.align	1
+  19              		.global	jpeg_start_compress
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  23              		.fpu fpv5-sp-d16
+  25              	jpeg_start_compress:
+  26              	.LFB3:
+  27              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jcapistd.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * jcapistd.c
+   3:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Copyright (C) 1994-1996, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * This file is part of the Independent JPEG Group's software.
+   6:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * For conditions of distribution and use, see the accompanying README file.
+   7:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  *
+   8:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * This file contains application interface code for the compression half
+   9:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * of the JPEG library.  These are the "standard" API routines that are
+  10:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * used in the normal full-compression case.  They are not used by a
+  11:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * transcoding-only application.  Note that if an application links in
+  12:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * jpeg_start_compress, it will end up linking in the entire compressor.
+  13:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * We thus must separate this file from jcapimin.c to avoid linking the
+  14:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * whole compression library into a transcoder.
+  15:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  */
+  16:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  17:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** #define JPEG_INTERNALS
+  18:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** #include "jinclude.h"
+  19:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** #include "jpeglib.h"
+  20:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  21:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  22:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** /*
+  23:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Compression initialization.
+  24:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Before calling this, all parameters and a data destination must be set up.
+  25:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  *
+  26:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * We require a write_all_tables parameter as a failsafe check when writing
+  27:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * multiple datastreams from the same compression object.  Since prior runs
+  28:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * will have left all the tables marked sent_table=TRUE, a subsequent run
+  29:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * would emit an abbreviated stream (no tables) by default.  This may be what
+  30:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * is wanted, but for safety's sake it should not be the default behavior:
+  31:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * programmers should have to make a deliberate choice to emit abbreviated
+ARM GAS  /tmp/ccweP980.s 			page 2
+
+
+  32:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * images.  Therefore the documentation and examples should encourage people
+  33:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * to pass write_all_tables=TRUE; then it will take active thought to do the
+  34:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * wrong thing.
+  35:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  */
+  36:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  37:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** GLOBAL(void)
+  38:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** jpeg_start_compress (j_compress_ptr cinfo, boolean write_all_tables)
+  39:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** {
+  28              		.loc 1 39 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 38B5     		push	{r3, r4, r5, lr}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 16
+  36              		.cfi_offset 3, -16
+  37              		.cfi_offset 4, -12
+  38              		.cfi_offset 5, -8
+  39              		.cfi_offset 14, -4
+  40 0002 0446     		mov	r4, r0
+  41 0004 0D46     		mov	r5, r1
+  40:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->global_state != CSTATE_START)
+  42              		.loc 1 40 0
+  43 0006 4369     		ldr	r3, [r0, #20]
+  44 0008 642B     		cmp	r3, #100
+  45 000a 08D0     		beq	.L2
+  41:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+  46              		.loc 1 41 0
+  47 000c 0368     		ldr	r3, [r0]
+  48 000e 1522     		movs	r2, #21
+  49 0010 5A61     		str	r2, [r3, #20]
+  50 0012 0368     		ldr	r3, [r0]
+  51 0014 4269     		ldr	r2, [r0, #20]
+  52 0016 9A61     		str	r2, [r3, #24]
+  53 0018 0368     		ldr	r3, [r0]
+  54 001a 1B68     		ldr	r3, [r3]
+  55 001c 9847     		blx	r3
+  56              	.LVL1:
+  57              	.L2:
+  42:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  43:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (write_all_tables)
+  58              		.loc 1 43 0
+  59 001e C5B9     		cbnz	r5, .L7
+  60              	.L3:
+  44:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     jpeg_suppress_tables(cinfo, FALSE);	/* mark all tables to be written */
+  45:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  46:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* (Re)initialize error mgr and destination modules */
+  47:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   (*cinfo->err->reset_error_mgr) ((j_common_ptr) cinfo);
+  61              		.loc 1 47 0
+  62 0020 2368     		ldr	r3, [r4]
+  63 0022 1B69     		ldr	r3, [r3, #16]
+  64 0024 2046     		mov	r0, r4
+  65 0026 9847     		blx	r3
+  66              	.LVL2:
+  48:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   (*cinfo->dest->init_destination) (cinfo);
+  67              		.loc 1 48 0
+ARM GAS  /tmp/ccweP980.s 			page 3
+
+
+  68 0028 A369     		ldr	r3, [r4, #24]
+  69 002a 9B68     		ldr	r3, [r3, #8]
+  70 002c 2046     		mov	r0, r4
+  71 002e 9847     		blx	r3
+  72              	.LVL3:
+  49:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Perform master selection of active modules */
+  50:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   jinit_compress_master(cinfo);
+  73              		.loc 1 50 0
+  74 0030 2046     		mov	r0, r4
+  75 0032 FFF7FEFF 		bl	jinit_compress_master
+  76              	.LVL4:
+  51:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Set up for the first pass */
+  52:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   (*cinfo->master->prepare_for_pass) (cinfo);
+  77              		.loc 1 52 0
+  78 0036 D4F88431 		ldr	r3, [r4, #388]
+  79 003a 1B68     		ldr	r3, [r3]
+  80 003c 2046     		mov	r0, r4
+  81 003e 9847     		blx	r3
+  82              	.LVL5:
+  53:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Ready for application to drive first pass through jpeg_write_scanlines
+  54:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * or jpeg_write_raw_data.
+  55:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    */
+  56:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   cinfo->next_scanline = 0;
+  83              		.loc 1 56 0
+  84 0040 0023     		movs	r3, #0
+  85 0042 C4F80431 		str	r3, [r4, #260]
+  57:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   cinfo->global_state = (cinfo->raw_data_in ? CSTATE_RAW_OK : CSTATE_SCANNING);
+  86              		.loc 1 57 0
+  87 0046 D4F8D030 		ldr	r3, [r4, #208]
+  88 004a 3BB9     		cbnz	r3, .L8
+  89 004c 6523     		movs	r3, #101
+  90              	.L4:
+  91              		.loc 1 57 0 is_stmt 0 discriminator 4
+  92 004e 6361     		str	r3, [r4, #20]
+  58:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** }
+  93              		.loc 1 58 0 is_stmt 1 discriminator 4
+  94 0050 38BD     		pop	{r3, r4, r5, pc}
+  95              	.LVL6:
+  96              	.L7:
+  44:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  97              		.loc 1 44 0
+  98 0052 0021     		movs	r1, #0
+  99 0054 2046     		mov	r0, r4
+ 100 0056 FFF7FEFF 		bl	jpeg_suppress_tables
+ 101              	.LVL7:
+ 102 005a E1E7     		b	.L3
+ 103              	.L8:
+  57:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   cinfo->global_state = (cinfo->raw_data_in ? CSTATE_RAW_OK : CSTATE_SCANNING);
+ 104              		.loc 1 57 0
+ 105 005c 6623     		movs	r3, #102
+ 106 005e F6E7     		b	.L4
+ 107              		.cfi_endproc
+ 108              	.LFE3:
+ 110              		.section	.text.jpeg_write_scanlines,"ax",%progbits
+ 111              		.align	1
+ 112              		.global	jpeg_write_scanlines
+ 113              		.syntax unified
+ARM GAS  /tmp/ccweP980.s 			page 4
+
+
+ 114              		.thumb
+ 115              		.thumb_func
+ 116              		.fpu fpv5-sp-d16
+ 118              	jpeg_write_scanlines:
+ 119              	.LFB4:
+  59:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  60:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  61:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** /*
+  62:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Write some scanlines of data to the JPEG compressor.
+  63:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  *
+  64:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * The return value will be the number of lines actually written.
+  65:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * This should be less than the supplied num_lines only in case that
+  66:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * the data destination module has requested suspension of the compressor,
+  67:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * or if more than image_height scanlines are passed in.
+  68:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  *
+  69:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Note: we warn about excess calls to jpeg_write_scanlines() since
+  70:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * this likely signals an application programmer error.  However,
+  71:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * excess scanlines passed in the last valid call are *silently* ignored,
+  72:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * so that the application need not adjust num_lines for end-of-image
+  73:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * when using a multiple-scanline buffer.
+  74:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  */
+  75:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  76:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** GLOBAL(JDIMENSION)
+  77:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** jpeg_write_scanlines (j_compress_ptr cinfo, JSAMPARRAY scanlines,
+  78:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 		      JDIMENSION num_lines)
+  79:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** {
+ 120              		.loc 1 79 0
+ 121              		.cfi_startproc
+ 122              		@ args = 0, pretend = 0, frame = 8
+ 123              		@ frame_needed = 0, uses_anonymous_args = 0
+ 124              	.LVL8:
+ 125 0000 70B5     		push	{r4, r5, r6, lr}
+ 126              	.LCFI1:
+ 127              		.cfi_def_cfa_offset 16
+ 128              		.cfi_offset 4, -16
+ 129              		.cfi_offset 5, -12
+ 130              		.cfi_offset 6, -8
+ 131              		.cfi_offset 14, -4
+ 132 0002 82B0     		sub	sp, sp, #8
+ 133              	.LCFI2:
+ 134              		.cfi_def_cfa_offset 24
+ 135 0004 0446     		mov	r4, r0
+ 136 0006 0E46     		mov	r6, r1
+ 137 0008 1546     		mov	r5, r2
+  80:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   JDIMENSION row_ctr, rows_left;
+  81:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  82:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->global_state != CSTATE_SCANNING)
+ 138              		.loc 1 82 0
+ 139 000a 4369     		ldr	r3, [r0, #20]
+ 140 000c 652B     		cmp	r3, #101
+ 141 000e 08D0     		beq	.L10
+  83:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+ 142              		.loc 1 83 0
+ 143 0010 0368     		ldr	r3, [r0]
+ 144 0012 1522     		movs	r2, #21
+ 145              	.LVL9:
+ 146 0014 5A61     		str	r2, [r3, #20]
+ARM GAS  /tmp/ccweP980.s 			page 5
+
+
+ 147 0016 0368     		ldr	r3, [r0]
+ 148 0018 4269     		ldr	r2, [r0, #20]
+ 149 001a 9A61     		str	r2, [r3, #24]
+ 150 001c 0368     		ldr	r3, [r0]
+ 151 001e 1B68     		ldr	r3, [r3]
+ 152 0020 9847     		blx	r3
+ 153              	.LVL10:
+ 154              	.L10:
+  84:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->next_scanline >= cinfo->image_height)
+ 155              		.loc 1 84 0
+ 156 0022 D4F80421 		ldr	r2, [r4, #260]
+ 157 0026 236A     		ldr	r3, [r4, #32]
+ 158 0028 9A42     		cmp	r2, r3
+ 159 002a 08D3     		bcc	.L11
+  85:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     WARNMS(cinfo, JWRN_TOO_MUCH_DATA);
+ 160              		.loc 1 85 0
+ 161 002c 2368     		ldr	r3, [r4]
+ 162 002e 7E22     		movs	r2, #126
+ 163 0030 5A61     		str	r2, [r3, #20]
+ 164 0032 2368     		ldr	r3, [r4]
+ 165 0034 5B68     		ldr	r3, [r3, #4]
+ 166 0036 4FF0FF31 		mov	r1, #-1
+ 167 003a 2046     		mov	r0, r4
+ 168 003c 9847     		blx	r3
+ 169              	.LVL11:
+ 170              	.L11:
+  86:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  87:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Call progress monitor hook if present */
+  88:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->progress != NULL) {
+ 171              		.loc 1 88 0
+ 172 003e A368     		ldr	r3, [r4, #8]
+ 173 0040 4BB1     		cbz	r3, .L12
+  89:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_counter = (long) cinfo->next_scanline;
+ 174              		.loc 1 89 0
+ 175 0042 D4F80421 		ldr	r2, [r4, #260]
+ 176 0046 5A60     		str	r2, [r3, #4]
+  90:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_limit = (long) cinfo->image_height;
+ 177              		.loc 1 90 0
+ 178 0048 226A     		ldr	r2, [r4, #32]
+ 179 004a A368     		ldr	r3, [r4, #8]
+ 180 004c 9A60     		str	r2, [r3, #8]
+  91:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->progress->progress_monitor) ((j_common_ptr) cinfo);
+ 181              		.loc 1 91 0
+ 182 004e A368     		ldr	r3, [r4, #8]
+ 183 0050 1B68     		ldr	r3, [r3]
+ 184 0052 2046     		mov	r0, r4
+ 185 0054 9847     		blx	r3
+ 186              	.LVL12:
+ 187              	.L12:
+  92:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+  93:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+  94:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Give master control module another chance if this is first call to
+  95:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * jpeg_write_scanlines.  This lets output of the frame/scan headers be
+  96:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * delayed so that application can write COM, etc, markers between
+  97:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * jpeg_start_compress and jpeg_write_scanlines.
+  98:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    */
+  99:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->master->call_pass_startup)
+ARM GAS  /tmp/ccweP980.s 			page 6
+
+
+ 188              		.loc 1 99 0
+ 189 0056 D4F88431 		ldr	r3, [r4, #388]
+ 190 005a DA68     		ldr	r2, [r3, #12]
+ 191 005c 12B1     		cbz	r2, .L13
+ 100:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->master->pass_startup) (cinfo);
+ 192              		.loc 1 100 0
+ 193 005e 5B68     		ldr	r3, [r3, #4]
+ 194 0060 2046     		mov	r0, r4
+ 195 0062 9847     		blx	r3
+ 196              	.LVL13:
+ 197              	.L13:
+ 101:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 102:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Ignore any extra scanlines at bottom of image. */
+ 103:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   rows_left = cinfo->image_height - cinfo->next_scanline;
+ 198              		.loc 1 103 0
+ 199 0064 236A     		ldr	r3, [r4, #32]
+ 200 0066 D4F80421 		ldr	r2, [r4, #260]
+ 201 006a 9B1A     		subs	r3, r3, r2
+ 202              	.LVL14:
+ 104:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (num_lines > rows_left)
+ 203              		.loc 1 104 0
+ 204 006c AB42     		cmp	r3, r5
+ 205 006e 11D2     		bcs	.L16
+ 206              	.LVL15:
+ 207              	.L14:
+ 105:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     num_lines = rows_left;
+ 106:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 107:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   row_ctr = 0;
+ 208              		.loc 1 107 0
+ 209 0070 02AA     		add	r2, sp, #8
+ 210              	.LVL16:
+ 211 0072 0021     		movs	r1, #0
+ 212 0074 42F8041D 		str	r1, [r2, #-4]!
+ 108:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   (*cinfo->main->process_data) (cinfo, scanlines, &row_ctr, num_lines);
+ 213              		.loc 1 108 0
+ 214 0078 D4F88811 		ldr	r1, [r4, #392]
+ 215 007c 4D68     		ldr	r5, [r1, #4]
+ 216 007e 3146     		mov	r1, r6
+ 217 0080 2046     		mov	r0, r4
+ 218 0082 A847     		blx	r5
+ 219              	.LVL17:
+ 109:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   cinfo->next_scanline += row_ctr;
+ 220              		.loc 1 109 0
+ 221 0084 0198     		ldr	r0, [sp, #4]
+ 222 0086 D4F80431 		ldr	r3, [r4, #260]
+ 223 008a 0344     		add	r3, r3, r0
+ 224 008c C4F80431 		str	r3, [r4, #260]
+ 110:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   return row_ctr;
+ 111:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** }
+ 225              		.loc 1 111 0
+ 226 0090 02B0     		add	sp, sp, #8
+ 227              	.LCFI3:
+ 228              		.cfi_remember_state
+ 229              		.cfi_def_cfa_offset 16
+ 230              		@ sp needed
+ 231 0092 70BD     		pop	{r4, r5, r6, pc}
+ 232              	.LVL18:
+ARM GAS  /tmp/ccweP980.s 			page 7
+
+
+ 233              	.L16:
+ 234              	.LCFI4:
+ 235              		.cfi_restore_state
+ 104:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     num_lines = rows_left;
+ 236              		.loc 1 104 0
+ 237 0094 2B46     		mov	r3, r5
+ 238              	.LVL19:
+ 239 0096 EBE7     		b	.L14
+ 240              		.cfi_endproc
+ 241              	.LFE4:
+ 243              		.section	.text.jpeg_write_raw_data,"ax",%progbits
+ 244              		.align	1
+ 245              		.global	jpeg_write_raw_data
+ 246              		.syntax unified
+ 247              		.thumb
+ 248              		.thumb_func
+ 249              		.fpu fpv5-sp-d16
+ 251              	jpeg_write_raw_data:
+ 252              	.LFB5:
+ 112:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 113:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 114:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** /*
+ 115:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Alternate entry point to write raw data.
+ 116:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  * Processes exactly one iMCU row per call, unless suspended.
+ 117:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****  */
+ 118:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 119:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** GLOBAL(JDIMENSION)
+ 120:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** jpeg_write_raw_data (j_compress_ptr cinfo, JSAMPIMAGE data,
+ 121:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 		     JDIMENSION num_lines)
+ 122:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** {
+ 253              		.loc 1 122 0
+ 254              		.cfi_startproc
+ 255              		@ args = 0, pretend = 0, frame = 0
+ 256              		@ frame_needed = 0, uses_anonymous_args = 0
+ 257              	.LVL20:
+ 258 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 259              	.LCFI5:
+ 260              		.cfi_def_cfa_offset 24
+ 261              		.cfi_offset 3, -24
+ 262              		.cfi_offset 4, -20
+ 263              		.cfi_offset 5, -16
+ 264              		.cfi_offset 6, -12
+ 265              		.cfi_offset 7, -8
+ 266              		.cfi_offset 14, -4
+ 267 0002 0446     		mov	r4, r0
+ 268 0004 0E46     		mov	r6, r1
+ 269 0006 1746     		mov	r7, r2
+ 123:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   JDIMENSION lines_per_iMCU_row;
+ 124:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 125:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->global_state != CSTATE_RAW_OK)
+ 270              		.loc 1 125 0
+ 271 0008 4369     		ldr	r3, [r0, #20]
+ 272 000a 662B     		cmp	r3, #102
+ 273 000c 08D0     		beq	.L18
+ 126:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+ 274              		.loc 1 126 0
+ 275 000e 0368     		ldr	r3, [r0]
+ARM GAS  /tmp/ccweP980.s 			page 8
+
+
+ 276 0010 1522     		movs	r2, #21
+ 277              	.LVL21:
+ 278 0012 5A61     		str	r2, [r3, #20]
+ 279 0014 0368     		ldr	r3, [r0]
+ 280 0016 4269     		ldr	r2, [r0, #20]
+ 281 0018 9A61     		str	r2, [r3, #24]
+ 282 001a 0368     		ldr	r3, [r0]
+ 283 001c 1B68     		ldr	r3, [r3]
+ 284 001e 9847     		blx	r3
+ 285              	.LVL22:
+ 286              	.L18:
+ 127:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->next_scanline >= cinfo->image_height) {
+ 287              		.loc 1 127 0
+ 288 0020 D4F80431 		ldr	r3, [r4, #260]
+ 289 0024 226A     		ldr	r2, [r4, #32]
+ 290 0026 9342     		cmp	r3, r2
+ 291 0028 0BD3     		bcc	.L19
+ 128:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     WARNMS(cinfo, JWRN_TOO_MUCH_DATA);
+ 292              		.loc 1 128 0
+ 293 002a 2368     		ldr	r3, [r4]
+ 294 002c 7E22     		movs	r2, #126
+ 295 002e 5A61     		str	r2, [r3, #20]
+ 296 0030 2368     		ldr	r3, [r4]
+ 297 0032 5B68     		ldr	r3, [r3, #4]
+ 298 0034 4FF0FF31 		mov	r1, #-1
+ 299 0038 2046     		mov	r0, r4
+ 300 003a 9847     		blx	r3
+ 301              	.LVL23:
+ 129:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     return 0;
+ 302              		.loc 1 129 0
+ 303 003c 0025     		movs	r5, #0
+ 304              	.L17:
+ 130:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+ 131:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 132:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Call progress monitor hook if present */
+ 133:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->progress != NULL) {
+ 134:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_counter = (long) cinfo->next_scanline;
+ 135:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_limit = (long) cinfo->image_height;
+ 136:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->progress->progress_monitor) ((j_common_ptr) cinfo);
+ 137:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+ 138:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 139:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Give master control module another chance if this is first call to
+ 140:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * jpeg_write_raw_data.  This lets output of the frame/scan headers be
+ 141:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * delayed so that application can write COM, etc, markers between
+ 142:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    * jpeg_start_compress and jpeg_write_raw_data.
+ 143:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****    */
+ 144:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (cinfo->master->call_pass_startup)
+ 145:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->master->pass_startup) (cinfo);
+ 146:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 147:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Verify that at least one iMCU row has been passed. */
+ 148:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   lines_per_iMCU_row = cinfo->max_v_samp_factor * DCTSIZE;
+ 149:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (num_lines < lines_per_iMCU_row)
+ 150:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     ERREXIT(cinfo, JERR_BUFFER_SIZE);
+ 151:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 152:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* Directly compress the row. */
+ 153:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (! (*cinfo->coef->compress_data) (cinfo, data)) {
+ 154:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     /* If compressor did not consume the whole row, suspend processing. */
+ARM GAS  /tmp/ccweP980.s 			page 9
+
+
+ 155:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     return 0;
+ 156:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+ 157:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 158:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   /* OK, we processed one iMCU row. */
+ 159:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   cinfo->next_scanline += lines_per_iMCU_row;
+ 160:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   return lines_per_iMCU_row;
+ 161:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** }
+ 305              		.loc 1 161 0
+ 306 003e 2846     		mov	r0, r5
+ 307 0040 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 308              	.LVL24:
+ 309              	.L19:
+ 133:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_counter = (long) cinfo->next_scanline;
+ 310              		.loc 1 133 0
+ 311 0042 A268     		ldr	r2, [r4, #8]
+ 312 0044 3AB1     		cbz	r2, .L21
+ 134:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     cinfo->progress->pass_limit = (long) cinfo->image_height;
+ 313              		.loc 1 134 0
+ 314 0046 5360     		str	r3, [r2, #4]
+ 135:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->progress->progress_monitor) ((j_common_ptr) cinfo);
+ 315              		.loc 1 135 0
+ 316 0048 226A     		ldr	r2, [r4, #32]
+ 317 004a A368     		ldr	r3, [r4, #8]
+ 318 004c 9A60     		str	r2, [r3, #8]
+ 136:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+ 319              		.loc 1 136 0
+ 320 004e A368     		ldr	r3, [r4, #8]
+ 321 0050 1B68     		ldr	r3, [r3]
+ 322 0052 2046     		mov	r0, r4
+ 323 0054 9847     		blx	r3
+ 324              	.LVL25:
+ 325              	.L21:
+ 144:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     (*cinfo->master->pass_startup) (cinfo);
+ 326              		.loc 1 144 0
+ 327 0056 D4F88431 		ldr	r3, [r4, #388]
+ 328 005a DA68     		ldr	r2, [r3, #12]
+ 329 005c 12B1     		cbz	r2, .L22
+ 145:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 330              		.loc 1 145 0
+ 331 005e 5B68     		ldr	r3, [r3, #4]
+ 332 0060 2046     		mov	r0, r4
+ 333 0062 9847     		blx	r3
+ 334              	.LVL26:
+ 335              	.L22:
+ 148:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   if (num_lines < lines_per_iMCU_row)
+ 336              		.loc 1 148 0
+ 337 0064 D4F81051 		ldr	r5, [r4, #272]
+ 338 0068 ED00     		lsls	r5, r5, #3
+ 339              	.LVL27:
+ 149:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     ERREXIT(cinfo, JERR_BUFFER_SIZE);
+ 340              		.loc 1 149 0
+ 341 006a BD42     		cmp	r5, r7
+ 342 006c 06D9     		bls	.L23
+ 150:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** 
+ 343              		.loc 1 150 0
+ 344 006e 2368     		ldr	r3, [r4]
+ 345 0070 1822     		movs	r2, #24
+ARM GAS  /tmp/ccweP980.s 			page 10
+
+
+ 346 0072 5A61     		str	r2, [r3, #20]
+ 347 0074 2368     		ldr	r3, [r4]
+ 348 0076 1B68     		ldr	r3, [r3]
+ 349 0078 2046     		mov	r0, r4
+ 350 007a 9847     		blx	r3
+ 351              	.LVL28:
+ 352              	.L23:
+ 153:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****     /* If compressor did not consume the whole row, suspend processing. */
+ 353              		.loc 1 153 0
+ 354 007c D4F89031 		ldr	r3, [r4, #400]
+ 355 0080 5B68     		ldr	r3, [r3, #4]
+ 356 0082 3146     		mov	r1, r6
+ 357 0084 2046     		mov	r0, r4
+ 358 0086 9847     		blx	r3
+ 359              	.LVL29:
+ 360 0088 28B1     		cbz	r0, .L24
+ 159:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   return lines_per_iMCU_row;
+ 361              		.loc 1 159 0
+ 362 008a D4F80431 		ldr	r3, [r4, #260]
+ 363 008e 2B44     		add	r3, r3, r5
+ 364 0090 C4F80431 		str	r3, [r4, #260]
+ 160:Middlewares/Third_Party/LibJPEG/source/jcapistd.c **** }
+ 365              		.loc 1 160 0
+ 366 0094 D3E7     		b	.L17
+ 367              	.L24:
+ 155:Middlewares/Third_Party/LibJPEG/source/jcapistd.c ****   }
+ 368              		.loc 1 155 0
+ 369 0096 0025     		movs	r5, #0
+ 370              	.LVL30:
+ 371 0098 D1E7     		b	.L17
+ 372              		.cfi_endproc
+ 373              	.LFE5:
+ 375              		.text
+ 376              	.Letext0:
+ 377              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 378              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 379              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 380              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 381              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 382              		.file 7 "Inc/jmorecfg.h"
+ 383              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 384              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 385              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ARM GAS  /tmp/ccweP980.s 			page 11
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jcapistd.c
+     /tmp/ccweP980.s:18     .text.jpeg_start_compress:0000000000000000 $t
+     /tmp/ccweP980.s:25     .text.jpeg_start_compress:0000000000000000 jpeg_start_compress
+     /tmp/ccweP980.s:111    .text.jpeg_write_scanlines:0000000000000000 $t
+     /tmp/ccweP980.s:118    .text.jpeg_write_scanlines:0000000000000000 jpeg_write_scanlines
+     /tmp/ccweP980.s:244    .text.jpeg_write_raw_data:0000000000000000 $t
+     /tmp/ccweP980.s:251    .text.jpeg_write_raw_data:0000000000000000 jpeg_write_raw_data
+
+UNDEFINED SYMBOLS
+jinit_compress_master
+jpeg_suppress_tables

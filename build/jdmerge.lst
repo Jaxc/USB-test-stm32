@@ -1,0 +1,1487 @@
+ARM GAS  /tmp/ccwb8FyS.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jdmerge.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.build_ycc_rgb_table,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	build_ycc_rgb_table:
+  25              	.LFB3:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jdmerge.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * jdmerge.c
+   3:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Copyright (C) 1994-1996, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * This file is part of the Independent JPEG Group's software.
+   6:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * For conditions of distribution and use, see the accompanying README file.
+   7:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+   8:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * This file contains code for merged upsampling/color conversion.
+   9:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+  10:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * This file combines functions from jdsample.c and jdcolor.c;
+  11:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * read those files first to understand what's going on.
+  12:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+  13:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * When the chroma components are to be upsampled by simple replication
+  14:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * (ie, box filtering), we can save some work in color conversion by
+  15:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * calculating all the output pixels corresponding to a pair of chroma
+  16:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * samples at one time.  In the conversion equations
+  17:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	R = Y           + K1 * Cr
+  18:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	G = Y + K2 * Cb + K3 * Cr
+  19:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	B = Y + K4 * Cb
+  20:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * only the Y term varies among the group of pixels corresponding to a pair
+  21:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * of chroma samples, so the rest of the terms can be calculated just once.
+  22:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * At typical sampling ratios, this eliminates half or three-quarters of the
+  23:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * multiplications needed for color conversion.
+  24:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+  25:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * This file currently provides implementations for the following cases:
+  26:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	YCbCr => RGB color conversion only.
+  27:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	Sampling ratios of 2h1v or 2h2v.
+  28:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	No scaling needed at upsample time.
+  29:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *	Corner-aligned (non-CCIR601) sampling alignment.
+  30:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Other special cases could be added, but in most applications these are
+  31:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * the only common cases.  (For uncommon cases we fall back on the more
+  32:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * general code in jdsample.c and jdcolor.c.)
+ARM GAS  /tmp/ccwb8FyS.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+  34:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  35:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #define JPEG_INTERNALS
+  36:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #include "jinclude.h"
+  37:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #include "jpeglib.h"
+  38:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  39:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #ifdef UPSAMPLE_MERGING_SUPPORTED
+  40:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  41:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  42:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /* Private subobject */
+  43:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  44:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** typedef struct {
+  45:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   struct jpeg_upsampler pub;	/* public fields */
+  46:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  47:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Pointer to routine to do actual upsampling/conversion of one row group */
+  48:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JMETHOD(void, upmethod, (j_decompress_ptr cinfo,
+  49:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 			   JSAMPIMAGE input_buf, JDIMENSION in_row_group_ctr,
+  50:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 			   JSAMPARRAY output_buf));
+  51:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  52:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Private state for YCC->RGB conversion */
+  53:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Cr_r_tab;		/* => table for Cr to R conversion */
+  54:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Cb_b_tab;		/* => table for Cb to B conversion */
+  55:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Cr_g_tab;		/* => table for Cr to G conversion */
+  56:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Cb_g_tab;		/* => table for Cb to G conversion */
+  57:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  58:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* For 2:1 vertical sampling, we produce two output rows at a time.
+  59:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****    * We need a "spare" row buffer to hold the second output row if the
+  60:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****    * application provides just a one-row buffer; we also use the spare
+  61:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****    * to discard the dummy last row if the image height is odd.
+  62:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****    */
+  63:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JSAMPROW spare_row;
+  64:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   boolean spare_full;		/* T if spare buffer is occupied */
+  65:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  66:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JDIMENSION out_row_width;	/* samples per output row */
+  67:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JDIMENSION rows_to_go;	/* counts rows remaining in image */
+  68:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** } my_upsampler;
+  69:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  70:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** typedef my_upsampler * my_upsample_ptr;
+  71:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  72:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #define SCALEBITS	16	/* speediest right-shift on some machines */
+  73:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #define ONE_HALF	((INT32) 1 << (SCALEBITS-1))
+  74:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** #define FIX(x)		((INT32) ((x) * (1L<<SCALEBITS) + 0.5))
+  75:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  76:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  77:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+  78:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Initialize tables for YCC->RGB colorspace conversion.
+  79:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * This is taken directly from jdcolor.c; see that file for more info.
+  80:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+  81:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  82:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** LOCAL(void)
+  83:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** build_ycc_rgb_table (j_decompress_ptr cinfo)
+  84:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+  27              		.loc 1 84 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+ARM GAS  /tmp/ccwb8FyS.s 			page 3
+
+
+  32 0000 38B5     		push	{r3, r4, r5, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 16
+  35              		.cfi_offset 3, -16
+  36              		.cfi_offset 4, -12
+  37              		.cfi_offset 5, -8
+  38              		.cfi_offset 14, -4
+  39 0002 0546     		mov	r5, r0
+  85:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+  40              		.loc 1 85 0
+  41 0004 D0F8D841 		ldr	r4, [r0, #472]
+  42              	.LVL1:
+  86:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int i;
+  87:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 x;
+  88:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   SHIFT_TEMPS
+  89:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+  90:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->Cr_r_tab = (int *)
+  91:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  43              		.loc 1 91 0
+  44 0008 4368     		ldr	r3, [r0, #4]
+  45 000a 1B68     		ldr	r3, [r3]
+  46 000c 4FF48062 		mov	r2, #1024
+  47 0010 0121     		movs	r1, #1
+  48 0012 9847     		blx	r3
+  49              	.LVL2:
+  90:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  50              		.loc 1 90 0
+  51 0014 2061     		str	r0, [r4, #16]
+  92:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 				(MAXJSAMPLE+1) * SIZEOF(int));
+  93:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->Cb_b_tab = (int *)
+  94:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  52              		.loc 1 94 0
+  53 0016 6B68     		ldr	r3, [r5, #4]
+  54 0018 1B68     		ldr	r3, [r3]
+  55 001a 4FF48062 		mov	r2, #1024
+  56 001e 0121     		movs	r1, #1
+  57 0020 2846     		mov	r0, r5
+  58 0022 9847     		blx	r3
+  59              	.LVL3:
+  93:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  60              		.loc 1 93 0
+  61 0024 6061     		str	r0, [r4, #20]
+  95:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 				(MAXJSAMPLE+1) * SIZEOF(int));
+  96:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->Cr_g_tab = (INT32 *)
+  97:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  62              		.loc 1 97 0
+  63 0026 6B68     		ldr	r3, [r5, #4]
+  64 0028 1B68     		ldr	r3, [r3]
+  65 002a 4FF48062 		mov	r2, #1024
+  66 002e 0121     		movs	r1, #1
+  67 0030 2846     		mov	r0, r5
+  68 0032 9847     		blx	r3
+  69              	.LVL4:
+  96:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  70              		.loc 1 96 0
+  71 0034 A061     		str	r0, [r4, #24]
+  98:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 				(MAXJSAMPLE+1) * SIZEOF(INT32));
+ARM GAS  /tmp/ccwb8FyS.s 			page 4
+
+
+  99:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->Cb_g_tab = (INT32 *)
+ 100:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  72              		.loc 1 100 0
+  73 0036 6B68     		ldr	r3, [r5, #4]
+  74 0038 1B68     		ldr	r3, [r3]
+  75 003a 4FF48062 		mov	r2, #1024
+  76 003e 0121     		movs	r1, #1
+  77 0040 2846     		mov	r0, r5
+  78 0042 9847     		blx	r3
+  79              	.LVL5:
+  99:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  80              		.loc 1 99 0
+  81 0044 E061     		str	r0, [r4, #28]
+  82              	.LVL6:
+ 101:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 				(MAXJSAMPLE+1) * SIZEOF(INT32));
+ 102:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 103:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   for (i = 0, x = -CENTERJSAMPLE; i <= MAXJSAMPLE; i++, x++) {
+  83              		.loc 1 103 0
+  84 0046 6FF07F01 		mvn	r1, #127
+  85 004a 0022     		movs	r2, #0
+  86 004c 21E0     		b	.L2
+  87              	.LVL7:
+  88              	.L3:
+ 104:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 105:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* The Cb or Cr value we are thinking of is x = i - CENTERJSAMPLE */
+ 106:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Cr=>R value is nearest int to 1.40200 * x */
+ 107:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->Cr_r_tab[i] = (int)
+ 108:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  89              		.loc 1 108 0 discriminator 3
+  90 004e 124B     		ldr	r3, .L5
+  91 0050 03FB01F3 		mul	r3, r3, r1
+  92 0054 03F50043 		add	r3, r3, #32768
+ 107:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  93              		.loc 1 107 0 discriminator 3
+  94 0058 2069     		ldr	r0, [r4, #16]
+  95              		.loc 1 108 0 discriminator 3
+  96 005a 1B14     		asrs	r3, r3, #16
+ 107:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  97              		.loc 1 107 0 discriminator 3
+  98 005c 40F82230 		str	r3, [r0, r2, lsl #2]
+ 109:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Cb=>B value is nearest int to 1.77200 * x */
+ 110:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->Cb_b_tab[i] = (int)
+ 111:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+  99              		.loc 1 111 0 discriminator 3
+ 100 0060 0E4B     		ldr	r3, .L5+4
+ 101 0062 03FB01F3 		mul	r3, r3, r1
+ 102 0066 03F50043 		add	r3, r3, #32768
+ 110:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+ 103              		.loc 1 110 0 discriminator 3
+ 104 006a 6069     		ldr	r0, [r4, #20]
+ 105              		.loc 1 111 0 discriminator 3
+ 106 006c 1B14     		asrs	r3, r3, #16
+ 110:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+ 107              		.loc 1 110 0 discriminator 3
+ 108 006e 40F82230 		str	r3, [r0, r2, lsl #2]
+ 112:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Cr=>G value is scaled-up -0.71414 * x */
+ 113:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->Cr_g_tab[i] = (- FIX(0.71414)) * x;
+ARM GAS  /tmp/ccwb8FyS.s 			page 5
+
+
+ 109              		.loc 1 113 0 discriminator 3
+ 110 0072 A069     		ldr	r0, [r4, #24]
+ 111 0074 0A4B     		ldr	r3, .L5+8
+ 112 0076 03FB01F3 		mul	r3, r3, r1
+ 113 007a 40F82230 		str	r3, [r0, r2, lsl #2]
+ 114:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Cb=>G value is scaled-up -0.34414 * x */
+ 115:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* We also add in ONE_HALF so that need not do it in inner loop */
+ 116:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->Cb_g_tab[i] = (- FIX(0.34414)) * x + ONE_HALF;
+ 114              		.loc 1 116 0 discriminator 3
+ 115 007e 094B     		ldr	r3, .L5+12
+ 116 0080 03FB01F3 		mul	r3, r3, r1
+ 117 0084 E069     		ldr	r0, [r4, #28]
+ 118 0086 03F50043 		add	r3, r3, #32768
+ 119 008a 40F82230 		str	r3, [r0, r2, lsl #2]
+ 103:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 120              		.loc 1 103 0 discriminator 3
+ 121 008e 0132     		adds	r2, r2, #1
+ 122              	.LVL8:
+ 123 0090 0131     		adds	r1, r1, #1
+ 124              	.LVL9:
+ 125              	.L2:
+ 103:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 126              		.loc 1 103 0 is_stmt 0 discriminator 1
+ 127 0092 FF2A     		cmp	r2, #255
+ 128 0094 DBDD     		ble	.L3
+ 117:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 118:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 129              		.loc 1 118 0 is_stmt 1
+ 130 0096 38BD     		pop	{r3, r4, r5, pc}
+ 131              	.LVL10:
+ 132              	.L6:
+ 133              		.align	2
+ 134              	.L5:
+ 135 0098 E9660100 		.word	91881
+ 136 009c A2C50100 		.word	116130
+ 137 00a0 2E49FFFF 		.word	-46802
+ 138 00a4 E6A7FFFF 		.word	-22554
+ 139              		.cfi_endproc
+ 140              	.LFE3:
+ 142              		.section	.text.start_pass_merged_upsample,"ax",%progbits
+ 143              		.align	1
+ 144              		.syntax unified
+ 145              		.thumb
+ 146              		.thumb_func
+ 147              		.fpu fpv5-sp-d16
+ 149              	start_pass_merged_upsample:
+ 150              	.LFB4:
+ 119:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 120:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 121:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 122:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Initialize for an upsampling pass.
+ 123:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ 124:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 125:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** METHODDEF(void)
+ 126:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** start_pass_merged_upsample (j_decompress_ptr cinfo)
+ 127:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 151              		.loc 1 127 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 6
+
+
+ 152              		.cfi_startproc
+ 153              		@ args = 0, pretend = 0, frame = 0
+ 154              		@ frame_needed = 0, uses_anonymous_args = 0
+ 155              		@ link register save eliminated.
+ 156              	.LVL11:
+ 128:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 157              		.loc 1 128 0
+ 158 0000 D0F8D831 		ldr	r3, [r0, #472]
+ 159              	.LVL12:
+ 129:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 130:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Mark the spare buffer empty */
+ 131:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->spare_full = FALSE;
+ 160              		.loc 1 131 0
+ 161 0004 0022     		movs	r2, #0
+ 162 0006 5A62     		str	r2, [r3, #36]
+ 132:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Initialize total-height counter for detecting bottom of image */
+ 133:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->rows_to_go = cinfo->output_height;
+ 163              		.loc 1 133 0
+ 164 0008 426F     		ldr	r2, [r0, #116]
+ 165 000a DA62     		str	r2, [r3, #44]
+ 134:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 166              		.loc 1 134 0
+ 167 000c 7047     		bx	lr
+ 168              		.cfi_endproc
+ 169              	.LFE4:
+ 171              		.section	.text.merged_1v_upsample,"ax",%progbits
+ 172              		.align	1
+ 173              		.syntax unified
+ 174              		.thumb
+ 175              		.thumb_func
+ 176              		.fpu fpv5-sp-d16
+ 178              	merged_1v_upsample:
+ 179              	.LFB6:
+ 135:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 136:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 137:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 138:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Control routine to do upsampling (and color conversion).
+ 139:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+ 140:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * The control routine just handles the row buffering considerations.
+ 141:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ 142:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 143:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** METHODDEF(void)
+ 144:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** merged_2v_upsample (j_decompress_ptr cinfo,
+ 145:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JSAMPIMAGE input_buf, JDIMENSION *in_row_group_ctr,
+ 146:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JDIMENSION in_row_groups_avail,
+ 147:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JSAMPARRAY output_buf, JDIMENSION *out_row_ctr,
+ 148:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JDIMENSION out_rows_avail)
+ 149:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /* 2:1 vertical sampling case: may need a spare row. */
+ 150:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 151:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 152:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JSAMPROW work_ptrs[2];
+ 153:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JDIMENSION num_rows;		/* number of rows returned to caller */
+ 154:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 155:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   if (upsample->spare_full) {
+ 156:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* If we have a spare row saved from a previous cycle, just return it. */
+ 157:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     jcopy_sample_rows(& upsample->spare_row, 0, output_buf + *out_row_ctr, 0,
+ 158:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      1, upsample->out_row_width);
+ARM GAS  /tmp/ccwb8FyS.s 			page 7
+
+
+ 159:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     num_rows = 1;
+ 160:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->spare_full = FALSE;
+ 161:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   } else {
+ 162:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Figure number of rows to return to caller. */
+ 163:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     num_rows = 2;
+ 164:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Not more than the distance to the end of the image. */
+ 165:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     if (num_rows > upsample->rows_to_go)
+ 166:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       num_rows = upsample->rows_to_go;
+ 167:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* And not more than what the client can accept: */
+ 168:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     out_rows_avail -= *out_row_ctr;
+ 169:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     if (num_rows > out_rows_avail)
+ 170:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       num_rows = out_rows_avail;
+ 171:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Create output pointer array for upsampler. */
+ 172:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     work_ptrs[0] = output_buf[*out_row_ctr];
+ 173:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     if (num_rows > 1) {
+ 174:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       work_ptrs[1] = output_buf[*out_row_ctr + 1];
+ 175:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     } else {
+ 176:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       work_ptrs[1] = upsample->spare_row;
+ 177:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       upsample->spare_full = TRUE;
+ 178:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     }
+ 179:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Now do the upsampling. */
+ 180:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*upsample->upmethod) (cinfo, input_buf, *in_row_group_ctr, work_ptrs);
+ 181:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 182:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 183:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Adjust counts */
+ 184:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   *out_row_ctr += num_rows;
+ 185:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->rows_to_go -= num_rows;
+ 186:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* When the buffer is emptied, declare this input row group consumed */
+ 187:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   if (! upsample->spare_full)
+ 188:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*in_row_group_ctr)++;
+ 189:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 190:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 191:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 192:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** METHODDEF(void)
+ 193:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** merged_1v_upsample (j_decompress_ptr cinfo,
+ 194:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JSAMPIMAGE input_buf, JDIMENSION *in_row_group_ctr,
+ 195:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JDIMENSION in_row_groups_avail,
+ 196:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JSAMPARRAY output_buf, JDIMENSION *out_row_ctr,
+ 197:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		    JDIMENSION out_rows_avail)
+ 198:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /* 1:1 vertical sampling case: much easier, never need a spare row. */
+ 199:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 180              		.loc 1 199 0
+ 181              		.cfi_startproc
+ 182              		@ args = 12, pretend = 0, frame = 0
+ 183              		@ frame_needed = 0, uses_anonymous_args = 0
+ 184              	.LVL13:
+ 185 0000 70B5     		push	{r4, r5, r6, lr}
+ 186              	.LCFI1:
+ 187              		.cfi_def_cfa_offset 16
+ 188              		.cfi_offset 4, -16
+ 189              		.cfi_offset 5, -12
+ 190              		.cfi_offset 6, -8
+ 191              		.cfi_offset 14, -4
+ 192 0002 1446     		mov	r4, r2
+ 193 0004 059D     		ldr	r5, [sp, #20]
+ 200:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 194              		.loc 1 200 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 8
+
+
+ 195 0006 D0F8D831 		ldr	r3, [r0, #472]
+ 196              	.LVL14:
+ 201:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 202:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Just do the upsampling. */
+ 203:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   (*upsample->upmethod) (cinfo, input_buf, *in_row_group_ctr,
+ 204:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 			 output_buf + *out_row_ctr);
+ 197              		.loc 1 204 0
+ 198 000a 2A68     		ldr	r2, [r5]
+ 199              	.LVL15:
+ 203:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 			 output_buf + *out_row_ctr);
+ 200              		.loc 1 203 0
+ 201 000c DE68     		ldr	r6, [r3, #12]
+ 202 000e 049B     		ldr	r3, [sp, #16]
+ 203              	.LVL16:
+ 204 0010 03EB8203 		add	r3, r3, r2, lsl #2
+ 205 0014 2268     		ldr	r2, [r4]
+ 206 0016 B047     		blx	r6
+ 207              	.LVL17:
+ 205:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Adjust counts */
+ 206:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   (*out_row_ctr)++;
+ 208              		.loc 1 206 0
+ 209 0018 2B68     		ldr	r3, [r5]
+ 210 001a 0133     		adds	r3, r3, #1
+ 211 001c 2B60     		str	r3, [r5]
+ 207:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   (*in_row_group_ctr)++;
+ 212              		.loc 1 207 0
+ 213 001e 2368     		ldr	r3, [r4]
+ 214 0020 0133     		adds	r3, r3, #1
+ 215 0022 2360     		str	r3, [r4]
+ 208:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 216              		.loc 1 208 0
+ 217 0024 70BD     		pop	{r4, r5, r6, pc}
+ 218              		.cfi_endproc
+ 219              	.LFE6:
+ 221              		.section	.text.h2v1_merged_upsample,"ax",%progbits
+ 222              		.align	1
+ 223              		.syntax unified
+ 224              		.thumb
+ 225              		.thumb_func
+ 226              		.fpu fpv5-sp-d16
+ 228              	h2v1_merged_upsample:
+ 229              	.LFB7:
+ 209:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 210:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 211:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 212:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * These are the routines invoked by the control routines to do
+ 213:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * the actual upsampling/conversion.  One row group is processed per call.
+ 214:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+ 215:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Note: since we may be writing directly into application-supplied buffers,
+ 216:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * we have to be honest about the output width; we can't assume the buffer
+ 217:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * has been rounded up to an even width.
+ 218:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ 219:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 220:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 221:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 222:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Upsample and color convert for the case of 2:1 horizontal and 1:1 vertical.
+ 223:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ARM GAS  /tmp/ccwb8FyS.s 			page 9
+
+
+ 224:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 225:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** METHODDEF(void)
+ 226:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** h2v1_merged_upsample (j_decompress_ptr cinfo,
+ 227:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      JSAMPIMAGE input_buf, JDIMENSION in_row_group_ctr,
+ 228:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      JSAMPARRAY output_buf)
+ 229:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 230              		.loc 1 229 0
+ 231              		.cfi_startproc
+ 232              		@ args = 0, pretend = 0, frame = 16
+ 233              		@ frame_needed = 0, uses_anonymous_args = 0
+ 234              	.LVL18:
+ 235 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 236              	.LCFI2:
+ 237              		.cfi_def_cfa_offset 36
+ 238              		.cfi_offset 4, -36
+ 239              		.cfi_offset 5, -32
+ 240              		.cfi_offset 6, -28
+ 241              		.cfi_offset 7, -24
+ 242              		.cfi_offset 8, -20
+ 243              		.cfi_offset 9, -16
+ 244              		.cfi_offset 10, -12
+ 245              		.cfi_offset 11, -8
+ 246              		.cfi_offset 14, -4
+ 247 0004 85B0     		sub	sp, sp, #20
+ 248              	.LCFI3:
+ 249              		.cfi_def_cfa_offset 56
+ 250 0006 0546     		mov	r5, r0
+ 251 0008 0390     		str	r0, [sp, #12]
+ 230:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 252              		.loc 1 230 0
+ 253 000a D0F8D841 		ldr	r4, [r0, #472]
+ 254              	.LVL19:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register int y, cred, cgreen, cblue;
+ 232:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int cb, cr;
+ 233:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register JSAMPROW outptr;
+ 234:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JSAMPROW inptr0, inptr1, inptr2;
+ 235:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JDIMENSION col;
+ 236:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* copy these pointers into registers if possible */
+ 237:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register JSAMPLE * range_limit = cinfo->sample_range_limit;
+ 255              		.loc 1 237 0
+ 256 000e D0F84C01 		ldr	r0, [r0, #332]
+ 257              	.LVL20:
+ 238:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Crrtab = upsample->Cr_r_tab;
+ 258              		.loc 1 238 0
+ 259 0012 D4F81090 		ldr	r9, [r4, #16]
+ 260              	.LVL21:
+ 239:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Cbbtab = upsample->Cb_b_tab;
+ 261              		.loc 1 239 0
+ 262 0016 6669     		ldr	r6, [r4, #20]
+ 263 0018 0196     		str	r6, [sp, #4]
+ 264              	.LVL22:
+ 240:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Crgtab = upsample->Cr_g_tab;
+ 265              		.loc 1 240 0
+ 266 001a A669     		ldr	r6, [r4, #24]
+ 267              	.LVL23:
+ 268 001c 0296     		str	r6, [sp, #8]
+ 269              	.LVL24:
+ARM GAS  /tmp/ccwb8FyS.s 			page 10
+
+
+ 241:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Cbgtab = upsample->Cb_g_tab;
+ 270              		.loc 1 241 0
+ 271 001e D4F81C80 		ldr	r8, [r4, #28]
+ 272              	.LVL25:
+ 242:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   SHIFT_TEMPS
+ 243:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 244:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr0 = input_buf[0][in_row_group_ctr];
+ 273              		.loc 1 244 0
+ 274 0022 0C68     		ldr	r4, [r1]
+ 275              	.LVL26:
+ 276 0024 54F82270 		ldr	r7, [r4, r2, lsl #2]
+ 277              	.LVL27:
+ 245:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr1 = input_buf[1][in_row_group_ctr];
+ 278              		.loc 1 245 0
+ 279 0028 4C68     		ldr	r4, [r1, #4]
+ 280 002a 54F822E0 		ldr	lr, [r4, r2, lsl #2]
+ 281              	.LVL28:
+ 246:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr2 = input_buf[2][in_row_group_ctr];
+ 282              		.loc 1 246 0
+ 283 002e 8968     		ldr	r1, [r1, #8]
+ 284              	.LVL29:
+ 285 0030 51F822C0 		ldr	ip, [r1, r2, lsl #2]
+ 286              	.LVL30:
+ 247:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   outptr = output_buf[0];
+ 287              		.loc 1 247 0
+ 288 0034 1968     		ldr	r1, [r3]
+ 289              	.LVL31:
+ 248:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Loop for each pair of output pixels */
+ 249:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   for (col = cinfo->output_width >> 1; col > 0; col--) {
+ 290              		.loc 1 249 0
+ 291 0036 2B6F     		ldr	r3, [r5, #112]
+ 292              	.LVL32:
+ 293 0038 4FEA530A 		lsr	r10, r3, #1
+ 294              	.LVL33:
+ 295 003c 5346     		mov	r3, r10
+ 296 003e BA46     		mov	r10, r7
+ 297              	.LVL34:
+ 298 0040 1F46     		mov	r7, r3
+ 299              	.LVL35:
+ 300 0042 33E0     		b	.L11
+ 301              	.LVL36:
+ 302              	.L12:
+ 250:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 251:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cb = GETJSAMPLE(*inptr1++);
+ 303              		.loc 1 251 0 discriminator 3
+ 304 0044 9EF80020 		ldrb	r2, [lr]	@ zero_extendqisi2
+ 305              	.LVL37:
+ 252:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2++);
+ 306              		.loc 1 252 0 discriminator 3
+ 307 0048 9CF80040 		ldrb	r4, [ip]	@ zero_extendqisi2
+ 308              	.LVL38:
+ 253:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 309              		.loc 1 253 0 discriminator 3
+ 310 004c 59F82450 		ldr	r5, [r9, r4, lsl #2]
+ 311              	.LVL39:
+ 254:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cgreen = (int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr], SCALEBITS);
+ 312              		.loc 1 254 0 discriminator 3
+ARM GAS  /tmp/ccwb8FyS.s 			page 11
+
+
+ 313 0050 58F82230 		ldr	r3, [r8, r2, lsl #2]
+ 314 0054 029E     		ldr	r6, [sp, #8]
+ 315 0056 56F82440 		ldr	r4, [r6, r4, lsl #2]
+ 316              	.LVL40:
+ 317 005a 2344     		add	r3, r3, r4
+ 318 005c 1B14     		asrs	r3, r3, #16
+ 319              	.LVL41:
+ 255:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cblue = Cbbtab[cb];
+ 320              		.loc 1 255 0 discriminator 3
+ 321 005e 019C     		ldr	r4, [sp, #4]
+ 322 0060 54F82240 		ldr	r4, [r4, r2, lsl #2]
+ 323              	.LVL42:
+ 256:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Fetch 2 Y values and emit 2 pixels */
+ 257:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr0++);
+ 324              		.loc 1 257 0 discriminator 3
+ 325 0064 5646     		mov	r6, r10
+ 326 0066 16F8022B 		ldrb	r2, [r6], #2	@ zero_extendqisi2
+ 327              	.LVL43:
+ 258:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_RED] =   range_limit[y + cred];
+ 328              		.loc 1 258 0 discriminator 3
+ 329 006a 05EB020B 		add	fp, r5, r2
+ 330 006e 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 331 0072 81F800B0 		strb	fp, [r1]
+ 332              	.LVL44:
+ 259:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_GREEN] = range_limit[y + cgreen];
+ 333              		.loc 1 259 0 discriminator 3
+ 334 0076 03EB020B 		add	fp, r3, r2
+ 335 007a 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 336 007e 81F801B0 		strb	fp, [r1, #1]
+ 260:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_BLUE] =  range_limit[y + cblue];
+ 337              		.loc 1 260 0 discriminator 3
+ 338 0082 2244     		add	r2, r2, r4
+ 339              	.LVL45:
+ 340 0084 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 341 0086 8A70     		strb	r2, [r1, #2]
+ 342              	.LVL46:
+ 261:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr += RGB_PIXELSIZE;
+ 262:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr0++);
+ 343              		.loc 1 262 0 discriminator 3
+ 344 0088 9AF80120 		ldrb	r2, [r10, #1]	@ zero_extendqisi2
+ 345              	.LVL47:
+ 263:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_RED] =   range_limit[y + cred];
+ 346              		.loc 1 263 0 discriminator 3
+ 347 008c 1544     		add	r5, r5, r2
+ 348              	.LVL48:
+ 349 008e 455D     		ldrb	r5, [r0, r5]	@ zero_extendqisi2
+ 350 0090 CD70     		strb	r5, [r1, #3]
+ 264:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_GREEN] = range_limit[y + cgreen];
+ 351              		.loc 1 264 0 discriminator 3
+ 352 0092 1344     		add	r3, r3, r2
+ 353              	.LVL49:
+ 354 0094 C35C     		ldrb	r3, [r0, r3]	@ zero_extendqisi2
+ 355 0096 0B71     		strb	r3, [r1, #4]
+ 265:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_BLUE] =  range_limit[y + cblue];
+ 356              		.loc 1 265 0 discriminator 3
+ 357 0098 1444     		add	r4, r4, r2
+ 358              	.LVL50:
+ARM GAS  /tmp/ccwb8FyS.s 			page 12
+
+
+ 359 009a 035D     		ldrb	r3, [r0, r4]	@ zero_extendqisi2
+ 360 009c 4B71     		strb	r3, [r1, #5]
+ 266:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr += RGB_PIXELSIZE;
+ 361              		.loc 1 266 0 discriminator 3
+ 362 009e 0631     		adds	r1, r1, #6
+ 363              	.LVL51:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 364              		.loc 1 249 0 discriminator 3
+ 365 00a0 013F     		subs	r7, r7, #1
+ 366              	.LVL52:
+ 252:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 367              		.loc 1 252 0 discriminator 3
+ 368 00a2 0CF1010C 		add	ip, ip, #1
+ 369              	.LVL53:
+ 251:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2++);
+ 370              		.loc 1 251 0 discriminator 3
+ 371 00a6 0EF1010E 		add	lr, lr, #1
+ 372              	.LVL54:
+ 262:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_RED] =   range_limit[y + cred];
+ 373              		.loc 1 262 0 discriminator 3
+ 374 00aa B246     		mov	r10, r6
+ 375              	.LVL55:
+ 376              	.L11:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 377              		.loc 1 249 0 discriminator 1
+ 378 00ac 002F     		cmp	r7, #0
+ 379 00ae C9D1     		bne	.L12
+ 267:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 268:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* If image width is odd, do the last output column separately */
+ 269:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   if (cinfo->output_width & 1) {
+ 380              		.loc 1 269 0
+ 381 00b0 039B     		ldr	r3, [sp, #12]
+ 382 00b2 1B6F     		ldr	r3, [r3, #112]
+ 383 00b4 13F0010F 		tst	r3, #1
+ 384 00b8 1AD0     		beq	.L10
+ 270:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cb = GETJSAMPLE(*inptr1);
+ 385              		.loc 1 270 0
+ 386 00ba 9EF80020 		ldrb	r2, [lr]	@ zero_extendqisi2
+ 387              	.LVL56:
+ 271:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2);
+ 388              		.loc 1 271 0
+ 389 00be 9CF80040 		ldrb	r4, [ip]	@ zero_extendqisi2
+ 390              	.LVL57:
+ 272:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 391              		.loc 1 272 0
+ 392 00c2 59F82450 		ldr	r5, [r9, r4, lsl #2]
+ 393              	.LVL58:
+ 273:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cgreen = (int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr], SCALEBITS);
+ 394              		.loc 1 273 0
+ 395 00c6 58F82230 		ldr	r3, [r8, r2, lsl #2]
+ 396 00ca 029E     		ldr	r6, [sp, #8]
+ 397 00cc 56F82440 		ldr	r4, [r6, r4, lsl #2]
+ 398              	.LVL59:
+ 399 00d0 2344     		add	r3, r3, r4
+ 400              	.LVL60:
+ 274:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cblue = Cbbtab[cb];
+ 401              		.loc 1 274 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 13
+
+
+ 402 00d2 019C     		ldr	r4, [sp, #4]
+ 403 00d4 54F82220 		ldr	r2, [r4, r2, lsl #2]
+ 404              	.LVL61:
+ 275:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr0);
+ 405              		.loc 1 275 0
+ 406 00d8 9AF80040 		ldrb	r4, [r10]	@ zero_extendqisi2
+ 407              	.LVL62:
+ 276:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_RED] =   range_limit[y + cred];
+ 408              		.loc 1 276 0
+ 409 00dc 2544     		add	r5, r5, r4
+ 410              	.LVL63:
+ 411 00de 455D     		ldrb	r5, [r0, r5]	@ zero_extendqisi2
+ 412 00e0 0D70     		strb	r5, [r1]
+ 413              	.LVL64:
+ 277:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_GREEN] = range_limit[y + cgreen];
+ 414              		.loc 1 277 0
+ 415 00e2 04EB2343 		add	r3, r4, r3, asr #16
+ 416              	.LVL65:
+ 417 00e6 C35C     		ldrb	r3, [r0, r3]	@ zero_extendqisi2
+ 418 00e8 4B70     		strb	r3, [r1, #1]
+ 278:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr[RGB_BLUE] =  range_limit[y + cblue];
+ 419              		.loc 1 278 0
+ 420 00ea 1319     		adds	r3, r2, r4
+ 421 00ec C35C     		ldrb	r3, [r0, r3]	@ zero_extendqisi2
+ 422 00ee 8B70     		strb	r3, [r1, #2]
+ 423              	.LVL66:
+ 424              	.L10:
+ 279:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 280:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 425              		.loc 1 280 0
+ 426 00f0 05B0     		add	sp, sp, #20
+ 427              	.LCFI4:
+ 428              		.cfi_def_cfa_offset 36
+ 429              		@ sp needed
+ 430 00f2 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 431              		.cfi_endproc
+ 432              	.LFE7:
+ 434              		.section	.text.h2v2_merged_upsample,"ax",%progbits
+ 435              		.align	1
+ 436              		.syntax unified
+ 437              		.thumb
+ 438              		.thumb_func
+ 439              		.fpu fpv5-sp-d16
+ 441              	h2v2_merged_upsample:
+ 442              	.LFB8:
+ 281:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 282:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 283:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 284:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Upsample and color convert for the case of 2:1 horizontal and 2:1 vertical.
+ 285:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ 286:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 287:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** METHODDEF(void)
+ 288:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** h2v2_merged_upsample (j_decompress_ptr cinfo,
+ 289:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      JSAMPIMAGE input_buf, JDIMENSION in_row_group_ctr,
+ 290:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      JSAMPARRAY output_buf)
+ 291:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 443              		.loc 1 291 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 14
+
+
+ 444              		.cfi_startproc
+ 445              		@ args = 0, pretend = 0, frame = 24
+ 446              		@ frame_needed = 0, uses_anonymous_args = 0
+ 447              	.LVL67:
+ 448 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 449              	.LCFI5:
+ 450              		.cfi_def_cfa_offset 36
+ 451              		.cfi_offset 4, -36
+ 452              		.cfi_offset 5, -32
+ 453              		.cfi_offset 6, -28
+ 454              		.cfi_offset 7, -24
+ 455              		.cfi_offset 8, -20
+ 456              		.cfi_offset 9, -16
+ 457              		.cfi_offset 10, -12
+ 458              		.cfi_offset 11, -8
+ 459              		.cfi_offset 14, -4
+ 460 0004 87B0     		sub	sp, sp, #28
+ 461              	.LCFI6:
+ 462              		.cfi_def_cfa_offset 64
+ 463 0006 0646     		mov	r6, r0
+ 464 0008 0590     		str	r0, [sp, #20]
+ 292:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 465              		.loc 1 292 0
+ 466 000a D0F8D841 		ldr	r4, [r0, #472]
+ 467              	.LVL68:
+ 293:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register int y, cred, cgreen, cblue;
+ 294:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int cb, cr;
+ 295:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register JSAMPROW outptr0, outptr1;
+ 296:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JSAMPROW inptr00, inptr01, inptr1, inptr2;
+ 297:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JDIMENSION col;
+ 298:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* copy these pointers into registers if possible */
+ 299:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   register JSAMPLE * range_limit = cinfo->sample_range_limit;
+ 468              		.loc 1 299 0
+ 469 000e D0F84C01 		ldr	r0, [r0, #332]
+ 470              	.LVL69:
+ 300:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Crrtab = upsample->Cr_r_tab;
+ 471              		.loc 1 300 0
+ 472 0012 2569     		ldr	r5, [r4, #16]
+ 473 0014 0295     		str	r5, [sp, #8]
+ 474              	.LVL70:
+ 301:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   int * Cbbtab = upsample->Cb_b_tab;
+ 475              		.loc 1 301 0
+ 476 0016 6569     		ldr	r5, [r4, #20]
+ 477              	.LVL71:
+ 478 0018 0395     		str	r5, [sp, #12]
+ 479              	.LVL72:
+ 302:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Crgtab = upsample->Cr_g_tab;
+ 480              		.loc 1 302 0
+ 481 001a A569     		ldr	r5, [r4, #24]
+ 482              	.LVL73:
+ 483 001c 0495     		str	r5, [sp, #16]
+ 484              	.LVL74:
+ 303:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   INT32 * Cbgtab = upsample->Cb_g_tab;
+ 485              		.loc 1 303 0
+ 486 001e D4F81C90 		ldr	r9, [r4, #28]
+ 487              	.LVL75:
+ 304:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   SHIFT_TEMPS
+ARM GAS  /tmp/ccwb8FyS.s 			page 15
+
+
+ 305:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 306:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr00 = input_buf[0][in_row_group_ctr*2];
+ 488              		.loc 1 306 0
+ 489 0022 0D68     		ldr	r5, [r1]
+ 490              	.LVL76:
+ 491 0024 D400     		lsls	r4, r2, #3
+ 492              	.LVL77:
+ 493 0026 55F832A0 		ldr	r10, [r5, r2, lsl #3]
+ 494              	.LVL78:
+ 307:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr01 = input_buf[0][in_row_group_ctr*2 + 1];
+ 495              		.loc 1 307 0
+ 496 002a 0434     		adds	r4, r4, #4
+ 497 002c 2C59     		ldr	r4, [r5, r4]
+ 498 002e 0194     		str	r4, [sp, #4]
+ 499              	.LVL79:
+ 308:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr1 = input_buf[1][in_row_group_ctr];
+ 500              		.loc 1 308 0
+ 501 0030 4C68     		ldr	r4, [r1, #4]
+ 502              	.LVL80:
+ 503 0032 54F82280 		ldr	r8, [r4, r2, lsl #2]
+ 504              	.LVL81:
+ 309:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   inptr2 = input_buf[2][in_row_group_ctr];
+ 505              		.loc 1 309 0
+ 506 0036 8968     		ldr	r1, [r1, #8]
+ 507              	.LVL82:
+ 508 0038 51F822E0 		ldr	lr, [r1, r2, lsl #2]
+ 509              	.LVL83:
+ 310:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   outptr0 = output_buf[0];
+ 510              		.loc 1 310 0
+ 511 003c 1C68     		ldr	r4, [r3]
+ 512              	.LVL84:
+ 311:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   outptr1 = output_buf[1];
+ 513              		.loc 1 311 0
+ 514 003e 5968     		ldr	r1, [r3, #4]
+ 515              	.LVL85:
+ 312:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* Loop for each group of output pixels */
+ 313:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   for (col = cinfo->output_width >> 1; col > 0; col--) {
+ 516              		.loc 1 313 0
+ 517 0040 336F     		ldr	r3, [r6, #112]
+ 518              	.LVL86:
+ 519 0042 4FEA530C 		lsr	ip, r3, #1
+ 520              	.LVL87:
+ 521 0046 5CE0     		b	.L16
+ 522              	.LVL88:
+ 523              	.L17:
+ 314:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 315:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cb = GETJSAMPLE(*inptr1++);
+ 524              		.loc 1 315 0 discriminator 3
+ 525 0048 98F80020 		ldrb	r2, [r8]	@ zero_extendqisi2
+ 526              	.LVL89:
+ 316:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2++);
+ 527              		.loc 1 316 0 discriminator 3
+ 528 004c 9EF80060 		ldrb	r6, [lr]	@ zero_extendqisi2
+ 529              	.LVL90:
+ 317:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 530              		.loc 1 317 0 discriminator 3
+ 531 0050 029B     		ldr	r3, [sp, #8]
+ARM GAS  /tmp/ccwb8FyS.s 			page 16
+
+
+ 532 0052 53F82650 		ldr	r5, [r3, r6, lsl #2]
+ 533              	.LVL91:
+ 318:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cgreen = (int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr], SCALEBITS);
+ 534              		.loc 1 318 0 discriminator 3
+ 535 0056 59F82230 		ldr	r3, [r9, r2, lsl #2]
+ 536 005a 049F     		ldr	r7, [sp, #16]
+ 537 005c 57F82660 		ldr	r6, [r7, r6, lsl #2]
+ 538              	.LVL92:
+ 539 0060 3344     		add	r3, r3, r6
+ 540 0062 1B14     		asrs	r3, r3, #16
+ 541              	.LVL93:
+ 319:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cblue = Cbbtab[cb];
+ 542              		.loc 1 319 0 discriminator 3
+ 543 0064 039E     		ldr	r6, [sp, #12]
+ 544 0066 56F82220 		ldr	r2, [r6, r2, lsl #2]
+ 545              	.LVL94:
+ 320:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Fetch 4 Y values and emit 4 pixels */
+ 321:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr00++);
+ 546              		.loc 1 321 0 discriminator 3
+ 547 006a 5746     		mov	r7, r10
+ 548 006c 17F8026B 		ldrb	r6, [r7], #2	@ zero_extendqisi2
+ 549              	.LVL95:
+ 322:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_RED] =   range_limit[y + cred];
+ 550              		.loc 1 322 0 discriminator 3
+ 551 0070 05EB060B 		add	fp, r5, r6
+ 552 0074 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 553 0078 84F800B0 		strb	fp, [r4]
+ 554              	.LVL96:
+ 323:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_GREEN] = range_limit[y + cgreen];
+ 555              		.loc 1 323 0 discriminator 3
+ 556 007c 03EB060B 		add	fp, r3, r6
+ 557 0080 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 558 0084 84F801B0 		strb	fp, [r4, #1]
+ 324:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_BLUE] =  range_limit[y + cblue];
+ 559              		.loc 1 324 0 discriminator 3
+ 560 0088 1644     		add	r6, r6, r2
+ 561              	.LVL97:
+ 562 008a 865D     		ldrb	r6, [r0, r6]	@ zero_extendqisi2
+ 563 008c A670     		strb	r6, [r4, #2]
+ 564              	.LVL98:
+ 325:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0 += RGB_PIXELSIZE;
+ 326:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr00++);
+ 565              		.loc 1 326 0 discriminator 3
+ 566 008e 9AF80160 		ldrb	r6, [r10, #1]	@ zero_extendqisi2
+ 567              	.LVL99:
+ 327:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_RED] =   range_limit[y + cred];
+ 568              		.loc 1 327 0 discriminator 3
+ 569 0092 05EB060A 		add	r10, r5, r6
+ 570 0096 10F80AA0 		ldrb	r10, [r0, r10]	@ zero_extendqisi2
+ 571 009a 84F803A0 		strb	r10, [r4, #3]
+ 328:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_GREEN] = range_limit[y + cgreen];
+ 572              		.loc 1 328 0 discriminator 3
+ 573 009e 03EB060A 		add	r10, r3, r6
+ 574 00a2 10F80AA0 		ldrb	r10, [r0, r10]	@ zero_extendqisi2
+ 575 00a6 84F804A0 		strb	r10, [r4, #4]
+ 329:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_BLUE] =  range_limit[y + cblue];
+ 576              		.loc 1 329 0 discriminator 3
+ARM GAS  /tmp/ccwb8FyS.s 			page 17
+
+
+ 577 00aa 1644     		add	r6, r6, r2
+ 578              	.LVL100:
+ 579 00ac 865D     		ldrb	r6, [r0, r6]	@ zero_extendqisi2
+ 580 00ae 6671     		strb	r6, [r4, #5]
+ 330:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0 += RGB_PIXELSIZE;
+ 581              		.loc 1 330 0 discriminator 3
+ 582 00b0 0634     		adds	r4, r4, #6
+ 583              	.LVL101:
+ 331:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr01++);
+ 584              		.loc 1 331 0 discriminator 3
+ 585 00b2 DDF804A0 		ldr	r10, [sp, #4]
+ 586 00b6 1AF8026B 		ldrb	r6, [r10], #2	@ zero_extendqisi2
+ 587              	.LVL102:
+ 332:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_RED] =   range_limit[y + cred];
+ 588              		.loc 1 332 0 discriminator 3
+ 589 00ba 05EB060B 		add	fp, r5, r6
+ 590 00be 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 591 00c2 81F800B0 		strb	fp, [r1]
+ 333:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_GREEN] = range_limit[y + cgreen];
+ 592              		.loc 1 333 0 discriminator 3
+ 593 00c6 03EB060B 		add	fp, r3, r6
+ 594 00ca 10F80BB0 		ldrb	fp, [r0, fp]	@ zero_extendqisi2
+ 595 00ce 81F801B0 		strb	fp, [r1, #1]
+ 334:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_BLUE] =  range_limit[y + cblue];
+ 596              		.loc 1 334 0 discriminator 3
+ 597 00d2 1644     		add	r6, r6, r2
+ 598              	.LVL103:
+ 599 00d4 865D     		ldrb	r6, [r0, r6]	@ zero_extendqisi2
+ 600 00d6 8E70     		strb	r6, [r1, #2]
+ 601              	.LVL104:
+ 335:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1 += RGB_PIXELSIZE;
+ 336:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr01++);
+ 602              		.loc 1 336 0 discriminator 3
+ 603 00d8 019E     		ldr	r6, [sp, #4]
+ 604 00da 7678     		ldrb	r6, [r6, #1]	@ zero_extendqisi2
+ 605              	.LVL105:
+ 337:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_RED] =   range_limit[y + cred];
+ 606              		.loc 1 337 0 discriminator 3
+ 607 00dc 3544     		add	r5, r5, r6
+ 608              	.LVL106:
+ 609 00de 455D     		ldrb	r5, [r0, r5]	@ zero_extendqisi2
+ 610 00e0 CD70     		strb	r5, [r1, #3]
+ 338:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_GREEN] = range_limit[y + cgreen];
+ 611              		.loc 1 338 0 discriminator 3
+ 612 00e2 3344     		add	r3, r3, r6
+ 613              	.LVL107:
+ 614 00e4 C35C     		ldrb	r3, [r0, r3]	@ zero_extendqisi2
+ 615 00e6 0B71     		strb	r3, [r1, #4]
+ 339:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_BLUE] =  range_limit[y + cblue];
+ 616              		.loc 1 339 0 discriminator 3
+ 617 00e8 3244     		add	r2, r2, r6
+ 618              	.LVL108:
+ 619 00ea 835C     		ldrb	r3, [r0, r2]	@ zero_extendqisi2
+ 620 00ec 4B71     		strb	r3, [r1, #5]
+ 340:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1 += RGB_PIXELSIZE;
+ 621              		.loc 1 340 0 discriminator 3
+ 622 00ee 0631     		adds	r1, r1, #6
+ARM GAS  /tmp/ccwb8FyS.s 			page 18
+
+
+ 623              	.LVL109:
+ 313:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 624              		.loc 1 313 0 discriminator 3
+ 625 00f0 0CF1FF3C 		add	ip, ip, #-1
+ 626              	.LVL110:
+ 316:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 627              		.loc 1 316 0 discriminator 3
+ 628 00f4 0EF1010E 		add	lr, lr, #1
+ 629              	.LVL111:
+ 315:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2++);
+ 630              		.loc 1 315 0 discriminator 3
+ 631 00f8 08F10108 		add	r8, r8, #1
+ 632              	.LVL112:
+ 336:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_RED] =   range_limit[y + cred];
+ 633              		.loc 1 336 0 discriminator 3
+ 634 00fc CDF804A0 		str	r10, [sp, #4]
+ 326:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_RED] =   range_limit[y + cred];
+ 635              		.loc 1 326 0 discriminator 3
+ 636 0100 BA46     		mov	r10, r7
+ 637              	.LVL113:
+ 638              	.L16:
+ 313:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Do the chroma part of the calculation */
+ 639              		.loc 1 313 0 discriminator 1
+ 640 0102 BCF1000F 		cmp	ip, #0
+ 641 0106 9FD1     		bne	.L17
+ 341:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 342:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* If image width is odd, do the last output column separately */
+ 343:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   if (cinfo->output_width & 1) {
+ 642              		.loc 1 343 0
+ 643 0108 059B     		ldr	r3, [sp, #20]
+ 644 010a 1B6F     		ldr	r3, [r3, #112]
+ 645 010c 13F0010F 		tst	r3, #1
+ 646 0110 26D0     		beq	.L15
+ 344:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cb = GETJSAMPLE(*inptr1);
+ 647              		.loc 1 344 0
+ 648 0112 98F80020 		ldrb	r2, [r8]	@ zero_extendqisi2
+ 649              	.LVL114:
+ 345:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cr = GETJSAMPLE(*inptr2);
+ 650              		.loc 1 345 0
+ 651 0116 9EF80050 		ldrb	r5, [lr]	@ zero_extendqisi2
+ 652              	.LVL115:
+ 346:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cred = Crrtab[cr];
+ 653              		.loc 1 346 0
+ 654 011a 029B     		ldr	r3, [sp, #8]
+ 655 011c 53F82560 		ldr	r6, [r3, r5, lsl #2]
+ 656              	.LVL116:
+ 347:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cgreen = (int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr], SCALEBITS);
+ 657              		.loc 1 347 0
+ 658 0120 59F82230 		ldr	r3, [r9, r2, lsl #2]
+ 659 0124 049F     		ldr	r7, [sp, #16]
+ 660 0126 57F82550 		ldr	r5, [r7, r5, lsl #2]
+ 661              	.LVL117:
+ 662 012a 2B44     		add	r3, r3, r5
+ 663 012c 1B14     		asrs	r3, r3, #16
+ 664              	.LVL118:
+ 348:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     cblue = Cbbtab[cb];
+ 665              		.loc 1 348 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 19
+
+
+ 666 012e 039D     		ldr	r5, [sp, #12]
+ 667 0130 55F82250 		ldr	r5, [r5, r2, lsl #2]
+ 668              	.LVL119:
+ 349:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr00);
+ 669              		.loc 1 349 0
+ 670 0134 9AF80020 		ldrb	r2, [r10]	@ zero_extendqisi2
+ 671              	.LVL120:
+ 350:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_RED] =   range_limit[y + cred];
+ 672              		.loc 1 350 0
+ 673 0138 B718     		adds	r7, r6, r2
+ 674 013a C75D     		ldrb	r7, [r0, r7]	@ zero_extendqisi2
+ 675 013c 2770     		strb	r7, [r4]
+ 676              	.LVL121:
+ 351:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_GREEN] = range_limit[y + cgreen];
+ 677              		.loc 1 351 0
+ 678 013e 9F18     		adds	r7, r3, r2
+ 679 0140 C75D     		ldrb	r7, [r0, r7]	@ zero_extendqisi2
+ 680 0142 6770     		strb	r7, [r4, #1]
+ 352:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr0[RGB_BLUE] =  range_limit[y + cblue];
+ 681              		.loc 1 352 0
+ 682 0144 2A44     		add	r2, r2, r5
+ 683              	.LVL122:
+ 684 0146 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 685 0148 A270     		strb	r2, [r4, #2]
+ 353:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     y  = GETJSAMPLE(*inptr01);
+ 686              		.loc 1 353 0
+ 687 014a 019A     		ldr	r2, [sp, #4]
+ 688 014c 1278     		ldrb	r2, [r2]	@ zero_extendqisi2
+ 689              	.LVL123:
+ 354:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_RED] =   range_limit[y + cred];
+ 690              		.loc 1 354 0
+ 691 014e 1644     		add	r6, r6, r2
+ 692              	.LVL124:
+ 693 0150 845D     		ldrb	r4, [r0, r6]	@ zero_extendqisi2
+ 694              	.LVL125:
+ 695 0152 0C70     		strb	r4, [r1]
+ 355:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_GREEN] = range_limit[y + cgreen];
+ 696              		.loc 1 355 0
+ 697 0154 1344     		add	r3, r3, r2
+ 698              	.LVL126:
+ 699 0156 C35C     		ldrb	r3, [r0, r3]	@ zero_extendqisi2
+ 700 0158 4B70     		strb	r3, [r1, #1]
+ 356:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     outptr1[RGB_BLUE] =  range_limit[y + cblue];
+ 701              		.loc 1 356 0
+ 702 015a 1544     		add	r5, r5, r2
+ 703              	.LVL127:
+ 704 015c 435D     		ldrb	r3, [r0, r5]	@ zero_extendqisi2
+ 705 015e 8B70     		strb	r3, [r1, #2]
+ 706              	.LVL128:
+ 707              	.L15:
+ 357:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 358:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 708              		.loc 1 358 0
+ 709 0160 07B0     		add	sp, sp, #28
+ 710              	.LCFI7:
+ 711              		.cfi_def_cfa_offset 36
+ 712              		@ sp needed
+ARM GAS  /tmp/ccwb8FyS.s 			page 20
+
+
+ 713 0162 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 714              		.cfi_endproc
+ 715              	.LFE8:
+ 717              		.section	.text.merged_2v_upsample,"ax",%progbits
+ 718              		.align	1
+ 719              		.syntax unified
+ 720              		.thumb
+ 721              		.thumb_func
+ 722              		.fpu fpv5-sp-d16
+ 724              	merged_2v_upsample:
+ 725              	.LFB5:
+ 150:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample = (my_upsample_ptr) cinfo->upsample;
+ 726              		.loc 1 150 0
+ 727              		.cfi_startproc
+ 728              		@ args = 12, pretend = 0, frame = 8
+ 729              		@ frame_needed = 0, uses_anonymous_args = 0
+ 730              	.LVL129:
+ 731 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 732              	.LCFI8:
+ 733              		.cfi_def_cfa_offset 24
+ 734              		.cfi_offset 4, -24
+ 735              		.cfi_offset 5, -20
+ 736              		.cfi_offset 6, -16
+ 737              		.cfi_offset 7, -12
+ 738              		.cfi_offset 8, -8
+ 739              		.cfi_offset 14, -4
+ 740 0004 84B0     		sub	sp, sp, #16
+ 741              	.LCFI9:
+ 742              		.cfi_def_cfa_offset 40
+ 743 0006 9046     		mov	r8, r2
+ 744 0008 0A9A     		ldr	r2, [sp, #40]
+ 745              	.LVL130:
+ 746 000a 0B9E     		ldr	r6, [sp, #44]
+ 151:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   JSAMPROW work_ptrs[2];
+ 747              		.loc 1 151 0
+ 748 000c D0F8D841 		ldr	r4, [r0, #472]
+ 749              	.LVL131:
+ 155:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* If we have a spare row saved from a previous cycle, just return it. */
+ 750              		.loc 1 155 0
+ 751 0010 636A     		ldr	r3, [r4, #36]
+ 752              	.LVL132:
+ 753 0012 43BB     		cbnz	r3, .L29
+ 754              	.LVL133:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       num_rows = upsample->rows_to_go;
+ 755              		.loc 1 165 0
+ 756 0014 E36A     		ldr	r3, [r4, #44]
+ 757 0016 012B     		cmp	r3, #1
+ 758 0018 00D9     		bls	.L23
+ 163:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Not more than the distance to the end of the image. */
+ 759              		.loc 1 163 0
+ 760 001a 0223     		movs	r3, #2
+ 761              	.L23:
+ 762              	.LVL134:
+ 168:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     if (num_rows > out_rows_avail)
+ 763              		.loc 1 168 0
+ 764 001c 3768     		ldr	r7, [r6]
+ 765 001e 0C9D     		ldr	r5, [sp, #48]
+ARM GAS  /tmp/ccwb8FyS.s 			page 21
+
+
+ 766 0020 ED1B     		subs	r5, r5, r7
+ 767              	.LVL135:
+ 169:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       num_rows = out_rows_avail;
+ 768              		.loc 1 169 0
+ 769 0022 AB42     		cmp	r3, r5
+ 770 0024 00D8     		bhi	.L24
+ 771 0026 1D46     		mov	r5, r3
+ 772              	.LVL136:
+ 773              	.L24:
+ 172:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     if (num_rows > 1) {
+ 774              		.loc 1 172 0
+ 775 0028 52F82730 		ldr	r3, [r2, r7, lsl #2]
+ 776 002c 0293     		str	r3, [sp, #8]
+ 173:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       work_ptrs[1] = output_buf[*out_row_ctr + 1];
+ 777              		.loc 1 173 0
+ 778 002e 012D     		cmp	r5, #1
+ 779 0030 29D9     		bls	.L25
+ 174:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     } else {
+ 780              		.loc 1 174 0
+ 781 0032 3368     		ldr	r3, [r6]
+ 782 0034 0133     		adds	r3, r3, #1
+ 783 0036 52F82330 		ldr	r3, [r2, r3, lsl #2]
+ 784 003a 0393     		str	r3, [sp, #12]
+ 785              	.L26:
+ 180:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 786              		.loc 1 180 0
+ 787 003c E768     		ldr	r7, [r4, #12]
+ 788              	.LVL137:
+ 789 003e 02AB     		add	r3, sp, #8
+ 790 0040 D8F80020 		ldr	r2, [r8]
+ 791 0044 B847     		blx	r7
+ 792              	.LVL138:
+ 793              	.L22:
+ 184:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->rows_to_go -= num_rows;
+ 794              		.loc 1 184 0
+ 795 0046 3368     		ldr	r3, [r6]
+ 796 0048 2B44     		add	r3, r3, r5
+ 797 004a 3360     		str	r3, [r6]
+ 185:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   /* When the buffer is emptied, declare this input row group consumed */
+ 798              		.loc 1 185 0
+ 799 004c E36A     		ldr	r3, [r4, #44]
+ 800 004e 5D1B     		subs	r5, r3, r5
+ 801              	.LVL139:
+ 802 0050 E562     		str	r5, [r4, #44]
+ 187:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*in_row_group_ctr)++;
+ 803              		.loc 1 187 0
+ 804 0052 636A     		ldr	r3, [r4, #36]
+ 805 0054 23B9     		cbnz	r3, .L20
+ 188:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 806              		.loc 1 188 0
+ 807 0056 D8F80030 		ldr	r3, [r8]
+ 808 005a 0133     		adds	r3, r3, #1
+ 809 005c C8F80030 		str	r3, [r8]
+ 810              	.L20:
+ 189:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 811              		.loc 1 189 0
+ 812 0060 04B0     		add	sp, sp, #16
+ARM GAS  /tmp/ccwb8FyS.s 			page 22
+
+
+ 813              	.LCFI10:
+ 814              		.cfi_remember_state
+ 815              		.cfi_def_cfa_offset 24
+ 816              		@ sp needed
+ 817 0062 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 818              	.LVL140:
+ 819              	.L29:
+ 820              	.LCFI11:
+ 821              		.cfi_restore_state
+ 157:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		      1, upsample->out_row_width);
+ 822              		.loc 1 157 0
+ 823 0066 3168     		ldr	r1, [r6]
+ 824              	.LVL141:
+ 825 0068 A36A     		ldr	r3, [r4, #40]
+ 826 006a 0193     		str	r3, [sp, #4]
+ 827 006c 0125     		movs	r5, #1
+ 828 006e 0095     		str	r5, [sp]
+ 829 0070 0023     		movs	r3, #0
+ 830 0072 02EB8102 		add	r2, r2, r1, lsl #2
+ 831 0076 1946     		mov	r1, r3
+ 832 0078 04F12000 		add	r0, r4, #32
+ 833              	.LVL142:
+ 834 007c FFF7FEFF 		bl	jcopy_sample_rows
+ 835              	.LVL143:
+ 160:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   } else {
+ 836              		.loc 1 160 0
+ 837 0080 0023     		movs	r3, #0
+ 838 0082 6362     		str	r3, [r4, #36]
+ 839 0084 DFE7     		b	.L22
+ 840              	.LVL144:
+ 841              	.L25:
+ 176:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       upsample->spare_full = TRUE;
+ 842              		.loc 1 176 0
+ 843 0086 236A     		ldr	r3, [r4, #32]
+ 844 0088 0393     		str	r3, [sp, #12]
+ 177:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     }
+ 845              		.loc 1 177 0
+ 846 008a 0123     		movs	r3, #1
+ 847 008c 6362     		str	r3, [r4, #36]
+ 848 008e D5E7     		b	.L26
+ 849              		.cfi_endproc
+ 850              	.LFE5:
+ 852              		.section	.text.jinit_merged_upsampler,"ax",%progbits
+ 853              		.align	1
+ 854              		.global	jinit_merged_upsampler
+ 855              		.syntax unified
+ 856              		.thumb
+ 857              		.thumb_func
+ 858              		.fpu fpv5-sp-d16
+ 860              	jinit_merged_upsampler:
+ 861              	.LFB9:
+ 359:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 360:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 361:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** /*
+ 362:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * Module initialization routine for merged upsampling/color conversion.
+ 363:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  *
+ 364:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * NB: this is called under the conditions determined by use_merged_upsample()
+ARM GAS  /tmp/ccwb8FyS.s 			page 23
+
+
+ 365:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * in jdmaster.c.  That routine MUST correspond to the actual capabilities
+ 366:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  * of this module; no safety checks are made here.
+ 367:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****  */
+ 368:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 369:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** GLOBAL(void)
+ 370:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** jinit_merged_upsampler (j_decompress_ptr cinfo)
+ 371:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** {
+ 862              		.loc 1 371 0
+ 863              		.cfi_startproc
+ 864              		@ args = 0, pretend = 0, frame = 0
+ 865              		@ frame_needed = 0, uses_anonymous_args = 0
+ 866              	.LVL145:
+ 867 0000 38B5     		push	{r3, r4, r5, lr}
+ 868              	.LCFI12:
+ 869              		.cfi_def_cfa_offset 16
+ 870              		.cfi_offset 3, -16
+ 871              		.cfi_offset 4, -12
+ 872              		.cfi_offset 5, -8
+ 873              		.cfi_offset 14, -4
+ 874 0002 0446     		mov	r4, r0
+ 372:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   my_upsample_ptr upsample;
+ 373:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 374:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample = (my_upsample_ptr)
+ 375:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 875              		.loc 1 375 0
+ 876 0004 4368     		ldr	r3, [r0, #4]
+ 877 0006 1B68     		ldr	r3, [r3]
+ 374:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 878              		.loc 1 374 0
+ 879 0008 3022     		movs	r2, #48
+ 880 000a 0121     		movs	r1, #1
+ 881 000c 9847     		blx	r3
+ 882              	.LVL146:
+ 883 000e 0546     		mov	r5, r0
+ 884              	.LVL147:
+ 376:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 				SIZEOF(my_upsampler));
+ 377:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   cinfo->upsample = (struct jpeg_upsampler *) upsample;
+ 885              		.loc 1 377 0
+ 886 0010 C4F8D801 		str	r0, [r4, #472]
+ 378:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->pub.start_pass = start_pass_merged_upsample;
+ 887              		.loc 1 378 0
+ 888 0014 104B     		ldr	r3, .L34
+ 889 0016 0360     		str	r3, [r0]
+ 379:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->pub.need_context_rows = FALSE;
+ 890              		.loc 1 379 0
+ 891 0018 0023     		movs	r3, #0
+ 892 001a 8360     		str	r3, [r0, #8]
+ 380:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 381:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   upsample->out_row_width = cinfo->output_width * cinfo->out_color_components;
+ 893              		.loc 1 381 0
+ 894 001c 236F     		ldr	r3, [r4, #112]
+ 895 001e A26F     		ldr	r2, [r4, #120]
+ 896 0020 02FB03F2 		mul	r2, r2, r3
+ 897 0024 8262     		str	r2, [r0, #40]
+ 382:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 383:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   if (cinfo->max_v_samp_factor == 2) {
+ 898              		.loc 1 383 0
+ARM GAS  /tmp/ccwb8FyS.s 			page 24
+
+
+ 899 0026 D4F83C31 		ldr	r3, [r4, #316]
+ 900 002a 022B     		cmp	r3, #2
+ 901 002c 0DD1     		bne	.L31
+ 384:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->pub.upsample = merged_2v_upsample;
+ 902              		.loc 1 384 0
+ 903 002e 0B4B     		ldr	r3, .L34+4
+ 904 0030 4360     		str	r3, [r0, #4]
+ 385:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->upmethod = h2v2_merged_upsample;
+ 905              		.loc 1 385 0
+ 906 0032 0B4B     		ldr	r3, .L34+8
+ 907 0034 C360     		str	r3, [r0, #12]
+ 386:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* Allocate a spare row buffer */
+ 387:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->spare_row = (JSAMPROW)
+ 388:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       (*cinfo->mem->alloc_large) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 908              		.loc 1 388 0
+ 909 0036 6368     		ldr	r3, [r4, #4]
+ 910 0038 5B68     		ldr	r3, [r3, #4]
+ 911 003a 0121     		movs	r1, #1
+ 912 003c 2046     		mov	r0, r4
+ 913              	.LVL148:
+ 914 003e 9847     		blx	r3
+ 915              	.LVL149:
+ 387:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****       (*cinfo->mem->alloc_large) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 916              		.loc 1 387 0
+ 917 0040 2862     		str	r0, [r5, #32]
+ 918              	.L32:
+ 389:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 		(size_t) (upsample->out_row_width * SIZEOF(JSAMPLE)));
+ 390:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   } else {
+ 391:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->pub.upsample = merged_1v_upsample;
+ 392:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->upmethod = h2v1_merged_upsample;
+ 393:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* No spare row needed */
+ 394:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->spare_row = NULL;
+ 395:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 396:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** 
+ 397:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   build_ycc_rgb_table(cinfo);
+ 919              		.loc 1 397 0
+ 920 0042 2046     		mov	r0, r4
+ 921 0044 FFF7FEFF 		bl	build_ycc_rgb_table
+ 922              	.LVL150:
+ 398:Middlewares/Third_Party/LibJPEG/source/jdmerge.c **** }
+ 923              		.loc 1 398 0
+ 924 0048 38BD     		pop	{r3, r4, r5, pc}
+ 925              	.LVL151:
+ 926              	.L31:
+ 391:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     upsample->upmethod = h2v1_merged_upsample;
+ 927              		.loc 1 391 0
+ 928 004a 064B     		ldr	r3, .L34+12
+ 929 004c 4360     		str	r3, [r0, #4]
+ 392:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****     /* No spare row needed */
+ 930              		.loc 1 392 0
+ 931 004e 064B     		ldr	r3, .L34+16
+ 932 0050 C360     		str	r3, [r0, #12]
+ 394:Middlewares/Third_Party/LibJPEG/source/jdmerge.c ****   }
+ 933              		.loc 1 394 0
+ 934 0052 0023     		movs	r3, #0
+ 935 0054 0362     		str	r3, [r0, #32]
+ 936 0056 F4E7     		b	.L32
+ARM GAS  /tmp/ccwb8FyS.s 			page 25
+
+
+ 937              	.L35:
+ 938              		.align	2
+ 939              	.L34:
+ 940 0058 00000000 		.word	start_pass_merged_upsample
+ 941 005c 00000000 		.word	merged_2v_upsample
+ 942 0060 00000000 		.word	h2v2_merged_upsample
+ 943 0064 00000000 		.word	merged_1v_upsample
+ 944 0068 00000000 		.word	h2v1_merged_upsample
+ 945              		.cfi_endproc
+ 946              	.LFE9:
+ 948              		.text
+ 949              	.Letext0:
+ 950              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 951              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 952              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 953              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 954              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 955              		.file 7 "Inc/jmorecfg.h"
+ 956              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 957              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ARM GAS  /tmp/ccwb8FyS.s 			page 26
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jdmerge.c
+     /tmp/ccwb8FyS.s:18     .text.build_ycc_rgb_table:0000000000000000 $t
+     /tmp/ccwb8FyS.s:24     .text.build_ycc_rgb_table:0000000000000000 build_ycc_rgb_table
+     /tmp/ccwb8FyS.s:135    .text.build_ycc_rgb_table:0000000000000098 $d
+     /tmp/ccwb8FyS.s:143    .text.start_pass_merged_upsample:0000000000000000 $t
+     /tmp/ccwb8FyS.s:149    .text.start_pass_merged_upsample:0000000000000000 start_pass_merged_upsample
+     /tmp/ccwb8FyS.s:172    .text.merged_1v_upsample:0000000000000000 $t
+     /tmp/ccwb8FyS.s:178    .text.merged_1v_upsample:0000000000000000 merged_1v_upsample
+     /tmp/ccwb8FyS.s:222    .text.h2v1_merged_upsample:0000000000000000 $t
+     /tmp/ccwb8FyS.s:228    .text.h2v1_merged_upsample:0000000000000000 h2v1_merged_upsample
+     /tmp/ccwb8FyS.s:435    .text.h2v2_merged_upsample:0000000000000000 $t
+     /tmp/ccwb8FyS.s:441    .text.h2v2_merged_upsample:0000000000000000 h2v2_merged_upsample
+     /tmp/ccwb8FyS.s:718    .text.merged_2v_upsample:0000000000000000 $t
+     /tmp/ccwb8FyS.s:724    .text.merged_2v_upsample:0000000000000000 merged_2v_upsample
+     /tmp/ccwb8FyS.s:853    .text.jinit_merged_upsampler:0000000000000000 $t
+     /tmp/ccwb8FyS.s:860    .text.jinit_merged_upsampler:0000000000000000 jinit_merged_upsampler
+     /tmp/ccwb8FyS.s:940    .text.jinit_merged_upsampler:0000000000000058 $d
+
+UNDEFINED SYMBOLS
+jcopy_sample_rows

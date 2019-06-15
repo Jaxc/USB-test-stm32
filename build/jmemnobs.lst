@@ -1,0 +1,380 @@
+ARM GAS  /tmp/cciMZh1s.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jmemnobs.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.jpeg_get_small,"ax",%progbits
+  18              		.align	1
+  19              		.global	jpeg_get_small
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  23              		.fpu fpv5-sp-d16
+  25              	jpeg_get_small:
+  26              	.LFB3:
+  27              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jmemnobs.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * jmemnobs.c
+   3:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Copyright (C) 1992-1996, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * This file is part of the Independent JPEG Group's software.
+   6:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * For conditions of distribution and use, see the accompanying README file.
+   7:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  *
+   8:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * This file provides a really simple implementation of the system-
+   9:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * dependent portion of the JPEG memory manager.  This implementation
+  10:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * assumes that no backing-store files are needed: all required space
+  11:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * can be obtained from malloc().
+  12:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * This is very portable in the sense that it'll compile on almost anything,
+  13:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * but you'd better have lots of main memory (or virtual memory) if you want
+  14:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * to process big images.
+  15:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Note that the max_memory_to_use option is ignored by this implementation.
+  16:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  17:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  18:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** #define JPEG_INTERNALS
+  19:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** #include "jinclude.h"
+  20:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** #include "jpeglib.h"
+  21:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** #include "jmemsys.h"		/* import the system-dependent declarations */
+  22:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  23:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+  24:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Memory allocation and freeing are controlled by the regular library
+  25:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * routines malloc() and free().
+  26:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  27:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  28:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void *)
+  29:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_get_small (j_common_ptr cinfo, size_t sizeofobject)
+  30:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+  28              		.loc 1 30 0
+ARM GAS  /tmp/cciMZh1s.s 			page 2
+
+
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 08B5     		push	{r3, lr}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 8
+  36              		.cfi_offset 3, -8
+  37              		.cfi_offset 14, -4
+  31:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   return (void *) JMALLOC(sizeofobject);
+  38              		.loc 1 31 0
+  39 0002 0846     		mov	r0, r1
+  40              	.LVL1:
+  41 0004 FFF7FEFF 		bl	malloc
+  42              	.LVL2:
+  32:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+  43              		.loc 1 32 0
+  44 0008 08BD     		pop	{r3, pc}
+  45              		.cfi_endproc
+  46              	.LFE3:
+  48              		.section	.text.jpeg_free_small,"ax",%progbits
+  49              		.align	1
+  50              		.global	jpeg_free_small
+  51              		.syntax unified
+  52              		.thumb
+  53              		.thumb_func
+  54              		.fpu fpv5-sp-d16
+  56              	jpeg_free_small:
+  57              	.LFB4:
+  33:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  34:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void)
+  35:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_free_small (j_common_ptr cinfo, void * object, size_t sizeofobject)
+  36:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+  58              		.loc 1 36 0
+  59              		.cfi_startproc
+  60              		@ args = 0, pretend = 0, frame = 0
+  61              		@ frame_needed = 0, uses_anonymous_args = 0
+  62              	.LVL3:
+  63 0000 08B5     		push	{r3, lr}
+  64              	.LCFI1:
+  65              		.cfi_def_cfa_offset 8
+  66              		.cfi_offset 3, -8
+  67              		.cfi_offset 14, -4
+  37:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   JFREE(object);
+  68              		.loc 1 37 0
+  69 0002 0846     		mov	r0, r1
+  70              	.LVL4:
+  71 0004 FFF7FEFF 		bl	free
+  72              	.LVL5:
+  38:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+  73              		.loc 1 38 0
+  74 0008 08BD     		pop	{r3, pc}
+  75              		.cfi_endproc
+  76              	.LFE4:
+  78              		.section	.text.jpeg_get_large,"ax",%progbits
+  79              		.align	1
+  80              		.global	jpeg_get_large
+ARM GAS  /tmp/cciMZh1s.s 			page 3
+
+
+  81              		.syntax unified
+  82              		.thumb
+  83              		.thumb_func
+  84              		.fpu fpv5-sp-d16
+  86              	jpeg_get_large:
+  87              	.LFB5:
+  39:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  40:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  41:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+  42:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * "Large" objects are treated the same as "small" ones.
+  43:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * NB: although we include FAR keywords in the routine declarations,
+  44:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * this file won't actually work in 80x86 small/medium model; at least,
+  45:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * you probably won't be able to process useful-size images in only 64KB.
+  46:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  47:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  48:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void FAR *)
+  49:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_get_large (j_common_ptr cinfo, size_t sizeofobject)
+  50:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+  88              		.loc 1 50 0
+  89              		.cfi_startproc
+  90              		@ args = 0, pretend = 0, frame = 0
+  91              		@ frame_needed = 0, uses_anonymous_args = 0
+  92              	.LVL6:
+  93 0000 08B5     		push	{r3, lr}
+  94              	.LCFI2:
+  95              		.cfi_def_cfa_offset 8
+  96              		.cfi_offset 3, -8
+  97              		.cfi_offset 14, -4
+  51:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   return (void FAR *) JMALLOC(sizeofobject);
+  98              		.loc 1 51 0
+  99 0002 0846     		mov	r0, r1
+ 100              	.LVL7:
+ 101 0004 FFF7FEFF 		bl	malloc
+ 102              	.LVL8:
+  52:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 103              		.loc 1 52 0
+ 104 0008 08BD     		pop	{r3, pc}
+ 105              		.cfi_endproc
+ 106              	.LFE5:
+ 108              		.section	.text.jpeg_free_large,"ax",%progbits
+ 109              		.align	1
+ 110              		.global	jpeg_free_large
+ 111              		.syntax unified
+ 112              		.thumb
+ 113              		.thumb_func
+ 114              		.fpu fpv5-sp-d16
+ 116              	jpeg_free_large:
+ 117              	.LFB6:
+  53:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  54:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void)
+  55:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_free_large (j_common_ptr cinfo, void FAR * object, size_t sizeofobject)
+  56:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+ 118              		.loc 1 56 0
+ 119              		.cfi_startproc
+ 120              		@ args = 0, pretend = 0, frame = 0
+ 121              		@ frame_needed = 0, uses_anonymous_args = 0
+ 122              	.LVL9:
+ARM GAS  /tmp/cciMZh1s.s 			page 4
+
+
+ 123 0000 08B5     		push	{r3, lr}
+ 124              	.LCFI3:
+ 125              		.cfi_def_cfa_offset 8
+ 126              		.cfi_offset 3, -8
+ 127              		.cfi_offset 14, -4
+  57:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   JFREE(object);
+ 128              		.loc 1 57 0
+ 129 0002 0846     		mov	r0, r1
+ 130              	.LVL10:
+ 131 0004 FFF7FEFF 		bl	free
+ 132              	.LVL11:
+  58:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 133              		.loc 1 58 0
+ 134 0008 08BD     		pop	{r3, pc}
+ 135              		.cfi_endproc
+ 136              	.LFE6:
+ 138              		.section	.text.jpeg_mem_available,"ax",%progbits
+ 139              		.align	1
+ 140              		.global	jpeg_mem_available
+ 141              		.syntax unified
+ 142              		.thumb
+ 143              		.thumb_func
+ 144              		.fpu fpv5-sp-d16
+ 146              	jpeg_mem_available:
+ 147              	.LFB7:
+  59:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  60:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  61:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+  62:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * This routine computes the total memory space available for allocation.
+  63:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Here we always say, "we got all you want bud!"
+  64:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  65:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  66:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(long)
+  67:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_mem_available (j_common_ptr cinfo, long min_bytes_needed,
+  68:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 		    long max_bytes_needed, long already_allocated)
+  69:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+ 148              		.loc 1 69 0
+ 149              		.cfi_startproc
+ 150              		@ args = 0, pretend = 0, frame = 0
+ 151              		@ frame_needed = 0, uses_anonymous_args = 0
+ 152              		@ link register save eliminated.
+ 153              	.LVL12:
+  70:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   return max_bytes_needed;
+  71:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 154              		.loc 1 71 0
+ 155 0000 1046     		mov	r0, r2
+ 156              	.LVL13:
+ 157 0002 7047     		bx	lr
+ 158              		.cfi_endproc
+ 159              	.LFE7:
+ 161              		.section	.text.jpeg_open_backing_store,"ax",%progbits
+ 162              		.align	1
+ 163              		.global	jpeg_open_backing_store
+ 164              		.syntax unified
+ 165              		.thumb
+ 166              		.thumb_func
+ 167              		.fpu fpv5-sp-d16
+ARM GAS  /tmp/cciMZh1s.s 			page 5
+
+
+ 169              	jpeg_open_backing_store:
+ 170              	.LFB8:
+  72:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  73:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  74:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+  75:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Backing store (temporary file) management.
+  76:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * Since jpeg_mem_available always promised the moon,
+  77:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * this should never be called and we can just error out.
+  78:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  79:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  80:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void)
+  81:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_open_backing_store (j_common_ptr cinfo, backing_store_ptr info,
+  82:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 			 long total_bytes_needed)
+  83:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+ 171              		.loc 1 83 0
+ 172              		.cfi_startproc
+ 173              		@ args = 0, pretend = 0, frame = 0
+ 174              		@ frame_needed = 0, uses_anonymous_args = 0
+ 175              	.LVL14:
+ 176 0000 08B5     		push	{r3, lr}
+ 177              	.LCFI4:
+ 178              		.cfi_def_cfa_offset 8
+ 179              		.cfi_offset 3, -8
+ 180              		.cfi_offset 14, -4
+  84:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   ERREXIT(cinfo, JERR_NO_BACKING_STORE);
+ 181              		.loc 1 84 0
+ 182 0002 0268     		ldr	r2, [r0]
+ 183              	.LVL15:
+ 184 0004 3321     		movs	r1, #51
+ 185              	.LVL16:
+ 186 0006 5161     		str	r1, [r2, #20]
+ 187 0008 0368     		ldr	r3, [r0]
+ 188 000a 1B68     		ldr	r3, [r3]
+ 189 000c 9847     		blx	r3
+ 190              	.LVL17:
+  85:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 191              		.loc 1 85 0
+ 192 000e 08BD     		pop	{r3, pc}
+ 193              		.cfi_endproc
+ 194              	.LFE8:
+ 196              		.section	.text.jpeg_mem_init,"ax",%progbits
+ 197              		.align	1
+ 198              		.global	jpeg_mem_init
+ 199              		.syntax unified
+ 200              		.thumb
+ 201              		.thumb_func
+ 202              		.fpu fpv5-sp-d16
+ 204              	jpeg_mem_init:
+ 205              	.LFB9:
+  86:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  87:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  88:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** /*
+  89:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * These routines take care of any system-dependent initialization and
+  90:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  * cleanup required.  Here, there isn't any.
+  91:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****  */
+  92:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  93:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(long)
+ARM GAS  /tmp/cciMZh1s.s 			page 6
+
+
+  94:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_mem_init (j_common_ptr cinfo)
+  95:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+ 206              		.loc 1 95 0
+ 207              		.cfi_startproc
+ 208              		@ args = 0, pretend = 0, frame = 0
+ 209              		@ frame_needed = 0, uses_anonymous_args = 0
+ 210              		@ link register save eliminated.
+ 211              	.LVL18:
+  96:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c ****   return 0;			/* just set max_memory_to_use to 0 */
+  97:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 212              		.loc 1 97 0
+ 213 0000 0020     		movs	r0, #0
+ 214              	.LVL19:
+ 215 0002 7047     		bx	lr
+ 216              		.cfi_endproc
+ 217              	.LFE9:
+ 219              		.section	.text.jpeg_mem_term,"ax",%progbits
+ 220              		.align	1
+ 221              		.global	jpeg_mem_term
+ 222              		.syntax unified
+ 223              		.thumb
+ 224              		.thumb_func
+ 225              		.fpu fpv5-sp-d16
+ 227              	jpeg_mem_term:
+ 228              	.LFB10:
+  98:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** 
+  99:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** GLOBAL(void)
+ 100:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** jpeg_mem_term (j_common_ptr cinfo)
+ 101:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** {
+ 229              		.loc 1 101 0
+ 230              		.cfi_startproc
+ 231              		@ args = 0, pretend = 0, frame = 0
+ 232              		@ frame_needed = 0, uses_anonymous_args = 0
+ 233              		@ link register save eliminated.
+ 234              	.LVL20:
+ 102:Middlewares/Third_Party/LibJPEG/source/jmemnobs.c **** }
+ 235              		.loc 1 102 0
+ 236 0000 7047     		bx	lr
+ 237              		.cfi_endproc
+ 238              	.LFE10:
+ 240              		.text
+ 241              	.Letext0:
+ 242              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 243              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 244              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 245              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 246              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 247              		.file 7 "Inc/jmorecfg.h"
+ 248              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 249              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 250              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jmemsys.h"
+ 251              		.file 11 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ARM GAS  /tmp/cciMZh1s.s 			page 7
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jmemnobs.c
+     /tmp/cciMZh1s.s:18     .text.jpeg_get_small:0000000000000000 $t
+     /tmp/cciMZh1s.s:25     .text.jpeg_get_small:0000000000000000 jpeg_get_small
+     /tmp/cciMZh1s.s:49     .text.jpeg_free_small:0000000000000000 $t
+     /tmp/cciMZh1s.s:56     .text.jpeg_free_small:0000000000000000 jpeg_free_small
+     /tmp/cciMZh1s.s:79     .text.jpeg_get_large:0000000000000000 $t
+     /tmp/cciMZh1s.s:86     .text.jpeg_get_large:0000000000000000 jpeg_get_large
+     /tmp/cciMZh1s.s:109    .text.jpeg_free_large:0000000000000000 $t
+     /tmp/cciMZh1s.s:116    .text.jpeg_free_large:0000000000000000 jpeg_free_large
+     /tmp/cciMZh1s.s:139    .text.jpeg_mem_available:0000000000000000 $t
+     /tmp/cciMZh1s.s:146    .text.jpeg_mem_available:0000000000000000 jpeg_mem_available
+     /tmp/cciMZh1s.s:162    .text.jpeg_open_backing_store:0000000000000000 $t
+     /tmp/cciMZh1s.s:169    .text.jpeg_open_backing_store:0000000000000000 jpeg_open_backing_store
+     /tmp/cciMZh1s.s:197    .text.jpeg_mem_init:0000000000000000 $t
+     /tmp/cciMZh1s.s:204    .text.jpeg_mem_init:0000000000000000 jpeg_mem_init
+     /tmp/cciMZh1s.s:220    .text.jpeg_mem_term:0000000000000000 $t
+     /tmp/cciMZh1s.s:227    .text.jpeg_mem_term:0000000000000000 jpeg_mem_term
+
+UNDEFINED SYMBOLS
+malloc
+free

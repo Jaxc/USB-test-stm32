@@ -1,0 +1,2763 @@
+ARM GAS  /tmp/ccwFesPZ.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jcmarker.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.emit_byte,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	emit_byte:
+  25              	.LFB3:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jcmarker.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * jcmarker.c
+   3:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Copyright (C) 1991-1998, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Modified 2003-2010 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This file contains routines to write JPEG datastream markers.
+  10:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+  11:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  12:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** #define JPEG_INTERNALS
+  13:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** #include "jinclude.h"
+  14:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** #include "jpeglib.h"
+  15:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  16:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  17:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** typedef enum {			/* JPEG marker codes */
+  18:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF0  = 0xc0,
+  19:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF1  = 0xc1,
+  20:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF2  = 0xc2,
+  21:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF3  = 0xc3,
+  22:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  23:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF5  = 0xc5,
+  24:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF6  = 0xc6,
+  25:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF7  = 0xc7,
+  26:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  27:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_JPG   = 0xc8,
+  28:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF9  = 0xc9,
+  29:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF10 = 0xca,
+  30:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF11 = 0xcb,
+  31:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  32:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF13 = 0xcd,
+ARM GAS  /tmp/ccwFesPZ.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF14 = 0xce,
+  34:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOF15 = 0xcf,
+  35:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  36:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DHT   = 0xc4,
+  37:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  38:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DAC   = 0xcc,
+  39:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  40:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST0  = 0xd0,
+  41:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST1  = 0xd1,
+  42:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST2  = 0xd2,
+  43:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST3  = 0xd3,
+  44:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST4  = 0xd4,
+  45:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST5  = 0xd5,
+  46:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST6  = 0xd6,
+  47:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_RST7  = 0xd7,
+  48:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  49:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOI   = 0xd8,
+  50:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_EOI   = 0xd9,
+  51:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_SOS   = 0xda,
+  52:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DQT   = 0xdb,
+  53:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DNL   = 0xdc,
+  54:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DRI   = 0xdd,
+  55:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_DHP   = 0xde,
+  56:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_EXP   = 0xdf,
+  57:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  58:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP0  = 0xe0,
+  59:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP1  = 0xe1,
+  60:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP2  = 0xe2,
+  61:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP3  = 0xe3,
+  62:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP4  = 0xe4,
+  63:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP5  = 0xe5,
+  64:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP6  = 0xe6,
+  65:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP7  = 0xe7,
+  66:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP8  = 0xe8,
+  67:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP9  = 0xe9,
+  68:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP10 = 0xea,
+  69:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP11 = 0xeb,
+  70:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP12 = 0xec,
+  71:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP13 = 0xed,
+  72:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP14 = 0xee,
+  73:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_APP15 = 0xef,
+  74:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  75:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_JPG0  = 0xf0,
+  76:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_JPG13 = 0xfd,
+  77:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_COM   = 0xfe,
+  78:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  79:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_TEM   = 0x01,
+  80:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+  81:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   M_ERROR = 0x100
+  82:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** } JPEG_MARKER;
+  83:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  84:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  85:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Private state */
+  86:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  87:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** typedef struct {
+  88:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   struct jpeg_marker_writer pub; /* public fields */
+  89:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ARM GAS  /tmp/ccwFesPZ.s 			page 3
+
+
+  90:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   unsigned int last_restart_interval; /* last DRI value emitted; 0 after SOI */
+  91:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** } my_marker_writer;
+  92:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  93:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** typedef my_marker_writer * my_marker_ptr;
+  94:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  95:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+  96:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+  97:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Basic output routines.
+  98:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  *
+  99:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Note that we do not support suspension while writing a marker.
+ 100:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Therefore, an application using suspension must ensure that there is
+ 101:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * enough buffer space for the initial markers (typ. 600-700 bytes) before
+ 102:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * calling jpeg_start_compress, and enough space to write the trailing EOI
+ 103:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * (a few bytes) before calling jpeg_finish_compress.  Multipass compression
+ 104:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * modes are not supported at all with suspension, so those two are the only
+ 105:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * points where markers will be written.
+ 106:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 107:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 108:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 109:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_byte (j_compress_ptr cinfo, int val)
+ 110:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a byte */
+ 111:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+  27              		.loc 1 111 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 10B5     		push	{r4, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 4, -8
+  36              		.cfi_offset 14, -4
+ 112:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   struct jpeg_destination_mgr * dest = cinfo->dest;
+  37              		.loc 1 112 0
+  38 0002 8369     		ldr	r3, [r0, #24]
+  39              	.LVL1:
+ 113:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 114:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   *(dest->next_output_byte)++ = (JOCTET) val;
+  40              		.loc 1 114 0
+  41 0004 1A68     		ldr	r2, [r3]
+  42 0006 541C     		adds	r4, r2, #1
+  43 0008 1C60     		str	r4, [r3]
+  44 000a 1170     		strb	r1, [r2]
+ 115:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (--dest->free_in_buffer == 0) {
+  45              		.loc 1 115 0
+  46 000c 5A68     		ldr	r2, [r3, #4]
+  47 000e 013A     		subs	r2, r2, #1
+  48 0010 5A60     		str	r2, [r3, #4]
+  49 0012 52B9     		cbnz	r2, .L1
+  50 0014 0446     		mov	r4, r0
+ 116:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (! (*dest->empty_output_buffer) (cinfo))
+  51              		.loc 1 116 0
+  52 0016 DB68     		ldr	r3, [r3, #12]
+  53              	.LVL2:
+  54 0018 9847     		blx	r3
+  55              	.LVL3:
+  56 001a 30B9     		cbnz	r0, .L1
+ARM GAS  /tmp/ccwFesPZ.s 			page 4
+
+
+ 117:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       ERREXIT(cinfo, JERR_CANT_SUSPEND);
+  57              		.loc 1 117 0
+  58 001c 2368     		ldr	r3, [r4]
+  59 001e 1922     		movs	r2, #25
+  60 0020 5A61     		str	r2, [r3, #20]
+  61 0022 2368     		ldr	r3, [r4]
+  62 0024 1B68     		ldr	r3, [r3]
+  63 0026 2046     		mov	r0, r4
+  64 0028 9847     		blx	r3
+  65              	.LVL4:
+  66              	.L1:
+ 118:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 119:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+  67              		.loc 1 119 0
+  68 002a 10BD     		pop	{r4, pc}
+  69              		.cfi_endproc
+  70              	.LFE3:
+  72              		.section	.text.emit_marker,"ax",%progbits
+  73              		.align	1
+  74              		.syntax unified
+  75              		.thumb
+  76              		.thumb_func
+  77              		.fpu fpv5-sp-d16
+  79              	emit_marker:
+  80              	.LFB4:
+ 120:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 121:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 122:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 123:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_marker (j_compress_ptr cinfo, JPEG_MARKER mark)
+ 124:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a marker code */
+ 125:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+  81              		.loc 1 125 0
+  82              		.cfi_startproc
+  83              		@ args = 0, pretend = 0, frame = 0
+  84              		@ frame_needed = 0, uses_anonymous_args = 0
+  85              	.LVL5:
+  86 0000 38B5     		push	{r3, r4, r5, lr}
+  87              	.LCFI1:
+  88              		.cfi_def_cfa_offset 16
+  89              		.cfi_offset 3, -16
+  90              		.cfi_offset 4, -12
+  91              		.cfi_offset 5, -8
+  92              		.cfi_offset 14, -4
+  93 0002 0446     		mov	r4, r0
+  94 0004 0D46     		mov	r5, r1
+ 126:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0xFF);
+  95              		.loc 1 126 0
+  96 0006 FF21     		movs	r1, #255
+  97              	.LVL6:
+  98 0008 FFF7FEFF 		bl	emit_byte
+  99              	.LVL7:
+ 127:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, (int) mark);
+ 100              		.loc 1 127 0
+ 101 000c 2946     		mov	r1, r5
+ 102 000e 2046     		mov	r0, r4
+ 103 0010 FFF7FEFF 		bl	emit_byte
+ 104              	.LVL8:
+ARM GAS  /tmp/ccwFesPZ.s 			page 5
+
+
+ 128:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 105              		.loc 1 128 0
+ 106 0014 38BD     		pop	{r3, r4, r5, pc}
+ 107              		.cfi_endproc
+ 108              	.LFE4:
+ 110              		.section	.text.emit_2bytes,"ax",%progbits
+ 111              		.align	1
+ 112              		.syntax unified
+ 113              		.thumb
+ 114              		.thumb_func
+ 115              		.fpu fpv5-sp-d16
+ 117              	emit_2bytes:
+ 118              	.LFB5:
+ 129:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 130:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 131:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 132:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_2bytes (j_compress_ptr cinfo, int value)
+ 133:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a 2-byte integer; these are always MSB first in JPEG files */
+ 134:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 119              		.loc 1 134 0
+ 120              		.cfi_startproc
+ 121              		@ args = 0, pretend = 0, frame = 0
+ 122              		@ frame_needed = 0, uses_anonymous_args = 0
+ 123              	.LVL9:
+ 124 0000 38B5     		push	{r3, r4, r5, lr}
+ 125              	.LCFI2:
+ 126              		.cfi_def_cfa_offset 16
+ 127              		.cfi_offset 3, -16
+ 128              		.cfi_offset 4, -12
+ 129              		.cfi_offset 5, -8
+ 130              		.cfi_offset 14, -4
+ 131 0002 0546     		mov	r5, r0
+ 132 0004 0C46     		mov	r4, r1
+ 135:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, (value >> 8) & 0xFF);
+ 133              		.loc 1 135 0
+ 134 0006 C1F30721 		ubfx	r1, r1, #8, #8
+ 135              	.LVL10:
+ 136 000a FFF7FEFF 		bl	emit_byte
+ 137              	.LVL11:
+ 136:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, value & 0xFF);
+ 138              		.loc 1 136 0
+ 139 000e E1B2     		uxtb	r1, r4
+ 140 0010 2846     		mov	r0, r5
+ 141 0012 FFF7FEFF 		bl	emit_byte
+ 142              	.LVL12:
+ 137:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 143              		.loc 1 137 0
+ 144 0016 38BD     		pop	{r3, r4, r5, pc}
+ 145              		.cfi_endproc
+ 146              	.LFE5:
+ 148              		.section	.text.emit_dqt,"ax",%progbits
+ 149              		.align	1
+ 150              		.syntax unified
+ 151              		.thumb
+ 152              		.thumb_func
+ 153              		.fpu fpv5-sp-d16
+ 155              	emit_dqt:
+ARM GAS  /tmp/ccwFesPZ.s 			page 6
+
+
+ 156              	.LFB6:
+ 138:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 139:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 140:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 141:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Routines to write specific marker types.
+ 142:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 143:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 144:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(int)
+ 145:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_dqt (j_compress_ptr cinfo, int index)
+ 146:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a DQT marker */
+ 147:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Returns the precision used (0 = 8bits, 1 = 16bits) for baseline checking */
+ 148:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 157              		.loc 1 148 0
+ 158              		.cfi_startproc
+ 159              		@ args = 0, pretend = 0, frame = 0
+ 160              		@ frame_needed = 0, uses_anonymous_args = 0
+ 161              	.LVL13:
+ 162 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 163              	.LCFI3:
+ 164              		.cfi_def_cfa_offset 24
+ 165              		.cfi_offset 4, -24
+ 166              		.cfi_offset 5, -20
+ 167              		.cfi_offset 6, -16
+ 168              		.cfi_offset 7, -12
+ 169              		.cfi_offset 8, -8
+ 170              		.cfi_offset 14, -4
+ 171 0004 0446     		mov	r4, r0
+ 172 0006 0F46     		mov	r7, r1
+ 149:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   JQUANT_TBL * qtbl = cinfo->quant_tbl_ptrs[index];
+ 173              		.loc 1 149 0
+ 174 0008 01F11603 		add	r3, r1, #22
+ 175 000c 50F82350 		ldr	r5, [r0, r3, lsl #2]
+ 176              	.LVL14:
+ 150:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int prec;
+ 151:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int i;
+ 152:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 153:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (qtbl == NULL)
+ 177              		.loc 1 153 0
+ 178 0010 3DB9     		cbnz	r5, .L9
+ 154:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ERREXIT1(cinfo, JERR_NO_QUANT_TABLE, index);
+ 179              		.loc 1 154 0
+ 180 0012 0368     		ldr	r3, [r0]
+ 181 0014 3622     		movs	r2, #54
+ 182 0016 5A61     		str	r2, [r3, #20]
+ 183 0018 0368     		ldr	r3, [r0]
+ 184 001a 9961     		str	r1, [r3, #24]
+ 185 001c 0368     		ldr	r3, [r0]
+ 186 001e 1B68     		ldr	r3, [r3]
+ 187 0020 9847     		blx	r3
+ 188              	.LVL15:
+ 189              	.L9:
+ 155:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 156:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   prec = 0;
+ 157:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i <= cinfo->lim_Se; i++) {
+ 190              		.loc 1 157 0
+ 191 0022 0023     		movs	r3, #0
+ 156:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i <= cinfo->lim_Se; i++) {
+ARM GAS  /tmp/ccwFesPZ.s 			page 7
+
+
+ 192              		.loc 1 156 0
+ 193 0024 1E46     		mov	r6, r3
+ 194              		.loc 1 157 0
+ 195 0026 00E0     		b	.L10
+ 196              	.LVL16:
+ 197              	.L11:
+ 198              		.loc 1 157 0 is_stmt 0 discriminator 2
+ 199 0028 0133     		adds	r3, r3, #1
+ 200              	.LVL17:
+ 201              	.L10:
+ 202              		.loc 1 157 0 discriminator 1
+ 203 002a D4F88021 		ldr	r2, [r4, #384]
+ 204 002e 9A42     		cmp	r2, r3
+ 205 0030 09DB     		blt	.L21
+ 158:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (qtbl->quantval[cinfo->natural_order[i]] > 255)
+ 206              		.loc 1 158 0 is_stmt 1
+ 207 0032 D4F87C21 		ldr	r2, [r4, #380]
+ 208 0036 52F82320 		ldr	r2, [r2, r3, lsl #2]
+ 209 003a 35F81220 		ldrh	r2, [r5, r2, lsl #1]
+ 210 003e FF2A     		cmp	r2, #255
+ 211 0040 F2D9     		bls	.L11
+ 159:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec = 1;
+ 212              		.loc 1 159 0
+ 213 0042 0126     		movs	r6, #1
+ 214              	.LVL18:
+ 215 0044 F0E7     		b	.L11
+ 216              	.LVL19:
+ 217              	.L21:
+ 160:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 161:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 162:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (! qtbl->sent_table) {
+ 218              		.loc 1 162 0
+ 219 0046 D5F88030 		ldr	r3, [r5, #128]
+ 220              	.LVL20:
+ 221 004a 13B1     		cbz	r3, .L22
+ 222              	.LVL21:
+ 223              	.L8:
+ 163:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DQT);
+ 164:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 165:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_2bytes(cinfo,
+ 166:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec ? cinfo->lim_Se * 2 + 2 + 1 + 2 : cinfo->lim_Se + 1 + 1 + 2);
+ 167:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 168:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, index + (prec<<4));
+ 169:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 170:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 0; i <= cinfo->lim_Se; i++) {
+ 171:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* The table entries must be emitted in zigzag order. */
+ 172:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       unsigned int qval = qtbl->quantval[cinfo->natural_order[i]];
+ 173:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (prec)
+ 174:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, (int) (qval >> 8));
+ 175:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, (int) (qval & 0xFF));
+ 176:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 177:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 178:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     qtbl->sent_table = TRUE;
+ 179:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 180:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 181:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   return prec;
+ 182:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ARM GAS  /tmp/ccwFesPZ.s 			page 8
+
+
+ 224              		.loc 1 182 0
+ 225 004c 3046     		mov	r0, r6
+ 226 004e BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 227              	.LVL22:
+ 228              	.L22:
+ 163:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DQT);
+ 229              		.loc 1 163 0
+ 230 0052 DB21     		movs	r1, #219
+ 231 0054 2046     		mov	r0, r4
+ 232 0056 FFF7FEFF 		bl	emit_marker
+ 233              	.LVL23:
+ 165:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec ? cinfo->lim_Se * 2 + 2 + 1 + 2 : cinfo->lim_Se + 1 + 1 + 2);
+ 234              		.loc 1 165 0
+ 235 005a 76B1     		cbz	r6, .L14
+ 166:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 236              		.loc 1 166 0 discriminator 1
+ 237 005c D4F88031 		ldr	r3, [r4, #384]
+ 238 0060 591C     		adds	r1, r3, #1
+ 239 0062 4900     		lsls	r1, r1, #1
+ 165:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec ? cinfo->lim_Se * 2 + 2 + 1 + 2 : cinfo->lim_Se + 1 + 1 + 2);
+ 240              		.loc 1 165 0 discriminator 1
+ 241 0064 0331     		adds	r1, r1, #3
+ 242              	.L15:
+ 165:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec ? cinfo->lim_Se * 2 + 2 + 1 + 2 : cinfo->lim_Se + 1 + 1 + 2);
+ 243              		.loc 1 165 0 is_stmt 0 discriminator 4
+ 244 0066 2046     		mov	r0, r4
+ 245 0068 FFF7FEFF 		bl	emit_2bytes
+ 246              	.LVL24:
+ 168:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 247              		.loc 1 168 0 is_stmt 1 discriminator 4
+ 248 006c 07EB0611 		add	r1, r7, r6, lsl #4
+ 249 0070 2046     		mov	r0, r4
+ 250 0072 FFF7FEFF 		bl	emit_byte
+ 251              	.LVL25:
+ 170:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* The table entries must be emitted in zigzag order. */
+ 252              		.loc 1 170 0 discriminator 4
+ 253 0076 0027     		movs	r7, #0
+ 254              	.LVL26:
+ 255 0078 09E0     		b	.L16
+ 256              	.LVL27:
+ 257              	.L14:
+ 166:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 258              		.loc 1 166 0 discriminator 2
+ 259 007a D4F88011 		ldr	r1, [r4, #384]
+ 165:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       prec ? cinfo->lim_Se * 2 + 2 + 1 + 2 : cinfo->lim_Se + 1 + 1 + 2);
+ 260              		.loc 1 165 0 discriminator 2
+ 261 007e 0431     		adds	r1, r1, #4
+ 262 0080 F1E7     		b	.L15
+ 263              	.LVL28:
+ 264              	.L17:
+ 265              	.LBB2:
+ 175:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 266              		.loc 1 175 0 discriminator 2
+ 267 0082 5FFA88F1 		uxtb	r1, r8
+ 268 0086 2046     		mov	r0, r4
+ 269 0088 FFF7FEFF 		bl	emit_byte
+ 270              	.LVL29:
+ARM GAS  /tmp/ccwFesPZ.s 			page 9
+
+
+ 271              	.LBE2:
+ 170:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* The table entries must be emitted in zigzag order. */
+ 272              		.loc 1 170 0 discriminator 2
+ 273 008c 0137     		adds	r7, r7, #1
+ 274              	.LVL30:
+ 275              	.L16:
+ 170:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* The table entries must be emitted in zigzag order. */
+ 276              		.loc 1 170 0 is_stmt 0 discriminator 1
+ 277 008e D4F88031 		ldr	r3, [r4, #384]
+ 278 0092 BB42     		cmp	r3, r7
+ 279 0094 0DDB     		blt	.L23
+ 280              	.LBB3:
+ 172:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (prec)
+ 281              		.loc 1 172 0 is_stmt 1
+ 282 0096 D4F87C31 		ldr	r3, [r4, #380]
+ 283 009a 53F82730 		ldr	r3, [r3, r7, lsl #2]
+ 284 009e 35F81380 		ldrh	r8, [r5, r3, lsl #1]
+ 285              	.LVL31:
+ 173:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, (int) (qval >> 8));
+ 286              		.loc 1 173 0
+ 287 00a2 002E     		cmp	r6, #0
+ 288 00a4 EDD0     		beq	.L17
+ 174:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, (int) (qval & 0xFF));
+ 289              		.loc 1 174 0
+ 290 00a6 4FEA1821 		lsr	r1, r8, #8
+ 291 00aa 2046     		mov	r0, r4
+ 292 00ac FFF7FEFF 		bl	emit_byte
+ 293              	.LVL32:
+ 294 00b0 E7E7     		b	.L17
+ 295              	.LVL33:
+ 296              	.L23:
+ 297              	.LBE3:
+ 178:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 298              		.loc 1 178 0
+ 299 00b2 0123     		movs	r3, #1
+ 300 00b4 C5F88030 		str	r3, [r5, #128]
+ 181:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 301              		.loc 1 181 0
+ 302 00b8 C8E7     		b	.L8
+ 303              		.cfi_endproc
+ 304              	.LFE6:
+ 306              		.section	.text.emit_dht,"ax",%progbits
+ 307              		.align	1
+ 308              		.syntax unified
+ 309              		.thumb
+ 310              		.thumb_func
+ 311              		.fpu fpv5-sp-d16
+ 313              	emit_dht:
+ 314              	.LFB7:
+ 183:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 184:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 185:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 186:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_dht (j_compress_ptr cinfo, int index, boolean is_ac)
+ 187:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a DHT marker */
+ 188:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 315              		.loc 1 188 0
+ 316              		.cfi_startproc
+ARM GAS  /tmp/ccwFesPZ.s 			page 10
+
+
+ 317              		@ args = 0, pretend = 0, frame = 0
+ 318              		@ frame_needed = 0, uses_anonymous_args = 0
+ 319              	.LVL34:
+ 320 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 321              	.LCFI4:
+ 322              		.cfi_def_cfa_offset 24
+ 323              		.cfi_offset 3, -24
+ 324              		.cfi_offset 4, -20
+ 325              		.cfi_offset 5, -16
+ 326              		.cfi_offset 6, -12
+ 327              		.cfi_offset 7, -8
+ 328              		.cfi_offset 14, -4
+ 329 0002 0746     		mov	r7, r0
+ 330 0004 0C46     		mov	r4, r1
+ 189:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   JHUFF_TBL * htbl;
+ 190:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int length, i;
+ 191:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 192:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (is_ac) {
+ 331              		.loc 1 192 0
+ 332 0006 92B1     		cbz	r2, .L25
+ 193:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     htbl = cinfo->ac_huff_tbl_ptrs[index];
+ 333              		.loc 1 193 0
+ 334 0008 01F12203 		add	r3, r1, #34
+ 335 000c 50F82350 		ldr	r5, [r0, r3, lsl #2]
+ 336              	.LVL35:
+ 194:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     index += 0x10;		/* output index has AC bit set */
+ 337              		.loc 1 194 0
+ 338 0010 1034     		adds	r4, r4, #16
+ 339              	.LVL36:
+ 340              	.L26:
+ 195:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 196:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     htbl = cinfo->dc_huff_tbl_ptrs[index];
+ 197:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 198:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 199:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (htbl == NULL)
+ 341              		.loc 1 199 0
+ 342 0012 45B9     		cbnz	r5, .L27
+ 200:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ERREXIT1(cinfo, JERR_NO_HUFF_TABLE, index);
+ 343              		.loc 1 200 0
+ 344 0014 3B68     		ldr	r3, [r7]
+ 345 0016 3422     		movs	r2, #52
+ 346              	.LVL37:
+ 347 0018 5A61     		str	r2, [r3, #20]
+ 348 001a 3B68     		ldr	r3, [r7]
+ 349 001c 9C61     		str	r4, [r3, #24]
+ 350 001e 3B68     		ldr	r3, [r7]
+ 351 0020 1B68     		ldr	r3, [r3]
+ 352 0022 3846     		mov	r0, r7
+ 353              	.LVL38:
+ 354 0024 9847     		blx	r3
+ 355              	.LVL39:
+ 356              	.L27:
+ 201:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 202:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (! htbl->sent_table) {
+ 357              		.loc 1 202 0
+ 358 0026 D5F81431 		ldr	r3, [r5, #276]
+ 359 002a 2BB1     		cbz	r3, .L36
+ARM GAS  /tmp/ccwFesPZ.s 			page 11
+
+
+ 360              	.LVL40:
+ 361              	.L24:
+ 203:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DHT);
+ 204:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 205:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     length = 0;
+ 206:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 1; i <= 16; i++)
+ 207:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       length += htbl->bits[i];
+ 208:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 209:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_2bytes(cinfo, length + 2 + 1 + 16);
+ 210:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, index);
+ 211:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 212:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 1; i <= 16; i++)
+ 213:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->bits[i]);
+ 214:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 215:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 0; i < length; i++)
+ 216:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->huffval[i]);
+ 217:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 218:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     htbl->sent_table = TRUE;
+ 219:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 220:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 362              		.loc 1 220 0
+ 363 002c F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 364              	.LVL41:
+ 365              	.L25:
+ 196:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 366              		.loc 1 196 0
+ 367 002e 01F11E03 		add	r3, r1, #30
+ 368 0032 50F82350 		ldr	r5, [r0, r3, lsl #2]
+ 369              	.LVL42:
+ 370 0036 ECE7     		b	.L26
+ 371              	.LVL43:
+ 372              	.L36:
+ 203:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DHT);
+ 373              		.loc 1 203 0
+ 374 0038 C421     		movs	r1, #196
+ 375 003a 3846     		mov	r0, r7
+ 376 003c FFF7FEFF 		bl	emit_marker
+ 377              	.LVL44:
+ 206:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       length += htbl->bits[i];
+ 378              		.loc 1 206 0
+ 379 0040 0123     		movs	r3, #1
+ 205:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 1; i <= 16; i++)
+ 380              		.loc 1 205 0
+ 381 0042 0026     		movs	r6, #0
+ 206:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       length += htbl->bits[i];
+ 382              		.loc 1 206 0
+ 383 0044 02E0     		b	.L29
+ 384              	.LVL45:
+ 385              	.L30:
+ 207:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 386              		.loc 1 207 0 discriminator 3
+ 387 0046 EA5C     		ldrb	r2, [r5, r3]	@ zero_extendqisi2
+ 388 0048 1644     		add	r6, r6, r2
+ 389              	.LVL46:
+ 206:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       length += htbl->bits[i];
+ 390              		.loc 1 206 0 discriminator 3
+ 391 004a 0133     		adds	r3, r3, #1
+ARM GAS  /tmp/ccwFesPZ.s 			page 12
+
+
+ 392              	.LVL47:
+ 393              	.L29:
+ 206:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       length += htbl->bits[i];
+ 394              		.loc 1 206 0 is_stmt 0 discriminator 1
+ 395 004c 102B     		cmp	r3, #16
+ 396 004e FADD     		ble	.L30
+ 209:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, index);
+ 397              		.loc 1 209 0 is_stmt 1
+ 398 0050 06F11301 		add	r1, r6, #19
+ 399 0054 3846     		mov	r0, r7
+ 400 0056 FFF7FEFF 		bl	emit_2bytes
+ 401              	.LVL48:
+ 210:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 402              		.loc 1 210 0
+ 403 005a 2146     		mov	r1, r4
+ 404 005c 3846     		mov	r0, r7
+ 405 005e FFF7FEFF 		bl	emit_byte
+ 406              	.LVL49:
+ 212:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->bits[i]);
+ 407              		.loc 1 212 0
+ 408 0062 0124     		movs	r4, #1
+ 409              	.LVL50:
+ 410 0064 04E0     		b	.L31
+ 411              	.LVL51:
+ 412              	.L32:
+ 213:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 413              		.loc 1 213 0 discriminator 3
+ 414 0066 295D     		ldrb	r1, [r5, r4]	@ zero_extendqisi2
+ 415 0068 3846     		mov	r0, r7
+ 416 006a FFF7FEFF 		bl	emit_byte
+ 417              	.LVL52:
+ 212:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->bits[i]);
+ 418              		.loc 1 212 0 discriminator 3
+ 419 006e 0134     		adds	r4, r4, #1
+ 420              	.LVL53:
+ 421              	.L31:
+ 212:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->bits[i]);
+ 422              		.loc 1 212 0 is_stmt 0 discriminator 1
+ 423 0070 102C     		cmp	r4, #16
+ 424 0072 F8DD     		ble	.L32
+ 215:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->huffval[i]);
+ 425              		.loc 1 215 0 is_stmt 1
+ 426 0074 0024     		movs	r4, #0
+ 427              	.LVL54:
+ 428 0076 05E0     		b	.L33
+ 429              	.LVL55:
+ 430              	.L34:
+ 216:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     
+ 431              		.loc 1 216 0 discriminator 3
+ 432 0078 2B19     		adds	r3, r5, r4
+ 433 007a 597C     		ldrb	r1, [r3, #17]	@ zero_extendqisi2
+ 434 007c 3846     		mov	r0, r7
+ 435 007e FFF7FEFF 		bl	emit_byte
+ 436              	.LVL56:
+ 215:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->huffval[i]);
+ 437              		.loc 1 215 0 discriminator 3
+ 438 0082 0134     		adds	r4, r4, #1
+ARM GAS  /tmp/ccwFesPZ.s 			page 13
+
+
+ 439              	.LVL57:
+ 440              	.L33:
+ 215:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_byte(cinfo, htbl->huffval[i]);
+ 441              		.loc 1 215 0 is_stmt 0 discriminator 1
+ 442 0084 A642     		cmp	r6, r4
+ 443 0086 F7DC     		bgt	.L34
+ 218:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 444              		.loc 1 218 0 is_stmt 1
+ 445 0088 0123     		movs	r3, #1
+ 446 008a C5F81431 		str	r3, [r5, #276]
+ 447              		.loc 1 220 0
+ 448 008e CDE7     		b	.L24
+ 449              		.cfi_endproc
+ 450              	.LFE7:
+ 452              		.section	.text.emit_dac,"ax",%progbits
+ 453              		.align	1
+ 454              		.syntax unified
+ 455              		.thumb
+ 456              		.thumb_func
+ 457              		.fpu fpv5-sp-d16
+ 459              	emit_dac:
+ 460              	.LFB8:
+ 221:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 222:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 223:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 224:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_dac (j_compress_ptr cinfo)
+ 225:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a DAC marker */
+ 226:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Since the useful info is so small, we want to emit all the tables in */
+ 227:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* one DAC marker.  Therefore this routine does its own scan of the table. */
+ 228:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 461              		.loc 1 228 0
+ 462              		.cfi_startproc
+ 463              		@ args = 0, pretend = 0, frame = 32
+ 464              		@ frame_needed = 0, uses_anonymous_args = 0
+ 465              	.LVL58:
+ 466 0000 30B5     		push	{r4, r5, lr}
+ 467              	.LCFI5:
+ 468              		.cfi_def_cfa_offset 12
+ 469              		.cfi_offset 4, -12
+ 470              		.cfi_offset 5, -8
+ 471              		.cfi_offset 14, -4
+ 472 0002 89B0     		sub	sp, sp, #36
+ 473              	.LCFI6:
+ 474              		.cfi_def_cfa_offset 48
+ 475              	.LVL59:
+ 229:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** #ifdef C_ARITH_CODING_SUPPORTED
+ 230:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   char dc_in_use[NUM_ARITH_TBLS];
+ 231:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   char ac_in_use[NUM_ARITH_TBLS];
+ 232:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int length, i;
+ 233:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   jpeg_component_info *compptr;
+ 234:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 235:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < NUM_ARITH_TBLS; i++)
+ 476              		.loc 1 235 0
+ 477 0004 0023     		movs	r3, #0
+ 478 0006 07E0     		b	.L38
+ 479              	.LVL60:
+ 480              	.L39:
+ARM GAS  /tmp/ccwFesPZ.s 			page 14
+
+
+ 236:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     dc_in_use[i] = ac_in_use[i] = 0;
+ 481              		.loc 1 236 0 discriminator 3
+ 482 0008 08AA     		add	r2, sp, #32
+ 483 000a 1A44     		add	r2, r2, r3
+ 484 000c 0021     		movs	r1, #0
+ 485 000e 02F8201C 		strb	r1, [r2, #-32]
+ 486 0012 02F8101C 		strb	r1, [r2, #-16]
+ 235:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     dc_in_use[i] = ac_in_use[i] = 0;
+ 487              		.loc 1 235 0 discriminator 3
+ 488 0016 0133     		adds	r3, r3, #1
+ 489              	.LVL61:
+ 490              	.L38:
+ 235:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     dc_in_use[i] = ac_in_use[i] = 0;
+ 491              		.loc 1 235 0 is_stmt 0 discriminator 1
+ 492 0018 0F2B     		cmp	r3, #15
+ 493 001a F5DD     		ble	.L39
+ 237:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 238:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < cinfo->comps_in_scan; i++) {
+ 494              		.loc 1 238 0 is_stmt 1
+ 495 001c 0023     		movs	r3, #0
+ 496              	.LVL62:
+ 497 001e 09E0     		b	.L40
+ 498              	.LVL63:
+ 499              	.L41:
+ 239:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 240:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* DC needs no table for refinement scan */
+ 241:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (cinfo->Ss == 0 && cinfo->Ah == 0)
+ 242:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       dc_in_use[compptr->dc_tbl_no] = 1;
+ 243:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 244:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (cinfo->Se)
+ 500              		.loc 1 244 0
+ 501 0020 D0F86C21 		ldr	r2, [r0, #364]
+ 502 0024 2AB1     		cbz	r2, .L42
+ 245:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       ac_in_use[compptr->ac_tbl_no] = 1;
+ 503              		.loc 1 245 0
+ 504 0026 8A69     		ldr	r2, [r1, #24]
+ 505 0028 08A9     		add	r1, sp, #32
+ 506              	.LVL64:
+ 507 002a 0A44     		add	r2, r2, r1
+ 508 002c 0121     		movs	r1, #1
+ 509 002e 02F8201C 		strb	r1, [r2, #-32]
+ 510              	.L42:
+ 238:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 511              		.loc 1 238 0 discriminator 2
+ 512 0032 0133     		adds	r3, r3, #1
+ 513              	.LVL65:
+ 514              	.L40:
+ 238:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 515              		.loc 1 238 0 is_stmt 0 discriminator 1
+ 516 0034 D0F82021 		ldr	r2, [r0, #288]
+ 517 0038 9A42     		cmp	r2, r3
+ 518 003a 13DD     		ble	.L52
+ 239:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 519              		.loc 1 239 0 is_stmt 1
+ 520 003c 03F14802 		add	r2, r3, #72
+ 521 0040 00EB8202 		add	r2, r0, r2, lsl #2
+ 522 0044 5168     		ldr	r1, [r2, #4]
+ARM GAS  /tmp/ccwFesPZ.s 			page 15
+
+
+ 523              	.LVL66:
+ 241:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       dc_in_use[compptr->dc_tbl_no] = 1;
+ 524              		.loc 1 241 0
+ 525 0046 D0F86821 		ldr	r2, [r0, #360]
+ 526 004a 002A     		cmp	r2, #0
+ 527 004c E8D1     		bne	.L41
+ 241:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       dc_in_use[compptr->dc_tbl_no] = 1;
+ 528              		.loc 1 241 0 is_stmt 0 discriminator 1
+ 529 004e D0F87021 		ldr	r2, [r0, #368]
+ 530 0052 002A     		cmp	r2, #0
+ 531 0054 E4D1     		bne	.L41
+ 242:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 532              		.loc 1 242 0 is_stmt 1
+ 533 0056 4A69     		ldr	r2, [r1, #20]
+ 534 0058 08AC     		add	r4, sp, #32
+ 535 005a 2244     		add	r2, r2, r4
+ 536 005c 0124     		movs	r4, #1
+ 537 005e 02F8104C 		strb	r4, [r2, #-16]
+ 538 0062 DDE7     		b	.L41
+ 539              	.LVL67:
+ 540              	.L52:
+ 246:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 247:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 248:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   length = 0;
+ 249:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < NUM_ARITH_TBLS; i++)
+ 541              		.loc 1 249 0
+ 542 0064 0023     		movs	r3, #0
+ 543              	.LVL68:
+ 248:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < NUM_ARITH_TBLS; i++)
+ 544              		.loc 1 248 0
+ 545 0066 1C46     		mov	r4, r3
+ 546 0068 08E0     		b	.L44
+ 547              	.LVL69:
+ 548              	.L45:
+ 250:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     length += dc_in_use[i] + ac_in_use[i];
+ 549              		.loc 1 250 0 discriminator 3
+ 550 006a 08AA     		add	r2, sp, #32
+ 551 006c D118     		adds	r1, r2, r3
+ 552 006e 11F8102C 		ldrb	r2, [r1, #-16]	@ zero_extendqisi2
+ 553 0072 11F8201C 		ldrb	r1, [r1, #-32]	@ zero_extendqisi2
+ 554 0076 0A44     		add	r2, r2, r1
+ 555 0078 1444     		add	r4, r4, r2
+ 556              	.LVL70:
+ 249:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     length += dc_in_use[i] + ac_in_use[i];
+ 557              		.loc 1 249 0 discriminator 3
+ 558 007a 0133     		adds	r3, r3, #1
+ 559              	.LVL71:
+ 560              	.L44:
+ 249:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     length += dc_in_use[i] + ac_in_use[i];
+ 561              		.loc 1 249 0 is_stmt 0 discriminator 1
+ 562 007c 0F2B     		cmp	r3, #15
+ 563 007e F4DD     		ble	.L45
+ 251:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 252:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (length) {
+ 564              		.loc 1 252 0 is_stmt 1
+ 565 0080 0CB9     		cbnz	r4, .L53
+ 566              	.LVL72:
+ARM GAS  /tmp/ccwFesPZ.s 			page 16
+
+
+ 567              	.L37:
+ 253:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DAC);
+ 254:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 255:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_2bytes(cinfo, length*2 + 2);
+ 256:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 257:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 0; i < NUM_ARITH_TBLS; i++) {
+ 258:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (dc_in_use[i]) {
+ 259:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, i);
+ 260:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, cinfo->arith_dc_L[i] + (cinfo->arith_dc_U[i]<<4));
+ 261:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       }
+ 262:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (ac_in_use[i]) {
+ 263:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, i + 0x10);
+ 264:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, cinfo->arith_ac_K[i]);
+ 265:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       }
+ 266:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 267:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 268:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** #endif /* C_ARITH_CODING_SUPPORTED */
+ 269:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 568              		.loc 1 269 0
+ 569 0082 09B0     		add	sp, sp, #36
+ 570              	.LCFI7:
+ 571              		.cfi_remember_state
+ 572              		.cfi_def_cfa_offset 12
+ 573              		@ sp needed
+ 574 0084 30BD     		pop	{r4, r5, pc}
+ 575              	.LVL73:
+ 576              	.L53:
+ 577              	.LCFI8:
+ 578              		.cfi_restore_state
+ 579 0086 0546     		mov	r5, r0
+ 253:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_marker(cinfo, M_DAC);
+ 580              		.loc 1 253 0
+ 581 0088 CC21     		movs	r1, #204
+ 582 008a FFF7FEFF 		bl	emit_marker
+ 583              	.LVL74:
+ 255:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 584              		.loc 1 255 0
+ 585 008e 611C     		adds	r1, r4, #1
+ 586 0090 4900     		lsls	r1, r1, #1
+ 587 0092 2846     		mov	r0, r5
+ 588 0094 FFF7FEFF 		bl	emit_2bytes
+ 589              	.LVL75:
+ 257:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (dc_in_use[i]) {
+ 590              		.loc 1 257 0
+ 591 0098 0024     		movs	r4, #0
+ 592              	.LVL76:
+ 593 009a 0FE0     		b	.L47
+ 594              	.LVL77:
+ 595              	.L54:
+ 259:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, cinfo->arith_dc_L[i] + (cinfo->arith_dc_U[i]<<4));
+ 596              		.loc 1 259 0
+ 597 009c 2146     		mov	r1, r4
+ 598 009e 2846     		mov	r0, r5
+ 599 00a0 FFF7FEFF 		bl	emit_byte
+ 600              	.LVL78:
+ 260:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       }
+ 601              		.loc 1 260 0
+ARM GAS  /tmp/ccwFesPZ.s 			page 17
+
+
+ 602 00a4 2B19     		adds	r3, r5, r4
+ 603 00a6 93F89820 		ldrb	r2, [r3, #152]	@ zero_extendqisi2
+ 604 00aa 93F8A810 		ldrb	r1, [r3, #168]	@ zero_extendqisi2
+ 605 00ae 02EB0111 		add	r1, r2, r1, lsl #4
+ 606 00b2 2846     		mov	r0, r5
+ 607 00b4 FFF7FEFF 		bl	emit_byte
+ 608              	.LVL79:
+ 609 00b8 08E0     		b	.L48
+ 610              	.L49:
+ 257:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (dc_in_use[i]) {
+ 611              		.loc 1 257 0 discriminator 2
+ 612 00ba 0134     		adds	r4, r4, #1
+ 613              	.LVL80:
+ 614              	.L47:
+ 257:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (dc_in_use[i]) {
+ 615              		.loc 1 257 0 is_stmt 0 discriminator 1
+ 616 00bc 0F2C     		cmp	r4, #15
+ 617 00be E0DC     		bgt	.L37
+ 258:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, i);
+ 618              		.loc 1 258 0 is_stmt 1
+ 619 00c0 08AB     		add	r3, sp, #32
+ 620 00c2 2344     		add	r3, r3, r4
+ 621 00c4 13F8103C 		ldrb	r3, [r3, #-16]	@ zero_extendqisi2
+ 622 00c8 002B     		cmp	r3, #0
+ 623 00ca E7D1     		bne	.L54
+ 624              	.L48:
+ 262:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, i + 0x10);
+ 625              		.loc 1 262 0
+ 626 00cc 08AB     		add	r3, sp, #32
+ 627 00ce 2344     		add	r3, r3, r4
+ 628 00d0 13F8203C 		ldrb	r3, [r3, #-32]	@ zero_extendqisi2
+ 629 00d4 002B     		cmp	r3, #0
+ 630 00d6 F0D0     		beq	.L49
+ 263:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_byte(cinfo, cinfo->arith_ac_K[i]);
+ 631              		.loc 1 263 0
+ 632 00d8 04F11001 		add	r1, r4, #16
+ 633 00dc 2846     		mov	r0, r5
+ 634 00de FFF7FEFF 		bl	emit_byte
+ 635              	.LVL81:
+ 264:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       }
+ 636              		.loc 1 264 0
+ 637 00e2 2B19     		adds	r3, r5, r4
+ 638 00e4 93F8B810 		ldrb	r1, [r3, #184]	@ zero_extendqisi2
+ 639 00e8 2846     		mov	r0, r5
+ 640 00ea FFF7FEFF 		bl	emit_byte
+ 641              	.LVL82:
+ 642 00ee E4E7     		b	.L49
+ 643              		.cfi_endproc
+ 644              	.LFE8:
+ 646              		.section	.text.emit_dri,"ax",%progbits
+ 647              		.align	1
+ 648              		.syntax unified
+ 649              		.thumb
+ 650              		.thumb_func
+ 651              		.fpu fpv5-sp-d16
+ 653              	emit_dri:
+ 654              	.LFB9:
+ARM GAS  /tmp/ccwFesPZ.s 			page 18
+
+
+ 270:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 271:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 272:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 273:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_dri (j_compress_ptr cinfo)
+ 274:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a DRI marker */
+ 275:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 655              		.loc 1 275 0
+ 656              		.cfi_startproc
+ 657              		@ args = 0, pretend = 0, frame = 0
+ 658              		@ frame_needed = 0, uses_anonymous_args = 0
+ 659              	.LVL83:
+ 660 0000 10B5     		push	{r4, lr}
+ 661              	.LCFI9:
+ 662              		.cfi_def_cfa_offset 8
+ 663              		.cfi_offset 4, -8
+ 664              		.cfi_offset 14, -4
+ 665 0002 0446     		mov	r4, r0
+ 276:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_DRI);
+ 666              		.loc 1 276 0
+ 667 0004 DD21     		movs	r1, #221
+ 668 0006 FFF7FEFF 		bl	emit_marker
+ 669              	.LVL84:
+ 277:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 278:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 4);	/* fixed length */
+ 670              		.loc 1 278 0
+ 671 000a 0421     		movs	r1, #4
+ 672 000c 2046     		mov	r0, r4
+ 673 000e FFF7FEFF 		bl	emit_2bytes
+ 674              	.LVL85:
+ 279:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 280:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) cinfo->restart_interval);
+ 675              		.loc 1 280 0
+ 676 0012 D4F8EC10 		ldr	r1, [r4, #236]
+ 677 0016 2046     		mov	r0, r4
+ 678 0018 FFF7FEFF 		bl	emit_2bytes
+ 679              	.LVL86:
+ 281:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 680              		.loc 1 281 0
+ 681 001c 10BD     		pop	{r4, pc}
+ 682              		.cfi_endproc
+ 683              	.LFE9:
+ 685              		.section	.text.emit_sof,"ax",%progbits
+ 686              		.align	1
+ 687              		.syntax unified
+ 688              		.thumb
+ 689              		.thumb_func
+ 690              		.fpu fpv5-sp-d16
+ 692              	emit_sof:
+ 693              	.LFB10:
+ 282:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 283:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 284:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 285:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_sof (j_compress_ptr cinfo, JPEG_MARKER code)
+ 286:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a SOF marker */
+ 287:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 694              		.loc 1 287 0
+ 695              		.cfi_startproc
+ARM GAS  /tmp/ccwFesPZ.s 			page 19
+
+
+ 696              		@ args = 0, pretend = 0, frame = 0
+ 697              		@ frame_needed = 0, uses_anonymous_args = 0
+ 698              	.LVL87:
+ 699 0000 70B5     		push	{r4, r5, r6, lr}
+ 700              	.LCFI10:
+ 701              		.cfi_def_cfa_offset 16
+ 702              		.cfi_offset 4, -16
+ 703              		.cfi_offset 5, -12
+ 704              		.cfi_offset 6, -8
+ 705              		.cfi_offset 14, -4
+ 706 0002 0446     		mov	r4, r0
+ 288:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int ci;
+ 289:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   jpeg_component_info *compptr;
+ 290:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 291:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, code);
+ 707              		.loc 1 291 0
+ 708 0004 FFF7FEFF 		bl	emit_marker
+ 709              	.LVL88:
+ 292:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 293:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 3 * cinfo->num_components + 2 + 5 + 1); /* length */
+ 710              		.loc 1 293 0
+ 711 0008 E16C     		ldr	r1, [r4, #76]
+ 712 000a 01EB4101 		add	r1, r1, r1, lsl #1
+ 713 000e 0831     		adds	r1, r1, #8
+ 714 0010 2046     		mov	r0, r4
+ 715 0012 FFF7FEFF 		bl	emit_2bytes
+ 716              	.LVL89:
+ 294:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 295:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Make sure image isn't bigger than SOF field can handle */
+ 296:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if ((long) cinfo->jpeg_height > 65535L ||
+ 717              		.loc 1 296 0
+ 718 0016 636C     		ldr	r3, [r4, #68]
+ 719 0018 B3F5803F 		cmp	r3, #65536
+ 720 001c 1DDB     		blt	.L63
+ 721              	.L58:
+ 297:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       (long) cinfo->jpeg_width > 65535L)
+ 298:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ERREXIT1(cinfo, JERR_IMAGE_TOO_BIG, (unsigned int) 65535);
+ 722              		.loc 1 298 0
+ 723 001e 2368     		ldr	r3, [r4]
+ 724 0020 2A22     		movs	r2, #42
+ 725 0022 5A61     		str	r2, [r3, #20]
+ 726 0024 2368     		ldr	r3, [r4]
+ 727 0026 4FF6FF72 		movw	r2, #65535
+ 728 002a 9A61     		str	r2, [r3, #24]
+ 729 002c 2368     		ldr	r3, [r4]
+ 730 002e 1B68     		ldr	r3, [r3]
+ 731 0030 2046     		mov	r0, r4
+ 732 0032 9847     		blx	r3
+ 733              	.LVL90:
+ 734              	.L59:
+ 299:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 300:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->data_precision);
+ 735              		.loc 1 300 0
+ 736 0034 A16C     		ldr	r1, [r4, #72]
+ 737 0036 2046     		mov	r0, r4
+ 738 0038 FFF7FEFF 		bl	emit_byte
+ 739              	.LVL91:
+ARM GAS  /tmp/ccwFesPZ.s 			page 20
+
+
+ 301:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) cinfo->jpeg_height);
+ 740              		.loc 1 301 0
+ 741 003c 616C     		ldr	r1, [r4, #68]
+ 742 003e 2046     		mov	r0, r4
+ 743 0040 FFF7FEFF 		bl	emit_2bytes
+ 744              	.LVL92:
+ 302:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) cinfo->jpeg_width);
+ 745              		.loc 1 302 0
+ 746 0044 216C     		ldr	r1, [r4, #64]
+ 747 0046 2046     		mov	r0, r4
+ 748 0048 FFF7FEFF 		bl	emit_2bytes
+ 749              	.LVL93:
+ 303:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 304:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->num_components);
+ 750              		.loc 1 304 0
+ 751 004c E16C     		ldr	r1, [r4, #76]
+ 752 004e 2046     		mov	r0, r4
+ 753 0050 FFF7FEFF 		bl	emit_byte
+ 754              	.LVL94:
+ 305:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 306:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 755              		.loc 1 306 0
+ 756 0054 656D     		ldr	r5, [r4, #84]
+ 757              	.LVL95:
+ 758 0056 0026     		movs	r6, #0
+ 759 0058 15E0     		b	.L60
+ 760              	.LVL96:
+ 761              	.L63:
+ 297:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ERREXIT1(cinfo, JERR_IMAGE_TOO_BIG, (unsigned int) 65535);
+ 762              		.loc 1 297 0 discriminator 1
+ 763 005a 236C     		ldr	r3, [r4, #64]
+ 296:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       (long) cinfo->jpeg_width > 65535L)
+ 764              		.loc 1 296 0 discriminator 1
+ 765 005c B3F5803F 		cmp	r3, #65536
+ 766 0060 E8DB     		blt	.L59
+ 767 0062 DCE7     		b	.L58
+ 768              	.LVL97:
+ 769              	.L61:
+ 307:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 308:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, compptr->component_id);
+ 770              		.loc 1 308 0
+ 771 0064 2968     		ldr	r1, [r5]
+ 772 0066 2046     		mov	r0, r4
+ 773 0068 FFF7FEFF 		bl	emit_byte
+ 774              	.LVL98:
+ 309:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, (compptr->h_samp_factor << 4) + compptr->v_samp_factor);
+ 775              		.loc 1 309 0
+ 776 006c A968     		ldr	r1, [r5, #8]
+ 777 006e EB68     		ldr	r3, [r5, #12]
+ 778 0070 03EB0111 		add	r1, r3, r1, lsl #4
+ 779 0074 2046     		mov	r0, r4
+ 780 0076 FFF7FEFF 		bl	emit_byte
+ 781              	.LVL99:
+ 310:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, compptr->quant_tbl_no);
+ 782              		.loc 1 310 0
+ 783 007a 2969     		ldr	r1, [r5, #16]
+ 784 007c 2046     		mov	r0, r4
+ARM GAS  /tmp/ccwFesPZ.s 			page 21
+
+
+ 785 007e FFF7FEFF 		bl	emit_byte
+ 786              	.LVL100:
+ 307:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 787              		.loc 1 307 0
+ 788 0082 0136     		adds	r6, r6, #1
+ 789              	.LVL101:
+ 790 0084 5835     		adds	r5, r5, #88
+ 791              	.LVL102:
+ 792              	.L60:
+ 306:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 793              		.loc 1 306 0 discriminator 1
+ 794 0086 E36C     		ldr	r3, [r4, #76]
+ 795 0088 B342     		cmp	r3, r6
+ 796 008a EBDC     		bgt	.L61
+ 311:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 312:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 797              		.loc 1 312 0
+ 798 008c 70BD     		pop	{r4, r5, r6, pc}
+ 799              		.cfi_endproc
+ 800              	.LFE10:
+ 802              		.section	.text.emit_sos,"ax",%progbits
+ 803              		.align	1
+ 804              		.syntax unified
+ 805              		.thumb
+ 806              		.thumb_func
+ 807              		.fpu fpv5-sp-d16
+ 809              	emit_sos:
+ 810              	.LFB11:
+ 313:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 314:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 315:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 316:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_sos (j_compress_ptr cinfo)
+ 317:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a SOS marker */
+ 318:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 811              		.loc 1 318 0
+ 812              		.cfi_startproc
+ 813              		@ args = 0, pretend = 0, frame = 0
+ 814              		@ frame_needed = 0, uses_anonymous_args = 0
+ 815              	.LVL103:
+ 816 0000 70B5     		push	{r4, r5, r6, lr}
+ 817              	.LCFI11:
+ 818              		.cfi_def_cfa_offset 16
+ 819              		.cfi_offset 4, -16
+ 820              		.cfi_offset 5, -12
+ 821              		.cfi_offset 6, -8
+ 822              		.cfi_offset 14, -4
+ 823 0002 0446     		mov	r4, r0
+ 319:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int i, td, ta;
+ 320:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   jpeg_component_info *compptr;
+ 321:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 322:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_SOS);
+ 824              		.loc 1 322 0
+ 825 0004 DA21     		movs	r1, #218
+ 826 0006 FFF7FEFF 		bl	emit_marker
+ 827              	.LVL104:
+ 323:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 324:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 2 * cinfo->comps_in_scan + 2 + 1 + 3); /* length */
+ARM GAS  /tmp/ccwFesPZ.s 			page 22
+
+
+ 828              		.loc 1 324 0
+ 829 000a D4F82011 		ldr	r1, [r4, #288]
+ 830 000e 0331     		adds	r1, r1, #3
+ 831 0010 4900     		lsls	r1, r1, #1
+ 832 0012 2046     		mov	r0, r4
+ 833 0014 FFF7FEFF 		bl	emit_2bytes
+ 834              	.LVL105:
+ 325:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 326:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->comps_in_scan);
+ 835              		.loc 1 326 0
+ 836 0018 D4F82011 		ldr	r1, [r4, #288]
+ 837 001c 2046     		mov	r0, r4
+ 838 001e FFF7FEFF 		bl	emit_byte
+ 839              	.LVL106:
+ 327:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 328:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < cinfo->comps_in_scan; i++) {
+ 840              		.loc 1 328 0
+ 841 0022 0025     		movs	r5, #0
+ 842 0024 0AE0     		b	.L65
+ 843              	.LVL107:
+ 844              	.L69:
+ 329:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 330:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, compptr->component_id);
+ 331:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 332:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* We emit 0 for unused field(s); this is recommended by the P&M text
+ 333:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      * but does not seem to be specified in the standard.
+ 334:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      */
+ 335:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 336:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* DC needs no table for refinement scan */
+ 337:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     td = cinfo->Ss == 0 && cinfo->Ah == 0 ? compptr->dc_tbl_no : 0;
+ 845              		.loc 1 337 0
+ 846 0026 0023     		movs	r3, #0
+ 847              	.L66:
+ 848              	.LVL108:
+ 338:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 339:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ta = cinfo->Se ? compptr->ac_tbl_no : 0;
+ 849              		.loc 1 339 0 discriminator 6
+ 850 0028 D4F86C11 		ldr	r1, [r4, #364]
+ 851 002c 01B1     		cbz	r1, .L67
+ 852              		.loc 1 339 0 is_stmt 0 discriminator 1
+ 853 002e B169     		ldr	r1, [r6, #24]
+ 854              	.L67:
+ 855              	.LVL109:
+ 340:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 341:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, (td << 4) + ta);
+ 856              		.loc 1 341 0 is_stmt 1 discriminator 4
+ 857 0030 01EB0311 		add	r1, r1, r3, lsl #4
+ 858              	.LVL110:
+ 859 0034 2046     		mov	r0, r4
+ 860 0036 FFF7FEFF 		bl	emit_byte
+ 861              	.LVL111:
+ 328:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ 862              		.loc 1 328 0 discriminator 4
+ 863 003a 0135     		adds	r5, r5, #1
+ 864              	.LVL112:
+ 865              	.L65:
+ 328:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     compptr = cinfo->cur_comp_info[i];
+ARM GAS  /tmp/ccwFesPZ.s 			page 23
+
+
+ 866              		.loc 1 328 0 is_stmt 0 discriminator 2
+ 867 003c D4F82031 		ldr	r3, [r4, #288]
+ 868 0040 AB42     		cmp	r3, r5
+ 869 0042 12DD     		ble	.L71
+ 329:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, compptr->component_id);
+ 870              		.loc 1 329 0 is_stmt 1
+ 871 0044 05F14803 		add	r3, r5, #72
+ 872 0048 04EB8303 		add	r3, r4, r3, lsl #2
+ 873 004c 5E68     		ldr	r6, [r3, #4]
+ 874              	.LVL113:
+ 330:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 875              		.loc 1 330 0
+ 876 004e 3168     		ldr	r1, [r6]
+ 877 0050 2046     		mov	r0, r4
+ 878 0052 FFF7FEFF 		bl	emit_byte
+ 879              	.LVL114:
+ 337:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 880              		.loc 1 337 0
+ 881 0056 D4F86831 		ldr	r3, [r4, #360]
+ 882 005a 002B     		cmp	r3, #0
+ 883 005c E3D1     		bne	.L69
+ 337:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 884              		.loc 1 337 0 is_stmt 0 discriminator 1
+ 885 005e D4F87021 		ldr	r2, [r4, #368]
+ 886 0062 002A     		cmp	r2, #0
+ 887 0064 E0D1     		bne	.L66
+ 337:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* AC needs no table when not present */
+ 888              		.loc 1 337 0 discriminator 3
+ 889 0066 7369     		ldr	r3, [r6, #20]
+ 890 0068 DEE7     		b	.L66
+ 891              	.LVL115:
+ 892              	.L71:
+ 342:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 343:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 344:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->Ss);
+ 893              		.loc 1 344 0 is_stmt 1
+ 894 006a D4F86811 		ldr	r1, [r4, #360]
+ 895 006e 2046     		mov	r0, r4
+ 896 0070 FFF7FEFF 		bl	emit_byte
+ 897              	.LVL116:
+ 345:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->Se);
+ 898              		.loc 1 345 0
+ 899 0074 D4F86C11 		ldr	r1, [r4, #364]
+ 900 0078 2046     		mov	r0, r4
+ 901 007a FFF7FEFF 		bl	emit_byte
+ 902              	.LVL117:
+ 346:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, (cinfo->Ah << 4) + cinfo->Al);
+ 903              		.loc 1 346 0
+ 904 007e D4F87011 		ldr	r1, [r4, #368]
+ 905 0082 D4F87431 		ldr	r3, [r4, #372]
+ 906 0086 03EB0111 		add	r1, r3, r1, lsl #4
+ 907 008a 2046     		mov	r0, r4
+ 908 008c FFF7FEFF 		bl	emit_byte
+ 909              	.LVL118:
+ 347:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 910              		.loc 1 347 0
+ 911 0090 70BD     		pop	{r4, r5, r6, pc}
+ARM GAS  /tmp/ccwFesPZ.s 			page 24
+
+
+ 912              		.cfi_endproc
+ 913              	.LFE11:
+ 915              		.section	.text.emit_pseudo_sos,"ax",%progbits
+ 916              		.align	1
+ 917              		.syntax unified
+ 918              		.thumb
+ 919              		.thumb_func
+ 920              		.fpu fpv5-sp-d16
+ 922              	emit_pseudo_sos:
+ 923              	.LFB12:
+ 348:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 349:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 350:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 351:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_pseudo_sos (j_compress_ptr cinfo)
+ 352:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a pseudo SOS marker */
+ 353:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 924              		.loc 1 353 0
+ 925              		.cfi_startproc
+ 926              		@ args = 0, pretend = 0, frame = 0
+ 927              		@ frame_needed = 0, uses_anonymous_args = 0
+ 928              	.LVL119:
+ 929 0000 10B5     		push	{r4, lr}
+ 930              	.LCFI12:
+ 931              		.cfi_def_cfa_offset 8
+ 932              		.cfi_offset 4, -8
+ 933              		.cfi_offset 14, -4
+ 934 0002 0446     		mov	r4, r0
+ 354:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_SOS);
+ 935              		.loc 1 354 0
+ 936 0004 DA21     		movs	r1, #218
+ 937 0006 FFF7FEFF 		bl	emit_marker
+ 938              	.LVL120:
+ 355:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 356:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 2 + 1 + 3); /* length */
+ 939              		.loc 1 356 0
+ 940 000a 0621     		movs	r1, #6
+ 941 000c 2046     		mov	r0, r4
+ 942 000e FFF7FEFF 		bl	emit_2bytes
+ 943              	.LVL121:
+ 357:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 358:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0); /* Ns */
+ 944              		.loc 1 358 0
+ 945 0012 0021     		movs	r1, #0
+ 946 0014 2046     		mov	r0, r4
+ 947 0016 FFF7FEFF 		bl	emit_byte
+ 948              	.LVL122:
+ 359:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 360:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0); /* Ss */
+ 949              		.loc 1 360 0
+ 950 001a 0021     		movs	r1, #0
+ 951 001c 2046     		mov	r0, r4
+ 952 001e FFF7FEFF 		bl	emit_byte
+ 953              	.LVL123:
+ 361:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->block_size * cinfo->block_size - 1); /* Se */
+ 954              		.loc 1 361 0
+ 955 0022 D4F87811 		ldr	r1, [r4, #376]
+ 956 0026 01FB01F1 		mul	r1, r1, r1
+ARM GAS  /tmp/ccwFesPZ.s 			page 25
+
+
+ 957 002a 0139     		subs	r1, r1, #1
+ 958 002c 2046     		mov	r0, r4
+ 959 002e FFF7FEFF 		bl	emit_byte
+ 960              	.LVL124:
+ 362:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0); /* Ah/Al */
+ 961              		.loc 1 362 0
+ 962 0032 0021     		movs	r1, #0
+ 963 0034 2046     		mov	r0, r4
+ 964 0036 FFF7FEFF 		bl	emit_byte
+ 965              	.LVL125:
+ 363:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 966              		.loc 1 363 0
+ 967 003a 10BD     		pop	{r4, pc}
+ 968              		.cfi_endproc
+ 969              	.LFE12:
+ 971              		.section	.text.emit_jfif_app0,"ax",%progbits
+ 972              		.align	1
+ 973              		.syntax unified
+ 974              		.thumb
+ 975              		.thumb_func
+ 976              		.fpu fpv5-sp-d16
+ 978              	emit_jfif_app0:
+ 979              	.LFB13:
+ 364:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 365:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 366:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 367:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_jfif_app0 (j_compress_ptr cinfo)
+ 368:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit a JFIF-compliant APP0 marker */
+ 369:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 980              		.loc 1 369 0
+ 981              		.cfi_startproc
+ 982              		@ args = 0, pretend = 0, frame = 0
+ 983              		@ frame_needed = 0, uses_anonymous_args = 0
+ 984              	.LVL126:
+ 985 0000 10B5     		push	{r4, lr}
+ 986              	.LCFI13:
+ 987              		.cfi_def_cfa_offset 8
+ 988              		.cfi_offset 4, -8
+ 989              		.cfi_offset 14, -4
+ 990 0002 0446     		mov	r4, r0
+ 370:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /*
+ 371:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Length of APP0 block	(2 bytes)
+ 372:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Block ID			(4 bytes - ASCII "JFIF")
+ 373:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Zero byte			(1 byte to terminate the ID string)
+ 374:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Version Major, Minor	(2 bytes - major first)
+ 375:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Units			(1 byte - 0x00 = none, 0x01 = inch, 0x02 = cm)
+ 376:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Xdpu			(2 bytes - dots per unit horizontal)
+ 377:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Ydpu			(2 bytes - dots per unit vertical)
+ 378:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Thumbnail X size		(1 byte)
+ 379:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Thumbnail Y size		(1 byte)
+ 380:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    */
+ 381:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 382:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_APP0);
+ 991              		.loc 1 382 0
+ 992 0004 E021     		movs	r1, #224
+ 993 0006 FFF7FEFF 		bl	emit_marker
+ 994              	.LVL127:
+ARM GAS  /tmp/ccwFesPZ.s 			page 26
+
+
+ 383:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 384:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 2 + 4 + 1 + 2 + 1 + 2 + 2 + 1 + 1); /* length */
+ 995              		.loc 1 384 0
+ 996 000a 1021     		movs	r1, #16
+ 997 000c 2046     		mov	r0, r4
+ 998 000e FFF7FEFF 		bl	emit_2bytes
+ 999              	.LVL128:
+ 385:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 386:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x4A);	/* Identifier: ASCII "JFIF" */
+ 1000              		.loc 1 386 0
+ 1001 0012 4A21     		movs	r1, #74
+ 1002 0014 2046     		mov	r0, r4
+ 1003 0016 FFF7FEFF 		bl	emit_byte
+ 1004              	.LVL129:
+ 387:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x46);
+ 1005              		.loc 1 387 0
+ 1006 001a 4621     		movs	r1, #70
+ 1007 001c 2046     		mov	r0, r4
+ 1008 001e FFF7FEFF 		bl	emit_byte
+ 1009              	.LVL130:
+ 388:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x49);
+ 1010              		.loc 1 388 0
+ 1011 0022 4921     		movs	r1, #73
+ 1012 0024 2046     		mov	r0, r4
+ 1013 0026 FFF7FEFF 		bl	emit_byte
+ 1014              	.LVL131:
+ 389:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x46);
+ 1015              		.loc 1 389 0
+ 1016 002a 4621     		movs	r1, #70
+ 1017 002c 2046     		mov	r0, r4
+ 1018 002e FFF7FEFF 		bl	emit_byte
+ 1019              	.LVL132:
+ 390:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0);
+ 1020              		.loc 1 390 0
+ 1021 0032 0021     		movs	r1, #0
+ 1022 0034 2046     		mov	r0, r4
+ 1023 0036 FFF7FEFF 		bl	emit_byte
+ 1024              	.LVL133:
+ 391:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->JFIF_major_version); /* Version fields */
+ 1025              		.loc 1 391 0
+ 1026 003a 94F8F810 		ldrb	r1, [r4, #248]	@ zero_extendqisi2
+ 1027 003e 2046     		mov	r0, r4
+ 1028 0040 FFF7FEFF 		bl	emit_byte
+ 1029              	.LVL134:
+ 392:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->JFIF_minor_version);
+ 1030              		.loc 1 392 0
+ 1031 0044 94F8F910 		ldrb	r1, [r4, #249]	@ zero_extendqisi2
+ 1032 0048 2046     		mov	r0, r4
+ 1033 004a FFF7FEFF 		bl	emit_byte
+ 1034              	.LVL135:
+ 393:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, cinfo->density_unit); /* Pixel size information */
+ 1035              		.loc 1 393 0
+ 1036 004e 94F8FA10 		ldrb	r1, [r4, #250]	@ zero_extendqisi2
+ 1037 0052 2046     		mov	r0, r4
+ 1038 0054 FFF7FEFF 		bl	emit_byte
+ 1039              	.LVL136:
+ 394:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) cinfo->X_density);
+ARM GAS  /tmp/ccwFesPZ.s 			page 27
+
+
+ 1040              		.loc 1 394 0
+ 1041 0058 B4F8FC10 		ldrh	r1, [r4, #252]
+ 1042 005c 2046     		mov	r0, r4
+ 1043 005e FFF7FEFF 		bl	emit_2bytes
+ 1044              	.LVL137:
+ 395:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) cinfo->Y_density);
+ 1045              		.loc 1 395 0
+ 1046 0062 B4F8FE10 		ldrh	r1, [r4, #254]
+ 1047 0066 2046     		mov	r0, r4
+ 1048 0068 FFF7FEFF 		bl	emit_2bytes
+ 1049              	.LVL138:
+ 396:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0);		/* No thumbnail image */
+ 1050              		.loc 1 396 0
+ 1051 006c 0021     		movs	r1, #0
+ 1052 006e 2046     		mov	r0, r4
+ 1053 0070 FFF7FEFF 		bl	emit_byte
+ 1054              	.LVL139:
+ 397:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0);
+ 1055              		.loc 1 397 0
+ 1056 0074 0021     		movs	r1, #0
+ 1057 0076 2046     		mov	r0, r4
+ 1058 0078 FFF7FEFF 		bl	emit_byte
+ 1059              	.LVL140:
+ 398:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1060              		.loc 1 398 0
+ 1061 007c 10BD     		pop	{r4, pc}
+ 1062              		.cfi_endproc
+ 1063              	.LFE13:
+ 1065              		.section	.text.emit_adobe_app14,"ax",%progbits
+ 1066              		.align	1
+ 1067              		.syntax unified
+ 1068              		.thumb
+ 1069              		.thumb_func
+ 1070              		.fpu fpv5-sp-d16
+ 1072              	emit_adobe_app14:
+ 1073              	.LFB14:
+ 399:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 400:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 401:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** LOCAL(void)
+ 402:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** emit_adobe_app14 (j_compress_ptr cinfo)
+ 403:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit an Adobe APP14 marker */
+ 404:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1074              		.loc 1 404 0
+ 1075              		.cfi_startproc
+ 1076              		@ args = 0, pretend = 0, frame = 0
+ 1077              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1078              	.LVL141:
+ 1079 0000 10B5     		push	{r4, lr}
+ 1080              	.LCFI14:
+ 1081              		.cfi_def_cfa_offset 8
+ 1082              		.cfi_offset 4, -8
+ 1083              		.cfi_offset 14, -4
+ 1084 0002 0446     		mov	r4, r0
+ 405:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /*
+ 406:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Length of APP14 block	(2 bytes)
+ 407:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Block ID			(5 bytes - ASCII "Adobe")
+ 408:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Version Number		(2 bytes - currently 100)
+ARM GAS  /tmp/ccwFesPZ.s 			page 28
+
+
+ 409:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Flags0			(2 bytes - currently 0)
+ 410:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Flags1			(2 bytes - currently 0)
+ 411:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Color transform		(1 byte)
+ 412:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    *
+ 413:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Although Adobe TN 5116 mentions Version = 101, all the Adobe files
+ 414:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * now in circulation seem to use Version = 100, so that's what we write.
+ 415:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    *
+ 416:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * We write the color transform byte as 1 if the JPEG color space is
+ 417:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * YCbCr, 2 if it's YCCK, 0 otherwise.  Adobe's definition has to do with
+ 418:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * whether the encoder performed a transformation, which is pretty useless.
+ 419:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    */
+ 420:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 421:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_APP14);
+ 1085              		.loc 1 421 0
+ 1086 0004 EE21     		movs	r1, #238
+ 1087 0006 FFF7FEFF 		bl	emit_marker
+ 1088              	.LVL142:
+ 422:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 423:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 2 + 5 + 2 + 2 + 2 + 1); /* length */
+ 1089              		.loc 1 423 0
+ 1090 000a 0E21     		movs	r1, #14
+ 1091 000c 2046     		mov	r0, r4
+ 1092 000e FFF7FEFF 		bl	emit_2bytes
+ 1093              	.LVL143:
+ 424:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 425:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x41);	/* Identifier: ASCII "Adobe" */
+ 1094              		.loc 1 425 0
+ 1095 0012 4121     		movs	r1, #65
+ 1096 0014 2046     		mov	r0, r4
+ 1097 0016 FFF7FEFF 		bl	emit_byte
+ 1098              	.LVL144:
+ 426:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x64);
+ 1099              		.loc 1 426 0
+ 1100 001a 6421     		movs	r1, #100
+ 1101 001c 2046     		mov	r0, r4
+ 1102 001e FFF7FEFF 		bl	emit_byte
+ 1103              	.LVL145:
+ 427:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x6F);
+ 1104              		.loc 1 427 0
+ 1105 0022 6F21     		movs	r1, #111
+ 1106 0024 2046     		mov	r0, r4
+ 1107 0026 FFF7FEFF 		bl	emit_byte
+ 1108              	.LVL146:
+ 428:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x62);
+ 1109              		.loc 1 428 0
+ 1110 002a 6221     		movs	r1, #98
+ 1111 002c 2046     		mov	r0, r4
+ 1112 002e FFF7FEFF 		bl	emit_byte
+ 1113              	.LVL147:
+ 429:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, 0x65);
+ 1114              		.loc 1 429 0
+ 1115 0032 6521     		movs	r1, #101
+ 1116 0034 2046     		mov	r0, r4
+ 1117 0036 FFF7FEFF 		bl	emit_byte
+ 1118              	.LVL148:
+ 430:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 100);	/* Version */
+ 1119              		.loc 1 430 0
+ARM GAS  /tmp/ccwFesPZ.s 			page 29
+
+
+ 1120 003a 6421     		movs	r1, #100
+ 1121 003c 2046     		mov	r0, r4
+ 1122 003e FFF7FEFF 		bl	emit_2bytes
+ 1123              	.LVL149:
+ 431:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 0);	/* Flags0 */
+ 1124              		.loc 1 431 0
+ 1125 0042 0021     		movs	r1, #0
+ 1126 0044 2046     		mov	r0, r4
+ 1127 0046 FFF7FEFF 		bl	emit_2bytes
+ 1128              	.LVL150:
+ 432:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, 0);	/* Flags1 */
+ 1129              		.loc 1 432 0
+ 1130 004a 0021     		movs	r1, #0
+ 1131 004c 2046     		mov	r0, r4
+ 1132 004e FFF7FEFF 		bl	emit_2bytes
+ 1133              	.LVL151:
+ 433:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   switch (cinfo->jpeg_color_space) {
+ 1134              		.loc 1 433 0
+ 1135 0052 94F85030 		ldrb	r3, [r4, #80]	@ zero_extendqisi2
+ 1136 0056 032B     		cmp	r3, #3
+ 1137 0058 06D0     		beq	.L78
+ 1138 005a 052B     		cmp	r3, #5
+ 1139 005c 09D0     		beq	.L79
+ 434:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   case JCS_YCbCr:
+ 435:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, 1);	/* Color transform = 1 */
+ 436:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     break;
+ 437:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   case JCS_YCCK:
+ 438:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, 2);	/* Color transform = 2 */
+ 439:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     break;
+ 440:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   default:
+ 441:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_byte(cinfo, 0);	/* Color transform = 0 */
+ 1140              		.loc 1 441 0
+ 1141 005e 0021     		movs	r1, #0
+ 1142 0060 2046     		mov	r0, r4
+ 1143 0062 FFF7FEFF 		bl	emit_byte
+ 1144              	.LVL152:
+ 442:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     break;
+ 443:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 444:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1145              		.loc 1 444 0
+ 1146 0066 03E0     		b	.L76
+ 1147              	.L78:
+ 435:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     break;
+ 1148              		.loc 1 435 0
+ 1149 0068 0121     		movs	r1, #1
+ 1150 006a 2046     		mov	r0, r4
+ 1151 006c FFF7FEFF 		bl	emit_byte
+ 1152              	.LVL153:
+ 1153              	.L76:
+ 1154              		.loc 1 444 0
+ 1155 0070 10BD     		pop	{r4, pc}
+ 1156              	.LVL154:
+ 1157              	.L79:
+ 438:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     break;
+ 1158              		.loc 1 438 0
+ 1159 0072 0221     		movs	r1, #2
+ 1160 0074 2046     		mov	r0, r4
+ARM GAS  /tmp/ccwFesPZ.s 			page 30
+
+
+ 1161 0076 FFF7FEFF 		bl	emit_byte
+ 1162              	.LVL155:
+ 439:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   default:
+ 1163              		.loc 1 439 0
+ 1164 007a F9E7     		b	.L76
+ 1165              		.cfi_endproc
+ 1166              	.LFE14:
+ 1168              		.section	.text.write_marker_header,"ax",%progbits
+ 1169              		.align	1
+ 1170              		.syntax unified
+ 1171              		.thumb
+ 1172              		.thumb_func
+ 1173              		.fpu fpv5-sp-d16
+ 1175              	write_marker_header:
+ 1176              	.LFB15:
+ 445:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 446:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 447:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 448:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * These routines allow writing an arbitrary marker with parameters.
+ 449:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * The only intended use is to emit COM or APPn markers after calling
+ 450:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * write_file_header and before calling write_frame_header.
+ 451:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Other uses are not guaranteed to produce desirable results.
+ 452:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Counting the parameter bytes properly is the caller's responsibility.
+ 453:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 454:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 455:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 456:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_marker_header (j_compress_ptr cinfo, int marker, unsigned int datalen)
+ 457:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit an arbitrary marker header */
+ 458:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1177              		.loc 1 458 0
+ 1178              		.cfi_startproc
+ 1179              		@ args = 0, pretend = 0, frame = 0
+ 1180              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1181              	.LVL156:
+ 1182 0000 70B5     		push	{r4, r5, r6, lr}
+ 1183              	.LCFI15:
+ 1184              		.cfi_def_cfa_offset 16
+ 1185              		.cfi_offset 4, -16
+ 1186              		.cfi_offset 5, -12
+ 1187              		.cfi_offset 6, -8
+ 1188              		.cfi_offset 14, -4
+ 1189 0002 0446     		mov	r4, r0
+ 1190 0004 0E46     		mov	r6, r1
+ 1191 0006 1546     		mov	r5, r2
+ 459:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (datalen > (unsigned int) 65533)		/* safety check */
+ 1192              		.loc 1 459 0
+ 1193 0008 4FF6FD73 		movw	r3, #65533
+ 1194 000c 9A42     		cmp	r2, r3
+ 1195 000e 05D9     		bls	.L84
+ 460:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     ERREXIT(cinfo, JERR_BAD_LENGTH);
+ 1196              		.loc 1 460 0
+ 1197 0010 0368     		ldr	r3, [r0]
+ 1198 0012 0C22     		movs	r2, #12
+ 1199              	.LVL157:
+ 1200 0014 5A61     		str	r2, [r3, #20]
+ 1201 0016 0368     		ldr	r3, [r0]
+ 1202 0018 1B68     		ldr	r3, [r3]
+ARM GAS  /tmp/ccwFesPZ.s 			page 31
+
+
+ 1203 001a 9847     		blx	r3
+ 1204              	.LVL158:
+ 1205              	.L84:
+ 461:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 462:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, (JPEG_MARKER) marker);
+ 1206              		.loc 1 462 0
+ 1207 001c B1B2     		uxth	r1, r6
+ 1208 001e 2046     		mov	r0, r4
+ 1209 0020 FFF7FEFF 		bl	emit_marker
+ 1210              	.LVL159:
+ 463:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 464:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_2bytes(cinfo, (int) (datalen + 2));	/* total length */
+ 1211              		.loc 1 464 0
+ 1212 0024 A91C     		adds	r1, r5, #2
+ 1213 0026 2046     		mov	r0, r4
+ 1214 0028 FFF7FEFF 		bl	emit_2bytes
+ 1215              	.LVL160:
+ 465:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1216              		.loc 1 465 0
+ 1217 002c 70BD     		pop	{r4, r5, r6, pc}
+ 1218              		.cfi_endproc
+ 1219              	.LFE15:
+ 1221              		.section	.text.write_marker_byte,"ax",%progbits
+ 1222              		.align	1
+ 1223              		.syntax unified
+ 1224              		.thumb
+ 1225              		.thumb_func
+ 1226              		.fpu fpv5-sp-d16
+ 1228              	write_marker_byte:
+ 1229              	.LFB16:
+ 466:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 467:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 468:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_marker_byte (j_compress_ptr cinfo, int val)
+ 469:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /* Emit one byte of marker parameters following write_marker_header */
+ 470:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1230              		.loc 1 470 0
+ 1231              		.cfi_startproc
+ 1232              		@ args = 0, pretend = 0, frame = 0
+ 1233              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1234              	.LVL161:
+ 1235 0000 08B5     		push	{r3, lr}
+ 1236              	.LCFI16:
+ 1237              		.cfi_def_cfa_offset 8
+ 1238              		.cfi_offset 3, -8
+ 1239              		.cfi_offset 14, -4
+ 471:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_byte(cinfo, val);
+ 1240              		.loc 1 471 0
+ 1241 0002 FFF7FEFF 		bl	emit_byte
+ 1242              	.LVL162:
+ 472:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1243              		.loc 1 472 0
+ 1244 0006 08BD     		pop	{r3, pc}
+ 1245              		.cfi_endproc
+ 1246              	.LFE16:
+ 1248              		.section	.text.write_file_header,"ax",%progbits
+ 1249              		.align	1
+ 1250              		.syntax unified
+ARM GAS  /tmp/ccwFesPZ.s 			page 32
+
+
+ 1251              		.thumb
+ 1252              		.thumb_func
+ 1253              		.fpu fpv5-sp-d16
+ 1255              	write_file_header:
+ 1256              	.LFB17:
+ 473:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 474:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 475:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 476:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Write datastream header.
+ 477:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This consists of an SOI and optional APPn markers.
+ 478:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * We recommend use of the JFIF marker, but not the Adobe marker,
+ 479:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * when using YCbCr or grayscale data.  The JFIF marker should NOT
+ 480:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * be used for any other JPEG colorspace.  The Adobe marker is helpful
+ 481:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * to distinguish RGB, CMYK, and YCCK colorspaces.
+ 482:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Note that an application can write additional header markers after
+ 483:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * jpeg_start_compress returns.
+ 484:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 485:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 486:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 487:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_file_header (j_compress_ptr cinfo)
+ 488:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1257              		.loc 1 488 0
+ 1258              		.cfi_startproc
+ 1259              		@ args = 0, pretend = 0, frame = 0
+ 1260              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1261              	.LVL163:
+ 1262 0000 38B5     		push	{r3, r4, r5, lr}
+ 1263              	.LCFI17:
+ 1264              		.cfi_def_cfa_offset 16
+ 1265              		.cfi_offset 3, -16
+ 1266              		.cfi_offset 4, -12
+ 1267              		.cfi_offset 5, -8
+ 1268              		.cfi_offset 14, -4
+ 1269 0002 0446     		mov	r4, r0
+ 489:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   my_marker_ptr marker = (my_marker_ptr) cinfo->marker;
+ 1270              		.loc 1 489 0
+ 1271 0004 D0F89451 		ldr	r5, [r0, #404]
+ 1272              	.LVL164:
+ 490:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 491:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_SOI);	/* first the SOI */
+ 1273              		.loc 1 491 0
+ 1274 0008 D821     		movs	r1, #216
+ 1275 000a FFF7FEFF 		bl	emit_marker
+ 1276              	.LVL165:
+ 492:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 493:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* SOI is defined to reset restart interval to 0 */
+ 494:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->last_restart_interval = 0;
+ 1277              		.loc 1 494 0
+ 1278 000e 0023     		movs	r3, #0
+ 1279 0010 EB61     		str	r3, [r5, #28]
+ 495:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 496:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->write_JFIF_header)	/* next an optional JFIF APP0 */
+ 1280              		.loc 1 496 0
+ 1281 0012 D4F8F430 		ldr	r3, [r4, #244]
+ 1282 0016 1BB9     		cbnz	r3, .L92
+ 1283              	.L89:
+ 497:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_jfif_app0(cinfo);
+ARM GAS  /tmp/ccwFesPZ.s 			page 33
+
+
+ 498:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->write_Adobe_marker) /* next an optional Adobe APP14 */
+ 1284              		.loc 1 498 0
+ 1285 0018 D4F80031 		ldr	r3, [r4, #256]
+ 1286 001c 23B9     		cbnz	r3, .L93
+ 1287              	.L88:
+ 499:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_adobe_app14(cinfo);
+ 500:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1288              		.loc 1 500 0
+ 1289 001e 38BD     		pop	{r3, r4, r5, pc}
+ 1290              	.LVL166:
+ 1291              	.L92:
+ 497:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_jfif_app0(cinfo);
+ 1292              		.loc 1 497 0
+ 1293 0020 2046     		mov	r0, r4
+ 1294 0022 FFF7FEFF 		bl	emit_jfif_app0
+ 1295              	.LVL167:
+ 1296 0026 F7E7     		b	.L89
+ 1297              	.L93:
+ 499:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_adobe_app14(cinfo);
+ 1298              		.loc 1 499 0
+ 1299 0028 2046     		mov	r0, r4
+ 1300 002a FFF7FEFF 		bl	emit_adobe_app14
+ 1301              	.LVL168:
+ 1302              		.loc 1 500 0
+ 1303 002e F6E7     		b	.L88
+ 1304              		.cfi_endproc
+ 1305              	.LFE17:
+ 1307              		.section	.text.write_frame_header,"ax",%progbits
+ 1308              		.align	1
+ 1309              		.syntax unified
+ 1310              		.thumb
+ 1311              		.thumb_func
+ 1312              		.fpu fpv5-sp-d16
+ 1314              	write_frame_header:
+ 1315              	.LFB18:
+ 501:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 502:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 503:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 504:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Write frame header.
+ 505:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This consists of DQT and SOFn markers, and a conditional pseudo SOS marker.
+ 506:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Note that we do not emit the SOF until we have emitted the DQT(s).
+ 507:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This avoids compatibility problems with incorrect implementations that
+ 508:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * try to error-check the quant table numbers as soon as they see the SOF.
+ 509:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 510:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 511:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 512:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_frame_header (j_compress_ptr cinfo)
+ 513:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1316              		.loc 1 513 0
+ 1317              		.cfi_startproc
+ 1318              		@ args = 0, pretend = 0, frame = 0
+ 1319              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1320              	.LVL169:
+ 1321 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 1322              	.LCFI18:
+ 1323              		.cfi_def_cfa_offset 24
+ 1324              		.cfi_offset 3, -24
+ARM GAS  /tmp/ccwFesPZ.s 			page 34
+
+
+ 1325              		.cfi_offset 4, -20
+ 1326              		.cfi_offset 5, -16
+ 1327              		.cfi_offset 6, -12
+ 1328              		.cfi_offset 7, -8
+ 1329              		.cfi_offset 14, -4
+ 1330 0002 0446     		mov	r4, r0
+ 1331              	.LVL170:
+ 514:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int ci, prec;
+ 515:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   boolean is_baseline;
+ 516:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   jpeg_component_info *compptr;
+ 517:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   
+ 518:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Emit DQT for each quantization table.
+ 519:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Note that emit_dqt() suppresses any duplicate tables.
+ 520:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    */
+ 521:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   prec = 0;
+ 522:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 1332              		.loc 1 522 0
+ 1333 0004 466D     		ldr	r6, [r0, #84]
+ 1334              	.LVL171:
+ 521:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 1335              		.loc 1 521 0
+ 1336 0006 0027     		movs	r7, #0
+ 1337              		.loc 1 522 0
+ 1338 0008 3D46     		mov	r5, r7
+ 1339 000a 06E0     		b	.L95
+ 1340              	.LVL172:
+ 1341              	.L96:
+ 523:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 524:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     prec += emit_dqt(cinfo, compptr->quant_tbl_no);
+ 1342              		.loc 1 524 0
+ 1343 000c 3169     		ldr	r1, [r6, #16]
+ 1344 000e 2046     		mov	r0, r4
+ 1345 0010 FFF7FEFF 		bl	emit_dqt
+ 1346              	.LVL173:
+ 1347 0014 0744     		add	r7, r7, r0
+ 1348              	.LVL174:
+ 523:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 1349              		.loc 1 523 0
+ 1350 0016 0135     		adds	r5, r5, #1
+ 1351              	.LVL175:
+ 1352 0018 5836     		adds	r6, r6, #88
+ 1353              	.LVL176:
+ 1354              	.L95:
+ 522:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****        ci++, compptr++) {
+ 1355              		.loc 1 522 0 discriminator 1
+ 1356 001a E36C     		ldr	r3, [r4, #76]
+ 1357 001c AB42     		cmp	r3, r5
+ 1358 001e F5DC     		bgt	.L96
+ 525:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 526:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* now prec is nonzero iff there are any 16-bit quant tables. */
+ 527:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 528:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Check for a non-baseline specification.
+ 529:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * Note we assume that Huffman table numbers won't be changed later.
+ 530:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    */
+ 531:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->arith_code || cinfo->progressive_mode ||
+ 1359              		.loc 1 531 0
+ 1360 0020 D4F8D420 		ldr	r2, [r4, #212]
+ARM GAS  /tmp/ccwFesPZ.s 			page 35
+
+
+ 1361 0024 72BB     		cbnz	r2, .L107
+ 1362              		.loc 1 531 0 is_stmt 0 discriminator 1
+ 1363 0026 D4F80821 		ldr	r2, [r4, #264]
+ 1364 002a 002A     		cmp	r2, #0
+ 1365 002c 40D1     		bne	.L108
+ 532:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       cinfo->data_precision != 8 || cinfo->block_size != DCTSIZE) {
+ 1366              		.loc 1 532 0 is_stmt 1 discriminator 2
+ 1367 002e A26C     		ldr	r2, [r4, #72]
+ 531:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       cinfo->data_precision != 8 || cinfo->block_size != DCTSIZE) {
+ 1368              		.loc 1 531 0 discriminator 2
+ 1369 0030 082A     		cmp	r2, #8
+ 1370 0032 01D0     		beq	.L114
+ 533:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     is_baseline = FALSE;
+ 1371              		.loc 1 533 0
+ 1372 0034 0022     		movs	r2, #0
+ 1373 0036 26E0     		b	.L97
+ 1374              	.L114:
+ 532:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       cinfo->data_precision != 8 || cinfo->block_size != DCTSIZE) {
+ 1375              		.loc 1 532 0
+ 1376 0038 D4F87821 		ldr	r2, [r4, #376]
+ 1377 003c 082A     		cmp	r2, #8
+ 1378 003e 01D0     		beq	.L115
+ 1379              		.loc 1 533 0
+ 1380 0040 0022     		movs	r2, #0
+ 1381 0042 20E0     		b	.L97
+ 1382              	.L115:
+ 1383              	.LVL177:
+ 534:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 535:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     is_baseline = TRUE;
+ 536:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 1384              		.loc 1 536 0
+ 1385 0044 616D     		ldr	r1, [r4, #84]
+ 1386              	.LVL178:
+ 535:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 1387              		.loc 1 535 0
+ 1388 0046 0122     		movs	r2, #1
+ 1389              		.loc 1 536 0
+ 1390 0048 0020     		movs	r0, #0
+ 1391 004a 05E0     		b	.L98
+ 1392              	.LVL179:
+ 1393              	.L117:
+ 537:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	 ci++, compptr++) {
+ 538:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (compptr->dc_tbl_no > 1 || compptr->ac_tbl_no > 1)
+ 1394              		.loc 1 538 0 discriminator 1
+ 1395 004c 8D69     		ldr	r5, [r1, #24]
+ 1396 004e 012D     		cmp	r5, #1
+ 1397 0050 00DD     		ble	.L99
+ 539:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	is_baseline = FALSE;
+ 1398              		.loc 1 539 0
+ 1399 0052 0022     		movs	r2, #0
+ 1400              	.LVL180:
+ 1401              	.L99:
+ 537:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	 ci++, compptr++) {
+ 1402              		.loc 1 537 0
+ 1403 0054 0130     		adds	r0, r0, #1
+ 1404              	.LVL181:
+ 1405 0056 5831     		adds	r1, r1, #88
+ARM GAS  /tmp/ccwFesPZ.s 			page 36
+
+
+ 1406              	.LVL182:
+ 1407              	.L98:
+ 536:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	 ci++, compptr++) {
+ 1408              		.loc 1 536 0 discriminator 1
+ 1409 0058 8342     		cmp	r3, r0
+ 1410 005a 04DD     		ble	.L116
+ 538:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	is_baseline = FALSE;
+ 1411              		.loc 1 538 0
+ 1412 005c 4D69     		ldr	r5, [r1, #20]
+ 1413 005e 012D     		cmp	r5, #1
+ 1414 0060 F4DD     		ble	.L117
+ 1415              		.loc 1 539 0
+ 1416 0062 0022     		movs	r2, #0
+ 1417              	.LVL183:
+ 1418 0064 F6E7     		b	.L99
+ 1419              	.LVL184:
+ 1420              	.L116:
+ 540:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 541:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (prec && is_baseline) {
+ 1421              		.loc 1 541 0
+ 1422 0066 002F     		cmp	r7, #0
+ 1423 0068 14BF     		ite	ne
+ 1424 006a 1746     		movne	r7, r2
+ 1425 006c 0027     		moveq	r7, #0
+ 1426              	.LVL185:
+ 1427 006e 57B1     		cbz	r7, .L97
+ 1428              	.LVL186:
+ 542:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       is_baseline = FALSE;
+ 543:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* If it's baseline except for quantizer size, warn the user */
+ 544:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       TRACEMS(cinfo, 0, JTRC_16BIT_TABLES);
+ 1429              		.loc 1 544 0
+ 1430 0070 2368     		ldr	r3, [r4]
+ 1431 0072 4D22     		movs	r2, #77
+ 1432 0074 5A61     		str	r2, [r3, #20]
+ 1433 0076 2368     		ldr	r3, [r4]
+ 1434 0078 5B68     		ldr	r3, [r3, #4]
+ 1435 007a 0021     		movs	r1, #0
+ 1436              	.LVL187:
+ 1437 007c 2046     		mov	r0, r4
+ 1438              	.LVL188:
+ 1439 007e 9847     		blx	r3
+ 1440              	.LVL189:
+ 542:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       is_baseline = FALSE;
+ 1441              		.loc 1 542 0
+ 1442 0080 0022     		movs	r2, #0
+ 1443 0082 00E0     		b	.L97
+ 1444              	.LVL190:
+ 1445              	.L107:
+ 533:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 1446              		.loc 1 533 0
+ 1447 0084 0022     		movs	r2, #0
+ 1448              	.LVL191:
+ 1449              	.L97:
+ 545:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 546:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 547:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 548:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Emit the proper SOF marker */
+ARM GAS  /tmp/ccwFesPZ.s 			page 37
+
+
+ 549:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->arith_code) {
+ 1450              		.loc 1 549 0
+ 1451 0086 D4F8D430 		ldr	r3, [r4, #212]
+ 1452 008a C3B1     		cbz	r3, .L101
+ 550:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (cinfo->progressive_mode)
+ 1453              		.loc 1 550 0
+ 1454 008c D4F80831 		ldr	r3, [r4, #264]
+ 1455 0090 83B1     		cbz	r3, .L102
+ 551:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF10); /* SOF code for progressive arithmetic */
+ 1456              		.loc 1 551 0
+ 1457 0092 CA21     		movs	r1, #202
+ 1458 0094 2046     		mov	r0, r4
+ 1459 0096 FFF7FEFF 		bl	emit_sof
+ 1460              	.LVL192:
+ 1461              	.L103:
+ 552:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     else
+ 553:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF9);  /* SOF code for sequential arithmetic */
+ 554:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 555:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (cinfo->progressive_mode)
+ 556:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF2);	/* SOF code for progressive Huffman */
+ 557:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     else if (is_baseline)
+ 558:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF0);	/* SOF code for baseline implementation */
+ 559:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     else
+ 560:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF1);	/* SOF code for non-baseline Huffman file */
+ 561:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 562:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 563:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Check to emit pseudo SOS marker */
+ 564:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->progressive_mode && cinfo->block_size != DCTSIZE)
+ 1462              		.loc 1 564 0
+ 1463 009a D4F80831 		ldr	r3, [r4, #264]
+ 1464 009e 33B1     		cbz	r3, .L94
+ 1465              		.loc 1 564 0 is_stmt 0 discriminator 1
+ 1466 00a0 D4F87831 		ldr	r3, [r4, #376]
+ 1467 00a4 082B     		cmp	r3, #8
+ 1468 00a6 02D0     		beq	.L94
+ 565:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_pseudo_sos(cinfo);
+ 1469              		.loc 1 565 0 is_stmt 1
+ 1470 00a8 2046     		mov	r0, r4
+ 1471 00aa FFF7FEFF 		bl	emit_pseudo_sos
+ 1472              	.LVL193:
+ 1473              	.L94:
+ 566:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1474              		.loc 1 566 0
+ 1475 00ae F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 1476              	.LVL194:
+ 1477              	.L108:
+ 533:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 1478              		.loc 1 533 0
+ 1479 00b0 0022     		movs	r2, #0
+ 1480 00b2 E8E7     		b	.L97
+ 1481              	.LVL195:
+ 1482              	.L102:
+ 553:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 1483              		.loc 1 553 0
+ 1484 00b4 C921     		movs	r1, #201
+ 1485 00b6 2046     		mov	r0, r4
+ 1486 00b8 FFF7FEFF 		bl	emit_sof
+ARM GAS  /tmp/ccwFesPZ.s 			page 38
+
+
+ 1487              	.LVL196:
+ 1488 00bc EDE7     		b	.L103
+ 1489              	.LVL197:
+ 1490              	.L101:
+ 555:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF2);	/* SOF code for progressive Huffman */
+ 1491              		.loc 1 555 0
+ 1492 00be D4F80831 		ldr	r3, [r4, #264]
+ 1493 00c2 2BB9     		cbnz	r3, .L118
+ 557:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       emit_sof(cinfo, M_SOF0);	/* SOF code for baseline implementation */
+ 1494              		.loc 1 557 0
+ 1495 00c4 4AB1     		cbz	r2, .L105
+ 558:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     else
+ 1496              		.loc 1 558 0
+ 1497 00c6 C021     		movs	r1, #192
+ 1498 00c8 2046     		mov	r0, r4
+ 1499 00ca FFF7FEFF 		bl	emit_sof
+ 1500              	.LVL198:
+ 1501 00ce E4E7     		b	.L103
+ 1502              	.LVL199:
+ 1503              	.L118:
+ 556:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     else if (is_baseline)
+ 1504              		.loc 1 556 0
+ 1505 00d0 C221     		movs	r1, #194
+ 1506 00d2 2046     		mov	r0, r4
+ 1507 00d4 FFF7FEFF 		bl	emit_sof
+ 1508              	.LVL200:
+ 1509 00d8 DFE7     		b	.L103
+ 1510              	.LVL201:
+ 1511              	.L105:
+ 560:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 1512              		.loc 1 560 0
+ 1513 00da C121     		movs	r1, #193
+ 1514 00dc 2046     		mov	r0, r4
+ 1515 00de FFF7FEFF 		bl	emit_sof
+ 1516              	.LVL202:
+ 1517 00e2 DAE7     		b	.L103
+ 1518              		.cfi_endproc
+ 1519              	.LFE18:
+ 1521              		.section	.text.write_scan_header,"ax",%progbits
+ 1522              		.align	1
+ 1523              		.syntax unified
+ 1524              		.thumb
+ 1525              		.thumb_func
+ 1526              		.fpu fpv5-sp-d16
+ 1528              	write_scan_header:
+ 1529              	.LFB19:
+ 567:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 568:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 569:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 570:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Write scan header.
+ 571:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This consists of DHT or DAC markers, optional DRI, and SOS.
+ 572:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Compressed data will be written following the SOS.
+ 573:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 574:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 575:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 576:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_scan_header (j_compress_ptr cinfo)
+ 577:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ARM GAS  /tmp/ccwFesPZ.s 			page 39
+
+
+ 1530              		.loc 1 577 0
+ 1531              		.cfi_startproc
+ 1532              		@ args = 0, pretend = 0, frame = 0
+ 1533              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1534              	.LVL203:
+ 1535 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 1536              	.LCFI19:
+ 1537              		.cfi_def_cfa_offset 24
+ 1538              		.cfi_offset 3, -24
+ 1539              		.cfi_offset 4, -20
+ 1540              		.cfi_offset 5, -16
+ 1541              		.cfi_offset 6, -12
+ 1542              		.cfi_offset 7, -8
+ 1543              		.cfi_offset 14, -4
+ 1544 0002 0446     		mov	r4, r0
+ 578:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   my_marker_ptr marker = (my_marker_ptr) cinfo->marker;
+ 1545              		.loc 1 578 0
+ 1546 0004 D0F89461 		ldr	r6, [r0, #404]
+ 1547              	.LVL204:
+ 579:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int i;
+ 580:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   jpeg_component_info *compptr;
+ 581:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 582:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->arith_code) {
+ 1548              		.loc 1 582 0
+ 1549 0008 D0F8D430 		ldr	r3, [r0, #212]
+ 1550 000c 0BB9     		cbnz	r3, .L128
+ 583:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* Emit arith conditioning info.  We may have some duplication
+ 584:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      * if the file has multiple scans, but it's so small it's hardly
+ 585:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      * worth worrying about.
+ 586:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      */
+ 587:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_dac(cinfo);
+ 588:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 589:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     /* Emit Huffman tables.
+ 590:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      * Note that emit_dht() suppresses any duplicate tables.
+ 591:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****      */
+ 592:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 0; i < cinfo->comps_in_scan; i++) {
+ 1551              		.loc 1 592 0
+ 1552 000e 0025     		movs	r5, #0
+ 1553 0010 14E0     		b	.L120
+ 1554              	.L128:
+ 587:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   } else {
+ 1555              		.loc 1 587 0
+ 1556 0012 FFF7FEFF 		bl	emit_dac
+ 1557              	.LVL205:
+ 1558              	.L121:
+ 593:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       compptr = cinfo->cur_comp_info[i];
+ 594:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* DC needs no table for refinement scan */
+ 595:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (cinfo->Ss == 0 && cinfo->Ah == 0)
+ 596:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, compptr->dc_tbl_no, FALSE);
+ 597:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* AC needs no table when not present */
+ 598:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (cinfo->Se)
+ 599:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, compptr->ac_tbl_no, TRUE);
+ 600:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 601:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 602:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 603:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Emit DRI if required --- note that DRI value could change for each scan.
+ 604:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    * We avoid wasting space with unnecessary DRIs, however.
+ARM GAS  /tmp/ccwFesPZ.s 			page 40
+
+
+ 605:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****    */
+ 606:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (cinfo->restart_interval != marker->last_restart_interval) {
+ 1559              		.loc 1 606 0
+ 1560 0016 D4F8EC20 		ldr	r2, [r4, #236]
+ 1561 001a F369     		ldr	r3, [r6, #28]
+ 1562 001c 9A42     		cmp	r2, r3
+ 1563 001e 05D0     		beq	.L125
+ 607:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     emit_dri(cinfo);
+ 1564              		.loc 1 607 0
+ 1565 0020 2046     		mov	r0, r4
+ 1566 0022 FFF7FEFF 		bl	emit_dri
+ 1567              	.LVL206:
+ 608:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     marker->last_restart_interval = cinfo->restart_interval;
+ 1568              		.loc 1 608 0
+ 1569 0026 D4F8EC30 		ldr	r3, [r4, #236]
+ 1570 002a F361     		str	r3, [r6, #28]
+ 1571              	.L125:
+ 609:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 610:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 611:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_sos(cinfo);
+ 1572              		.loc 1 611 0
+ 1573 002c 2046     		mov	r0, r4
+ 1574 002e FFF7FEFF 		bl	emit_sos
+ 1575              	.LVL207:
+ 612:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1576              		.loc 1 612 0
+ 1577 0032 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 1578              	.LVL208:
+ 1579              	.L122:
+ 598:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, compptr->ac_tbl_no, TRUE);
+ 1580              		.loc 1 598 0
+ 1581 0034 D4F86C31 		ldr	r3, [r4, #364]
+ 1582 0038 BBB9     		cbnz	r3, .L129
+ 1583              	.L123:
+ 592:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       compptr = cinfo->cur_comp_info[i];
+ 1584              		.loc 1 592 0 discriminator 2
+ 1585 003a 0135     		adds	r5, r5, #1
+ 1586              	.LVL209:
+ 1587              	.L120:
+ 592:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       compptr = cinfo->cur_comp_info[i];
+ 1588              		.loc 1 592 0 is_stmt 0 discriminator 1
+ 1589 003c D4F82031 		ldr	r3, [r4, #288]
+ 1590 0040 AB42     		cmp	r3, r5
+ 1591 0042 E8DD     		ble	.L121
+ 593:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* DC needs no table for refinement scan */
+ 1592              		.loc 1 593 0 is_stmt 1
+ 1593 0044 05F14803 		add	r3, r5, #72
+ 1594 0048 04EB8303 		add	r3, r4, r3, lsl #2
+ 1595 004c 5F68     		ldr	r7, [r3, #4]
+ 1596              	.LVL210:
+ 595:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, compptr->dc_tbl_no, FALSE);
+ 1597              		.loc 1 595 0
+ 1598 004e D4F86831 		ldr	r3, [r4, #360]
+ 1599 0052 002B     		cmp	r3, #0
+ 1600 0054 EED1     		bne	.L122
+ 595:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, compptr->dc_tbl_no, FALSE);
+ 1601              		.loc 1 595 0 is_stmt 0 discriminator 1
+ARM GAS  /tmp/ccwFesPZ.s 			page 41
+
+
+ 1602 0056 D4F87031 		ldr	r3, [r4, #368]
+ 1603 005a 002B     		cmp	r3, #0
+ 1604 005c EAD1     		bne	.L122
+ 596:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       /* AC needs no table when not present */
+ 1605              		.loc 1 596 0 is_stmt 1
+ 1606 005e 0022     		movs	r2, #0
+ 1607 0060 7969     		ldr	r1, [r7, #20]
+ 1608 0062 2046     		mov	r0, r4
+ 1609 0064 FFF7FEFF 		bl	emit_dht
+ 1610              	.LVL211:
+ 1611 0068 E4E7     		b	.L122
+ 1612              	.L129:
+ 599:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 1613              		.loc 1 599 0
+ 1614 006a 0122     		movs	r2, #1
+ 1615 006c B969     		ldr	r1, [r7, #24]
+ 1616 006e 2046     		mov	r0, r4
+ 1617 0070 FFF7FEFF 		bl	emit_dht
+ 1618              	.LVL212:
+ 1619 0074 E1E7     		b	.L123
+ 1620              		.cfi_endproc
+ 1621              	.LFE19:
+ 1623              		.section	.text.write_file_trailer,"ax",%progbits
+ 1624              		.align	1
+ 1625              		.syntax unified
+ 1626              		.thumb
+ 1627              		.thumb_func
+ 1628              		.fpu fpv5-sp-d16
+ 1630              	write_file_trailer:
+ 1631              	.LFB20:
+ 613:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 614:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 615:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 616:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Write datastream trailer.
+ 617:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 618:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 619:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 620:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_file_trailer (j_compress_ptr cinfo)
+ 621:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1632              		.loc 1 621 0
+ 1633              		.cfi_startproc
+ 1634              		@ args = 0, pretend = 0, frame = 0
+ 1635              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1636              	.LVL213:
+ 1637 0000 08B5     		push	{r3, lr}
+ 1638              	.LCFI20:
+ 1639              		.cfi_def_cfa_offset 8
+ 1640              		.cfi_offset 3, -8
+ 1641              		.cfi_offset 14, -4
+ 622:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_EOI);
+ 1642              		.loc 1 622 0
+ 1643 0002 D921     		movs	r1, #217
+ 1644 0004 FFF7FEFF 		bl	emit_marker
+ 1645              	.LVL214:
+ 623:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1646              		.loc 1 623 0
+ 1647 0008 08BD     		pop	{r3, pc}
+ARM GAS  /tmp/ccwFesPZ.s 			page 42
+
+
+ 1648              		.cfi_endproc
+ 1649              	.LFE20:
+ 1651              		.section	.text.write_tables_only,"ax",%progbits
+ 1652              		.align	1
+ 1653              		.syntax unified
+ 1654              		.thumb
+ 1655              		.thumb_func
+ 1656              		.fpu fpv5-sp-d16
+ 1658              	write_tables_only:
+ 1659              	.LFB21:
+ 624:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 625:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 626:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 627:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Write an abbreviated table-specification datastream.
+ 628:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * This consists of SOI, DQT and DHT tables, and EOI.
+ 629:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Any table that is defined and not marked sent_table = TRUE will be
+ 630:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * emitted.  Note that all tables will be marked sent_table = TRUE at exit.
+ 631:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 632:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 633:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** METHODDEF(void)
+ 634:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** write_tables_only (j_compress_ptr cinfo)
+ 635:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1660              		.loc 1 635 0
+ 1661              		.cfi_startproc
+ 1662              		@ args = 0, pretend = 0, frame = 0
+ 1663              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1664              	.LVL215:
+ 1665 0000 38B5     		push	{r3, r4, r5, lr}
+ 1666              	.LCFI21:
+ 1667              		.cfi_def_cfa_offset 16
+ 1668              		.cfi_offset 3, -16
+ 1669              		.cfi_offset 4, -12
+ 1670              		.cfi_offset 5, -8
+ 1671              		.cfi_offset 14, -4
+ 1672 0002 0546     		mov	r5, r0
+ 636:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   int i;
+ 637:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 638:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_SOI);
+ 1673              		.loc 1 638 0
+ 1674 0004 D821     		movs	r1, #216
+ 1675 0006 FFF7FEFF 		bl	emit_marker
+ 1676              	.LVL216:
+ 639:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 640:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   for (i = 0; i < NUM_QUANT_TBLS; i++) {
+ 1677              		.loc 1 640 0
+ 1678 000a 0024     		movs	r4, #0
+ 1679 000c 00E0     		b	.L133
+ 1680              	.LVL217:
+ 1681              	.L134:
+ 1682              		.loc 1 640 0 is_stmt 0 discriminator 2
+ 1683 000e 0134     		adds	r4, r4, #1
+ 1684              	.LVL218:
+ 1685              	.L133:
+ 1686              		.loc 1 640 0 discriminator 1
+ 1687 0010 032C     		cmp	r4, #3
+ 1688 0012 0ADC     		bgt	.L143
+ 641:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     if (cinfo->quant_tbl_ptrs[i] != NULL)
+ARM GAS  /tmp/ccwFesPZ.s 			page 43
+
+
+ 1689              		.loc 1 641 0 is_stmt 1
+ 1690 0014 04F11603 		add	r3, r4, #22
+ 1691 0018 55F82330 		ldr	r3, [r5, r3, lsl #2]
+ 1692 001c 002B     		cmp	r3, #0
+ 1693 001e F6D0     		beq	.L134
+ 642:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       (void) emit_dqt(cinfo, i);
+ 1694              		.loc 1 642 0
+ 1695 0020 2146     		mov	r1, r4
+ 1696 0022 2846     		mov	r0, r5
+ 1697 0024 FFF7FEFF 		bl	emit_dqt
+ 1698              	.LVL219:
+ 1699 0028 F1E7     		b	.L134
+ 1700              	.L143:
+ 643:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 644:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 645:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   if (! cinfo->arith_code) {
+ 1701              		.loc 1 645 0
+ 1702 002a D5F8D430 		ldr	r3, [r5, #212]
+ 1703 002e D3B9     		cbnz	r3, .L137
+ 646:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     for (i = 0; i < NUM_HUFF_TBLS; i++) {
+ 1704              		.loc 1 646 0
+ 1705 0030 0024     		movs	r4, #0
+ 1706              	.LVL220:
+ 1707 0032 00E0     		b	.L136
+ 1708              	.LVL221:
+ 1709              	.L139:
+ 1710              		.loc 1 646 0 is_stmt 0 discriminator 2
+ 1711 0034 0134     		adds	r4, r4, #1
+ 1712              	.LVL222:
+ 1713              	.L136:
+ 1714              		.loc 1 646 0 discriminator 1
+ 1715 0036 032C     		cmp	r4, #3
+ 1716 0038 15DC     		bgt	.L137
+ 647:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (cinfo->dc_huff_tbl_ptrs[i] != NULL)
+ 1717              		.loc 1 647 0 is_stmt 1
+ 1718 003a 04F11E03 		add	r3, r4, #30
+ 1719 003e 55F82330 		ldr	r3, [r5, r3, lsl #2]
+ 1720 0042 23B1     		cbz	r3, .L138
+ 648:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, i, FALSE);
+ 1721              		.loc 1 648 0
+ 1722 0044 0022     		movs	r2, #0
+ 1723 0046 2146     		mov	r1, r4
+ 1724 0048 2846     		mov	r0, r5
+ 1725 004a FFF7FEFF 		bl	emit_dht
+ 1726              	.LVL223:
+ 1727              	.L138:
+ 649:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****       if (cinfo->ac_huff_tbl_ptrs[i] != NULL)
+ 1728              		.loc 1 649 0
+ 1729 004e 04F12203 		add	r3, r4, #34
+ 1730 0052 55F82330 		ldr	r3, [r5, r3, lsl #2]
+ 1731 0056 002B     		cmp	r3, #0
+ 1732 0058 ECD0     		beq	.L139
+ 650:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 	emit_dht(cinfo, i, TRUE);
+ 1733              		.loc 1 650 0
+ 1734 005a 0122     		movs	r2, #1
+ 1735 005c 2146     		mov	r1, r4
+ 1736 005e 2846     		mov	r0, r5
+ARM GAS  /tmp/ccwFesPZ.s 			page 44
+
+
+ 1737 0060 FFF7FEFF 		bl	emit_dht
+ 1738              	.LVL224:
+ 1739 0064 E6E7     		b	.L139
+ 1740              	.L137:
+ 651:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     }
+ 652:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   }
+ 653:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 654:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   emit_marker(cinfo, M_EOI);
+ 1741              		.loc 1 654 0
+ 1742 0066 D921     		movs	r1, #217
+ 1743 0068 2846     		mov	r0, r5
+ 1744 006a FFF7FEFF 		bl	emit_marker
+ 1745              	.LVL225:
+ 655:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1746              		.loc 1 655 0
+ 1747 006e 38BD     		pop	{r3, r4, r5, pc}
+ 1748              		.cfi_endproc
+ 1749              	.LFE21:
+ 1751              		.section	.text.jinit_marker_writer,"ax",%progbits
+ 1752              		.align	1
+ 1753              		.global	jinit_marker_writer
+ 1754              		.syntax unified
+ 1755              		.thumb
+ 1756              		.thumb_func
+ 1757              		.fpu fpv5-sp-d16
+ 1759              	jinit_marker_writer:
+ 1760              	.LFB22:
+ 656:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 657:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 658:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** /*
+ 659:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  * Initialize the marker writer module.
+ 660:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****  */
+ 661:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 662:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** GLOBAL(void)
+ 663:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** jinit_marker_writer (j_compress_ptr cinfo)
+ 664:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** {
+ 1761              		.loc 1 664 0
+ 1762              		.cfi_startproc
+ 1763              		@ args = 0, pretend = 0, frame = 0
+ 1764              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1765              	.LVL226:
+ 1766 0000 10B5     		push	{r4, lr}
+ 1767              	.LCFI22:
+ 1768              		.cfi_def_cfa_offset 8
+ 1769              		.cfi_offset 4, -8
+ 1770              		.cfi_offset 14, -4
+ 1771 0002 0446     		mov	r4, r0
+ 665:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   my_marker_ptr marker;
+ 666:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 
+ 667:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Create the subobject */
+ 668:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker = (my_marker_ptr)
+ 669:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 1772              		.loc 1 669 0
+ 1773 0004 4368     		ldr	r3, [r0, #4]
+ 1774 0006 1B68     		ldr	r3, [r3]
+ 668:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 1775              		.loc 1 668 0
+ARM GAS  /tmp/ccwFesPZ.s 			page 45
+
+
+ 1776 0008 2022     		movs	r2, #32
+ 1777 000a 0121     		movs	r1, #1
+ 1778 000c 9847     		blx	r3
+ 1779              	.LVL227:
+ 670:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** 				SIZEOF(my_marker_writer));
+ 671:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   cinfo->marker = (struct jpeg_marker_writer *) marker;
+ 1780              		.loc 1 671 0
+ 1781 000e C4F89401 		str	r0, [r4, #404]
+ 672:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Initialize method pointers */
+ 673:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_file_header = write_file_header;
+ 1782              		.loc 1 673 0
+ 1783 0012 084B     		ldr	r3, .L146
+ 1784 0014 0360     		str	r3, [r0]
+ 674:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_frame_header = write_frame_header;
+ 1785              		.loc 1 674 0
+ 1786 0016 084B     		ldr	r3, .L146+4
+ 1787 0018 4360     		str	r3, [r0, #4]
+ 675:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_scan_header = write_scan_header;
+ 1788              		.loc 1 675 0
+ 1789 001a 084B     		ldr	r3, .L146+8
+ 1790 001c 8360     		str	r3, [r0, #8]
+ 676:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_file_trailer = write_file_trailer;
+ 1791              		.loc 1 676 0
+ 1792 001e 084B     		ldr	r3, .L146+12
+ 1793 0020 C360     		str	r3, [r0, #12]
+ 677:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_tables_only = write_tables_only;
+ 1794              		.loc 1 677 0
+ 1795 0022 084B     		ldr	r3, .L146+16
+ 1796 0024 0361     		str	r3, [r0, #16]
+ 678:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_marker_header = write_marker_header;
+ 1797              		.loc 1 678 0
+ 1798 0026 084B     		ldr	r3, .L146+20
+ 1799 0028 4361     		str	r3, [r0, #20]
+ 679:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->pub.write_marker_byte = write_marker_byte;
+ 1800              		.loc 1 679 0
+ 1801 002a 084B     		ldr	r3, .L146+24
+ 1802 002c 8361     		str	r3, [r0, #24]
+ 680:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   /* Initialize private state */
+ 681:Middlewares/Third_Party/LibJPEG/source/jcmarker.c ****   marker->last_restart_interval = 0;
+ 1803              		.loc 1 681 0
+ 1804 002e 0023     		movs	r3, #0
+ 1805 0030 C361     		str	r3, [r0, #28]
+ 682:Middlewares/Third_Party/LibJPEG/source/jcmarker.c **** }
+ 1806              		.loc 1 682 0
+ 1807 0032 10BD     		pop	{r4, pc}
+ 1808              	.LVL228:
+ 1809              	.L147:
+ 1810              		.align	2
+ 1811              	.L146:
+ 1812 0034 00000000 		.word	write_file_header
+ 1813 0038 00000000 		.word	write_frame_header
+ 1814 003c 00000000 		.word	write_scan_header
+ 1815 0040 00000000 		.word	write_file_trailer
+ 1816 0044 00000000 		.word	write_tables_only
+ 1817 0048 00000000 		.word	write_marker_header
+ 1818 004c 00000000 		.word	write_marker_byte
+ 1819              		.cfi_endproc
+ARM GAS  /tmp/ccwFesPZ.s 			page 46
+
+
+ 1820              	.LFE22:
+ 1822              		.text
+ 1823              	.Letext0:
+ 1824              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 1825              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 1826              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 1827              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 1828              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 1829              		.file 7 "Inc/jmorecfg.h"
+ 1830              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 1831              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 1832              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ARM GAS  /tmp/ccwFesPZ.s 			page 47
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jcmarker.c
+     /tmp/ccwFesPZ.s:18     .text.emit_byte:0000000000000000 $t
+     /tmp/ccwFesPZ.s:24     .text.emit_byte:0000000000000000 emit_byte
+     /tmp/ccwFesPZ.s:73     .text.emit_marker:0000000000000000 $t
+     /tmp/ccwFesPZ.s:79     .text.emit_marker:0000000000000000 emit_marker
+     /tmp/ccwFesPZ.s:111    .text.emit_2bytes:0000000000000000 $t
+     /tmp/ccwFesPZ.s:117    .text.emit_2bytes:0000000000000000 emit_2bytes
+     /tmp/ccwFesPZ.s:149    .text.emit_dqt:0000000000000000 $t
+     /tmp/ccwFesPZ.s:155    .text.emit_dqt:0000000000000000 emit_dqt
+     /tmp/ccwFesPZ.s:307    .text.emit_dht:0000000000000000 $t
+     /tmp/ccwFesPZ.s:313    .text.emit_dht:0000000000000000 emit_dht
+     /tmp/ccwFesPZ.s:453    .text.emit_dac:0000000000000000 $t
+     /tmp/ccwFesPZ.s:459    .text.emit_dac:0000000000000000 emit_dac
+     /tmp/ccwFesPZ.s:647    .text.emit_dri:0000000000000000 $t
+     /tmp/ccwFesPZ.s:653    .text.emit_dri:0000000000000000 emit_dri
+     /tmp/ccwFesPZ.s:686    .text.emit_sof:0000000000000000 $t
+     /tmp/ccwFesPZ.s:692    .text.emit_sof:0000000000000000 emit_sof
+     /tmp/ccwFesPZ.s:803    .text.emit_sos:0000000000000000 $t
+     /tmp/ccwFesPZ.s:809    .text.emit_sos:0000000000000000 emit_sos
+     /tmp/ccwFesPZ.s:916    .text.emit_pseudo_sos:0000000000000000 $t
+     /tmp/ccwFesPZ.s:922    .text.emit_pseudo_sos:0000000000000000 emit_pseudo_sos
+     /tmp/ccwFesPZ.s:972    .text.emit_jfif_app0:0000000000000000 $t
+     /tmp/ccwFesPZ.s:978    .text.emit_jfif_app0:0000000000000000 emit_jfif_app0
+     /tmp/ccwFesPZ.s:1066   .text.emit_adobe_app14:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1072   .text.emit_adobe_app14:0000000000000000 emit_adobe_app14
+     /tmp/ccwFesPZ.s:1169   .text.write_marker_header:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1175   .text.write_marker_header:0000000000000000 write_marker_header
+     /tmp/ccwFesPZ.s:1222   .text.write_marker_byte:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1228   .text.write_marker_byte:0000000000000000 write_marker_byte
+     /tmp/ccwFesPZ.s:1249   .text.write_file_header:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1255   .text.write_file_header:0000000000000000 write_file_header
+     /tmp/ccwFesPZ.s:1308   .text.write_frame_header:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1314   .text.write_frame_header:0000000000000000 write_frame_header
+     /tmp/ccwFesPZ.s:1522   .text.write_scan_header:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1528   .text.write_scan_header:0000000000000000 write_scan_header
+     /tmp/ccwFesPZ.s:1624   .text.write_file_trailer:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1630   .text.write_file_trailer:0000000000000000 write_file_trailer
+     /tmp/ccwFesPZ.s:1652   .text.write_tables_only:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1658   .text.write_tables_only:0000000000000000 write_tables_only
+     /tmp/ccwFesPZ.s:1752   .text.jinit_marker_writer:0000000000000000 $t
+     /tmp/ccwFesPZ.s:1759   .text.jinit_marker_writer:0000000000000000 jinit_marker_writer
+     /tmp/ccwFesPZ.s:1812   .text.jinit_marker_writer:0000000000000034 $d
+
+NO UNDEFINED SYMBOLS

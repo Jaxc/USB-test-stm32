@@ -1,0 +1,1690 @@
+ARM GAS  /tmp/ccgLGD7n.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jdmainct.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.alloc_funny_pointers,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	alloc_funny_pointers:
+  25              	.LFB3:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jdmainct.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * jdmainct.c
+   3:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Copyright (C) 1994-1996, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This file is part of the Independent JPEG Group's software.
+   6:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * For conditions of distribution and use, see the accompanying README file.
+   7:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+   8:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This file contains the main buffer controller for decompression.
+   9:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The main buffer lies between the JPEG decompressor proper and the
+  10:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * post-processor; it holds downsampled data in the JPEG colorspace.
+  11:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  12:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Note that this code is bypassed in raw-data mode, since the application
+  13:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * supplies the equivalent of the main buffer in that case.
+  14:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+  15:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+  16:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #define JPEG_INTERNALS
+  17:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #include "jinclude.h"
+  18:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #include "jpeglib.h"
+  19:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+  20:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+  21:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+  22:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * In the current system design, the main buffer need never be a full-image
+  23:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * buffer; any full-height buffers will be found inside the coefficient or
+  24:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * postprocessing controllers.  Nonetheless, the main controller is not
+  25:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * trivial.  Its responsibility is to provide context rows for upsampling/
+  26:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * rescaling, and doing this in an efficient fashion is a bit tricky.
+  27:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  28:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Postprocessor input data is counted in "row groups".  A row group
+  29:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * is defined to be (v_samp_factor * DCT_scaled_size / min_DCT_scaled_size)
+  30:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * sample rows of each component.  (We require DCT_scaled_size values to be
+  31:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * chosen such that these numbers are integers.  In practice DCT_scaled_size
+  32:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * values will likely be powers of two, so we actually have the stronger
+ARM GAS  /tmp/ccgLGD7n.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * condition that DCT_scaled_size / min_DCT_scaled_size is an integer.)
+  34:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Upsampling will typically produce max_v_samp_factor pixel rows from each
+  35:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * row group (times any additional scale factor that the upsampler is
+  36:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * applying).
+  37:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  38:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The coefficient controller will deliver data to us one iMCU row at a time;
+  39:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * each iMCU row contains v_samp_factor * DCT_scaled_size sample rows, or
+  40:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * exactly min_DCT_scaled_size row groups.  (This amount of data corresponds
+  41:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * to one row of MCUs when the image is fully interleaved.)  Note that the
+  42:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * number of sample rows varies across components, but the number of row
+  43:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * groups does not.  Some garbage sample rows may be included in the last iMCU
+  44:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * row at the bottom of the image.
+  45:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  46:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Depending on the vertical scaling algorithm used, the upsampler may need
+  47:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * access to the sample row(s) above and below its current input row group.
+  48:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The upsampler is required to set need_context_rows TRUE at global selection
+  49:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * time if so.  When need_context_rows is FALSE, this controller can simply
+  50:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * obtain one iMCU row at a time from the coefficient controller and dole it
+  51:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * out as row groups to the postprocessor.
+  52:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  53:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * When need_context_rows is TRUE, this controller guarantees that the buffer
+  54:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * passed to postprocessing contains at least one row group's worth of samples
+  55:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * above and below the row group(s) being processed.  Note that the context
+  56:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * rows "above" the first passed row group appear at negative row offsets in
+  57:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * the passed buffer.  At the top and bottom of the image, the required
+  58:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * context rows are manufactured by duplicating the first or last real sample
+  59:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * row; this avoids having special cases in the upsampling inner loops.
+  60:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  61:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The amount of context is fixed at one row group just because that's a
+  62:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * convenient number for this controller to work with.  The existing
+  63:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * upsamplers really only need one sample row of context.  An upsampler
+  64:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * supporting arbitrary output rescaling might wish for more than one row
+  65:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * group of context when shrinking the image; tough, we don't handle that.
+  66:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * (This is justified by the assumption that downsizing will be handled mostly
+  67:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * by adjusting the DCT_scaled_size values, so that the actual scale factor at
+  68:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * the upsample step needn't be much less than one.)
+  69:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  70:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * To provide the desired context, we have to retain the last two row groups
+  71:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * of one iMCU row while reading in the next iMCU row.  (The last row group
+  72:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * can't be processed until we have another row group for its below-context,
+  73:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * and so we have to save the next-to-last group too for its above-context.)
+  74:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * We could do this most simply by copying data around in our buffer, but
+  75:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * that'd be very slow.  We can avoid copying any data by creating a rather
+  76:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * strange pointer structure.  Here's how it works.  We allocate a workspace
+  77:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * consisting of M+2 row groups (where M = min_DCT_scaled_size is the number
+  78:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * of row groups per iMCU row).  We create two sets of redundant pointers to
+  79:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * the workspace.  Labeling the physical row groups 0 to M+1, the synthesized
+  80:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * pointer lists look like this:
+  81:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   M+1                          M-1
+  82:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * master pointer --> 0         master pointer --> 0
+  83:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                    1                            1
+  84:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   ...                          ...
+  85:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   M-3                          M-3
+  86:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   M-2                           M
+  87:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   M-1                          M+1
+  88:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                    M                           M-2
+  89:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                   M+1                          M-1
+ARM GAS  /tmp/ccgLGD7n.s 			page 3
+
+
+  90:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *                    0                            0
+  91:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * We read alternate iMCU rows using each master pointer; thus the last two
+  92:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * row groups of the previous iMCU row remain un-overwritten in the workspace.
+  93:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The pointer lists are set up so that the required context rows appear to
+  94:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * be adjacent to the proper places when we pass the pointer lists to the
+  95:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * upsampler.
+  96:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+  97:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The above pictures describe the normal state of the pointer lists.
+  98:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * At top and bottom of the image, we diddle the pointer lists to duplicate
+  99:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * the first or last sample row as necessary (this is cheaper than copying
+ 100:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * sample rows around).
+ 101:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  *
+ 102:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This scheme breaks down if M < 2, ie, min_DCT_scaled_size is 1.  In that
+ 103:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * situation each iMCU row provides only one row group so the buffering logic
+ 104:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * must be different (eg, we must read two iMCU rows before we can emit the
+ 105:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * first row group).  For now, we simply do not support providing context
+ 106:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * rows when min_DCT_scaled_size is 1.  That combination seems unlikely to
+ 107:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * be worth providing --- if someone wants a 1/8th-size preview, they probably
+ 108:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * want it quick and dirty, so a context-free upsampler is sufficient.
+ 109:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 110:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 111:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 112:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Private buffer controller object */
+ 113:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 114:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** typedef struct {
+ 115:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   struct jpeg_d_main_controller pub; /* public fields */
+ 116:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 117:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Pointer to allocated workspace (M or M+2 row groups). */
+ 118:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPARRAY buffer[MAX_COMPONENTS];
+ 119:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 120:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   boolean buffer_full;		/* Have we gotten an iMCU row from decoder? */
+ 121:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JDIMENSION rowgroup_ctr;	/* counts row groups output to postprocessor */
+ 122:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 123:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Remaining fields are only used in the context case. */
+ 124:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 125:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* These are the master pointers to the funny-order pointer lists. */
+ 126:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPIMAGE xbuffer[2];	/* pointers to weird pointer lists */
+ 127:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 128:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int whichptr;			/* indicates which pointer set is now in use */
+ 129:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int context_state;		/* process_data state machine status */
+ 130:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JDIMENSION rowgroups_avail;	/* row groups available to postprocessor */
+ 131:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JDIMENSION iMCU_row_ctr;	/* counts iMCU rows to detect image top/bot */
+ 132:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** } my_main_controller;
+ 133:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 134:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** typedef my_main_controller * my_main_ptr;
+ 135:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 136:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* context_state values: */
+ 137:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #define CTX_PREPARE_FOR_IMCU	0	/* need to prepare for MCU row */
+ 138:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #define CTX_PROCESS_IMCU	1	/* feeding iMCU to postprocessor */
+ 139:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #define CTX_POSTPONED_ROW	2	/* feeding postponed row group */
+ 140:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 141:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 142:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Forward declarations */
+ 143:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void) process_data_simple_main
+ 144:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	JPP((j_decompress_ptr cinfo, JSAMPARRAY output_buf,
+ 145:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	     JDIMENSION *out_row_ctr, JDIMENSION out_rows_avail));
+ 146:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void) process_data_context_main
+ARM GAS  /tmp/ccgLGD7n.s 			page 4
+
+
+ 147:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	JPP((j_decompress_ptr cinfo, JSAMPARRAY output_buf,
+ 148:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	     JDIMENSION *out_row_ctr, JDIMENSION out_rows_avail));
+ 149:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #ifdef QUANT_2PASS_SUPPORTED
+ 150:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void) process_data_crank_post
+ 151:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	JPP((j_decompress_ptr cinfo, JSAMPARRAY output_buf,
+ 152:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 	     JDIMENSION *out_row_ctr, JDIMENSION out_rows_avail));
+ 153:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #endif
+ 154:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 155:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 156:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** LOCAL(void)
+ 157:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** alloc_funny_pointers (j_decompress_ptr cinfo)
+ 158:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Allocate space for the funny pointer lists.
+ 159:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This is done only once, not once per pass.
+ 160:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 161:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+  27              		.loc 1 161 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 32
+  35              		.cfi_offset 4, -32
+  36              		.cfi_offset 5, -28
+  37              		.cfi_offset 6, -24
+  38              		.cfi_offset 7, -20
+  39              		.cfi_offset 8, -16
+  40              		.cfi_offset 9, -12
+  41              		.cfi_offset 10, -8
+  42              		.cfi_offset 14, -4
+  43 0004 0546     		mov	r5, r0
+ 162:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+  44              		.loc 1 162 0
+  45 0006 D0F8BC81 		ldr	r8, [r0, #444]
+  46              	.LVL1:
+ 163:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int ci, rgroup;
+ 164:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int M = cinfo->min_DCT_v_scaled_size;
+  47              		.loc 1 164 0
+  48 000a D0F84491 		ldr	r9, [r0, #324]
+  49              	.LVL2:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   jpeg_component_info *compptr;
+ 166:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPARRAY xbuf;
+ 167:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 168:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Get top-level space for component array pointers.
+ 169:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * We alloc both arrays with one call to save a few cycles.
+ 170:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    */
+ 171:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   main->xbuffer[0] = (JSAMPIMAGE)
+ 172:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  50              		.loc 1 172 0
+  51 000e 4368     		ldr	r3, [r0, #4]
+ 173:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				cinfo->num_components * 2 * SIZEOF(JSAMPARRAY));
+  52              		.loc 1 173 0
+  53 0010 426A     		ldr	r2, [r0, #36]
+ 172:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				cinfo->num_components * 2 * SIZEOF(JSAMPARRAY));
+  54              		.loc 1 172 0
+  55 0012 1B68     		ldr	r3, [r3]
+ARM GAS  /tmp/ccgLGD7n.s 			page 5
+
+
+  56 0014 D200     		lsls	r2, r2, #3
+  57 0016 0121     		movs	r1, #1
+  58 0018 9847     		blx	r3
+  59              	.LVL3:
+ 171:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  60              		.loc 1 171 0
+  61 001a C8F83800 		str	r0, [r8, #56]
+ 174:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   main->xbuffer[1] = main->xbuffer[0] + cinfo->num_components;
+  62              		.loc 1 174 0
+  63 001e 6B6A     		ldr	r3, [r5, #36]
+  64 0020 00EB8300 		add	r0, r0, r3, lsl #2
+  65 0024 C8F83C00 		str	r0, [r8, #60]
+  66              	.LVL4:
+ 175:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 176:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+  67              		.loc 1 176 0
+  68 0028 D5F8D870 		ldr	r7, [r5, #216]
+  69              	.LVL5:
+  70 002c 0026     		movs	r6, #0
+  71 002e 20E0     		b	.L2
+  72              	.LVL6:
+  73              	.L3:
+ 177:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 178:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+  74              		.loc 1 178 0
+  75 0030 F868     		ldr	r0, [r7, #12]
+  76 0032 BC6A     		ldr	r4, [r7, #40]
+  77 0034 04FB00F4 		mul	r4, r4, r0
+ 179:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+  78              		.loc 1 179 0
+  79 0038 D5F84401 		ldr	r0, [r5, #324]
+ 178:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+  80              		.loc 1 178 0
+  81 003c 94FBF0F4 		sdiv	r4, r4, r0
+  82              	.LVL7:
+ 180:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Get space for pointer lists --- M+4 row groups in each list.
+ 181:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * We alloc both pointer lists with one call to save a few cycles.
+ 182:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      */
+ 183:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf = (JSAMPARRAY)
+ 184:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  83              		.loc 1 184 0
+  84 0040 6B68     		ldr	r3, [r5, #4]
+  85 0042 1B68     		ldr	r3, [r3]
+ 185:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				  2 * (rgroup * (M + 4)) * SIZEOF(JSAMPROW));
+  86              		.loc 1 185 0
+  87 0044 09F10400 		add	r0, r9, #4
+  88 0048 04FB00FA 		mul	r10, r4, r0
+ 183:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  89              		.loc 1 183 0
+  90 004c 4FEACA02 		lsl	r2, r10, #3
+  91 0050 0121     		movs	r1, #1
+  92 0052 2846     		mov	r0, r5
+  93 0054 9847     		blx	r3
+  94              	.LVL8:
+ 186:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf += rgroup;		/* want one row group at negative offsets */
+  95              		.loc 1 186 0
+  96 0056 00EB8400 		add	r0, r0, r4, lsl #2
+ARM GAS  /tmp/ccgLGD7n.s 			page 6
+
+
+  97              	.LVL9:
+ 187:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->xbuffer[0][ci] = xbuf;
+  98              		.loc 1 187 0
+  99 005a D8F83830 		ldr	r3, [r8, #56]
+ 100 005e 43F82600 		str	r0, [r3, r6, lsl #2]
+ 188:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf += rgroup * (M + 4);
+ 101              		.loc 1 188 0
+ 102 0062 00EB8A00 		add	r0, r0, r10, lsl #2
+ 103              	.LVL10:
+ 189:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->xbuffer[1][ci] = xbuf;
+ 104              		.loc 1 189 0
+ 105 0066 D8F83C30 		ldr	r3, [r8, #60]
+ 106 006a 43F82600 		str	r0, [r3, r6, lsl #2]
+ 177:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 107              		.loc 1 177 0
+ 108 006e 0136     		adds	r6, r6, #1
+ 109              	.LVL11:
+ 110 0070 5837     		adds	r7, r7, #88
+ 111              	.LVL12:
+ 112              	.L2:
+ 176:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 113              		.loc 1 176 0 discriminator 1
+ 114 0072 6B6A     		ldr	r3, [r5, #36]
+ 115 0074 B342     		cmp	r3, r6
+ 116 0076 DBDC     		bgt	.L3
+ 190:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 191:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 117              		.loc 1 191 0
+ 118 0078 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 119              		.cfi_endproc
+ 120              	.LFE3:
+ 122              		.section	.text.make_funny_pointers,"ax",%progbits
+ 123              		.align	1
+ 124              		.syntax unified
+ 125              		.thumb
+ 126              		.thumb_func
+ 127              		.fpu fpv5-sp-d16
+ 129              	make_funny_pointers:
+ 130              	.LFB4:
+ 192:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 193:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 194:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** LOCAL(void)
+ 195:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** make_funny_pointers (j_decompress_ptr cinfo)
+ 196:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Create the funny pointer lists discussed in the comments above.
+ 197:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * The actual workspace is already allocated (in main->buffer),
+ 198:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * and the space for the pointer lists is allocated too.
+ 199:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This routine just fills in the curiously ordered lists.
+ 200:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This will be repeated at the beginning of each pass.
+ 201:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 202:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 131              		.loc 1 202 0
+ 132              		.cfi_startproc
+ 133              		@ args = 0, pretend = 0, frame = 0
+ 134              		@ frame_needed = 0, uses_anonymous_args = 0
+ 135              	.LVL13:
+ 136 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 137              	.LCFI1:
+ARM GAS  /tmp/ccgLGD7n.s 			page 7
+
+
+ 138              		.cfi_def_cfa_offset 32
+ 139              		.cfi_offset 4, -32
+ 140              		.cfi_offset 5, -28
+ 141              		.cfi_offset 6, -24
+ 142              		.cfi_offset 7, -20
+ 143              		.cfi_offset 8, -16
+ 144              		.cfi_offset 9, -12
+ 145              		.cfi_offset 10, -8
+ 146              		.cfi_offset 14, -4
+ 147 0004 8246     		mov	r10, r0
+ 203:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 148              		.loc 1 203 0
+ 149 0006 D0F8BC81 		ldr	r8, [r0, #444]
+ 150              	.LVL14:
+ 204:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int ci, i, rgroup;
+ 205:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int M = cinfo->min_DCT_v_scaled_size;
+ 151              		.loc 1 205 0
+ 152 000a D0F84441 		ldr	r4, [r0, #324]
+ 153              	.LVL15:
+ 206:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   jpeg_component_info *compptr;
+ 207:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPARRAY buf, xbuf0, xbuf1;
+ 208:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 209:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 154              		.loc 1 209 0
+ 155 000e D0F8D8E0 		ldr	lr, [r0, #216]
+ 156              	.LVL16:
+ 157 0012 4FF0000C 		mov	ip, #0
+ 158 0016 2BE0     		b	.L6
+ 159              	.LVL17:
+ 160              	.L8:
+ 210:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 211:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 212:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 213:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf0 = main->xbuffer[0][ci];
+ 214:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf1 = main->xbuffer[1][ci];
+ 215:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* First copy the workspace pointers as-is */
+ 216:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     buf = main->buffer[ci];
+ 217:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup * (M + 2); i++) {
+ 218:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i] = xbuf1[i] = buf[i];
+ 161              		.loc 1 218 0 discriminator 3
+ 162 0018 57F82210 		ldr	r1, [r7, r2, lsl #2]
+ 163 001c 46F82210 		str	r1, [r6, r2, lsl #2]
+ 164 0020 45F82210 		str	r1, [r5, r2, lsl #2]
+ 217:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i] = xbuf1[i] = buf[i];
+ 165              		.loc 1 217 0 discriminator 3
+ 166 0024 0132     		adds	r2, r2, #1
+ 167              	.LVL18:
+ 168              	.L7:
+ 217:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i] = xbuf1[i] = buf[i];
+ 169              		.loc 1 217 0 is_stmt 0 discriminator 1
+ 170 0026 A11C     		adds	r1, r4, #2
+ 171 0028 03FB01F1 		mul	r1, r3, r1
+ 172 002c 9142     		cmp	r1, r2
+ 173 002e F3DC     		bgt	.L8
+ 219:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 220:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* In the second list, put the last four row groups in swapped order */
+ 221:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup * 2; i++) {
+ARM GAS  /tmp/ccgLGD7n.s 			page 8
+
+
+ 174              		.loc 1 221 0 is_stmt 1
+ 175 0030 0022     		movs	r2, #0
+ 176              	.LVL19:
+ 177 0032 0DE0     		b	.L9
+ 178              	.LVL20:
+ 179              	.L10:
+ 222:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[rgroup*(M-2) + i] = buf[rgroup*M + i];
+ 180              		.loc 1 222 0 discriminator 3
+ 181 0034 03FB0429 		mla	r9, r3, r4, r2
+ 182 0038 A11E     		subs	r1, r4, #2
+ 183 003a 03FB0121 		mla	r1, r3, r1, r2
+ 184 003e 57F82900 		ldr	r0, [r7, r9, lsl #2]
+ 185 0042 46F82100 		str	r0, [r6, r1, lsl #2]
+ 223:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[rgroup*M + i] = buf[rgroup*(M-2) + i];
+ 186              		.loc 1 223 0 discriminator 3
+ 187 0046 57F82110 		ldr	r1, [r7, r1, lsl #2]
+ 188 004a 46F82910 		str	r1, [r6, r9, lsl #2]
+ 221:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[rgroup*(M-2) + i] = buf[rgroup*M + i];
+ 189              		.loc 1 221 0 discriminator 3
+ 190 004e 0132     		adds	r2, r2, #1
+ 191              	.LVL21:
+ 192              	.L9:
+ 221:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[rgroup*(M-2) + i] = buf[rgroup*M + i];
+ 193              		.loc 1 221 0 is_stmt 0 discriminator 1
+ 194 0050 B2EB430F 		cmp	r2, r3, lsl #1
+ 195 0054 EEDB     		blt	.L10
+ 224:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 225:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* The wraparound pointers at top and bottom will be filled later
+ 226:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * (see set_wraparound_pointers, below).  Initially we want the "above"
+ 227:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * pointers to duplicate the first actual data line.  This only needs
+ 228:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * to happen in xbuffer[0].
+ 229:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      */
+ 230:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup; i++) {
+ 196              		.loc 1 230 0 is_stmt 1
+ 197 0056 0021     		movs	r1, #0
+ 198 0058 04E0     		b	.L11
+ 199              	.LVL22:
+ 200              	.L12:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[0];
+ 201              		.loc 1 231 0 discriminator 3
+ 202 005a CE1A     		subs	r6, r1, r3
+ 203 005c 2A68     		ldr	r2, [r5]
+ 204 005e 45F82620 		str	r2, [r5, r6, lsl #2]
+ 230:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[0];
+ 205              		.loc 1 230 0 discriminator 3
+ 206 0062 0131     		adds	r1, r1, #1
+ 207              	.LVL23:
+ 208              	.L11:
+ 230:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[0];
+ 209              		.loc 1 230 0 is_stmt 0 discriminator 1
+ 210 0064 9942     		cmp	r1, r3
+ 211 0066 F8DB     		blt	.L12
+ 210:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 212              		.loc 1 210 0 is_stmt 1
+ 213 0068 0CF1010C 		add	ip, ip, #1
+ 214              	.LVL24:
+ 215 006c 0EF1580E 		add	lr, lr, #88
+ARM GAS  /tmp/ccgLGD7n.s 			page 9
+
+
+ 216              	.LVL25:
+ 217              	.L6:
+ 209:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 218              		.loc 1 209 0 discriminator 1
+ 219 0070 DAF82430 		ldr	r3, [r10, #36]
+ 220 0074 6345     		cmp	r3, ip
+ 221 0076 17DD     		ble	.L15
+ 211:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 222              		.loc 1 211 0
+ 223 0078 DEF80C20 		ldr	r2, [lr, #12]
+ 224 007c DEF82830 		ldr	r3, [lr, #40]
+ 225 0080 03FB02F3 		mul	r3, r3, r2
+ 212:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf0 = main->xbuffer[0][ci];
+ 226              		.loc 1 212 0
+ 227 0084 DAF84421 		ldr	r2, [r10, #324]
+ 211:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 228              		.loc 1 211 0
+ 229 0088 93FBF2F3 		sdiv	r3, r3, r2
+ 230              	.LVL26:
+ 213:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf1 = main->xbuffer[1][ci];
+ 231              		.loc 1 213 0
+ 232 008c D8F83820 		ldr	r2, [r8, #56]
+ 233 0090 52F82C50 		ldr	r5, [r2, ip, lsl #2]
+ 234              	.LVL27:
+ 214:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* First copy the workspace pointers as-is */
+ 235              		.loc 1 214 0
+ 236 0094 D8F83C20 		ldr	r2, [r8, #60]
+ 237 0098 52F82C60 		ldr	r6, [r2, ip, lsl #2]
+ 238              	.LVL28:
+ 216:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup * (M + 2); i++) {
+ 239              		.loc 1 216 0
+ 240 009c 0CF10202 		add	r2, ip, #2
+ 241 00a0 58F82270 		ldr	r7, [r8, r2, lsl #2]
+ 242              	.LVL29:
+ 217:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i] = xbuf1[i] = buf[i];
+ 243              		.loc 1 217 0
+ 244 00a4 0022     		movs	r2, #0
+ 245 00a6 BEE7     		b	.L7
+ 246              	.LVL30:
+ 247              	.L15:
+ 232:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 233:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 234:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 248              		.loc 1 234 0
+ 249 00a8 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 250              		.cfi_endproc
+ 251              	.LFE4:
+ 253              		.section	.text.set_wraparound_pointers,"ax",%progbits
+ 254              		.align	1
+ 255              		.syntax unified
+ 256              		.thumb
+ 257              		.thumb_func
+ 258              		.fpu fpv5-sp-d16
+ 260              	set_wraparound_pointers:
+ 261              	.LFB5:
+ 235:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 236:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ARM GAS  /tmp/ccgLGD7n.s 			page 10
+
+
+ 237:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** LOCAL(void)
+ 238:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** set_wraparound_pointers (j_decompress_ptr cinfo)
+ 239:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Set up the "wraparound" pointers at top and bottom of the pointer lists.
+ 240:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This changes the pointer list state from top-of-image to the normal state.
+ 241:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 242:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 262              		.loc 1 242 0
+ 263              		.cfi_startproc
+ 264              		@ args = 0, pretend = 0, frame = 0
+ 265              		@ frame_needed = 0, uses_anonymous_args = 0
+ 266              	.LVL31:
+ 267 0000 2DE9F043 		push	{r4, r5, r6, r7, r8, r9, lr}
+ 268              	.LCFI2:
+ 269              		.cfi_def_cfa_offset 28
+ 270              		.cfi_offset 4, -28
+ 271              		.cfi_offset 5, -24
+ 272              		.cfi_offset 6, -20
+ 273              		.cfi_offset 7, -16
+ 274              		.cfi_offset 8, -12
+ 275              		.cfi_offset 9, -8
+ 276              		.cfi_offset 14, -4
+ 243:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 277              		.loc 1 243 0
+ 278 0004 D0F8BC81 		ldr	r8, [r0, #444]
+ 279              	.LVL32:
+ 244:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int ci, i, rgroup;
+ 245:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int M = cinfo->min_DCT_v_scaled_size;
+ 280              		.loc 1 245 0
+ 281 0008 D0F84461 		ldr	r6, [r0, #324]
+ 282              	.LVL33:
+ 246:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   jpeg_component_info *compptr;
+ 247:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPARRAY xbuf0, xbuf1;
+ 248:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 249:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 283              		.loc 1 249 0
+ 284 000c D0F8D8E0 		ldr	lr, [r0, #216]
+ 285              	.LVL34:
+ 286 0010 4FF0000C 		mov	ip, #0
+ 287 0014 1EE0     		b	.L17
+ 288              	.LVL35:
+ 289              	.L19:
+ 250:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 251:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 252:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 253:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf0 = main->xbuffer[0][ci];
+ 254:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf1 = main->xbuffer[1][ci];
+ 255:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup; i++) {
+ 256:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[rgroup*(M+1) + i];
+ 290              		.loc 1 256 0 discriminator 3
+ 291 0016 06FB0227 		mla	r7, r6, r2, r2
+ 292 001a 1F44     		add	r7, r7, r3
+ 293 001c A3EB0209 		sub	r9, r3, r2
+ 294 0020 55F82710 		ldr	r1, [r5, r7, lsl #2]
+ 295 0024 45F82910 		str	r1, [r5, r9, lsl #2]
+ 257:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[i - rgroup] = xbuf1[rgroup*(M+1) + i];
+ 296              		.loc 1 257 0 discriminator 3
+ 297 0028 54F82710 		ldr	r1, [r4, r7, lsl #2]
+ARM GAS  /tmp/ccgLGD7n.s 			page 11
+
+
+ 298 002c 44F82910 		str	r1, [r4, r9, lsl #2]
+ 258:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[rgroup*(M+2) + i] = xbuf0[i];
+ 299              		.loc 1 258 0 discriminator 3
+ 300 0030 B11C     		adds	r1, r6, #2
+ 301 0032 02FB0131 		mla	r1, r2, r1, r3
+ 302 0036 55F82370 		ldr	r7, [r5, r3, lsl #2]
+ 303 003a 45F82170 		str	r7, [r5, r1, lsl #2]
+ 259:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf1[rgroup*(M+2) + i] = xbuf1[i];
+ 304              		.loc 1 259 0 discriminator 3
+ 305 003e 54F82370 		ldr	r7, [r4, r3, lsl #2]
+ 306 0042 44F82170 		str	r7, [r4, r1, lsl #2]
+ 255:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[rgroup*(M+1) + i];
+ 307              		.loc 1 255 0 discriminator 3
+ 308 0046 0133     		adds	r3, r3, #1
+ 309              	.LVL36:
+ 310              	.L18:
+ 255:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[rgroup*(M+1) + i];
+ 311              		.loc 1 255 0 is_stmt 0 discriminator 1
+ 312 0048 9342     		cmp	r3, r2
+ 313 004a E4DB     		blt	.L19
+ 250:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 314              		.loc 1 250 0 is_stmt 1
+ 315 004c 0CF1010C 		add	ip, ip, #1
+ 316              	.LVL37:
+ 317 0050 0EF1580E 		add	lr, lr, #88
+ 318              	.LVL38:
+ 319              	.L17:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 320              		.loc 1 249 0 discriminator 1
+ 321 0054 436A     		ldr	r3, [r0, #36]
+ 322 0056 6345     		cmp	r3, ip
+ 323 0058 13DD     		ble	.L22
+ 251:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 324              		.loc 1 251 0
+ 325 005a DEF80C30 		ldr	r3, [lr, #12]
+ 326 005e DEF82820 		ldr	r2, [lr, #40]
+ 327 0062 02FB03F2 		mul	r2, r2, r3
+ 252:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf0 = main->xbuffer[0][ci];
+ 328              		.loc 1 252 0
+ 329 0066 D0F84431 		ldr	r3, [r0, #324]
+ 251:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 330              		.loc 1 251 0
+ 331 006a 92FBF3F2 		sdiv	r2, r2, r3
+ 332              	.LVL39:
+ 253:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf1 = main->xbuffer[1][ci];
+ 333              		.loc 1 253 0
+ 334 006e D8F83830 		ldr	r3, [r8, #56]
+ 335 0072 53F82C50 		ldr	r5, [r3, ip, lsl #2]
+ 336              	.LVL40:
+ 254:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup; i++) {
+ 337              		.loc 1 254 0
+ 338 0076 D8F83C30 		ldr	r3, [r8, #60]
+ 339 007a 53F82C40 		ldr	r4, [r3, ip, lsl #2]
+ 340              	.LVL41:
+ 255:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf0[i - rgroup] = xbuf0[rgroup*(M+1) + i];
+ 341              		.loc 1 255 0
+ 342 007e 0023     		movs	r3, #0
+ARM GAS  /tmp/ccgLGD7n.s 			page 12
+
+
+ 343 0080 E2E7     		b	.L18
+ 344              	.LVL42:
+ 345              	.L22:
+ 260:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 261:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 262:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 346              		.loc 1 262 0
+ 347 0082 BDE8F083 		pop	{r4, r5, r6, r7, r8, r9, pc}
+ 348              		.cfi_endproc
+ 349              	.LFE5:
+ 351              		.section	.text.set_bottom_pointers,"ax",%progbits
+ 352              		.align	1
+ 353              		.syntax unified
+ 354              		.thumb
+ 355              		.thumb_func
+ 356              		.fpu fpv5-sp-d16
+ 358              	set_bottom_pointers:
+ 359              	.LFB6:
+ 263:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 264:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 265:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** LOCAL(void)
+ 266:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** set_bottom_pointers (j_decompress_ptr cinfo)
+ 267:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /* Change the pointer lists to duplicate the last sample row at the bottom
+ 268:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * of the image.  whichptr indicates which xbuffer holds the final iMCU row.
+ 269:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Also sets rowgroups_avail to indicate number of nondummy row groups in row.
+ 270:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 271:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 360              		.loc 1 271 0
+ 361              		.cfi_startproc
+ 362              		@ args = 0, pretend = 0, frame = 0
+ 363              		@ frame_needed = 0, uses_anonymous_args = 0
+ 364              	.LVL43:
+ 365 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 366              	.LCFI3:
+ 367              		.cfi_def_cfa_offset 20
+ 368              		.cfi_offset 4, -20
+ 369              		.cfi_offset 5, -16
+ 370              		.cfi_offset 6, -12
+ 371              		.cfi_offset 7, -8
+ 372              		.cfi_offset 14, -4
+ 272:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 373              		.loc 1 272 0
+ 374 0002 D0F8BCE1 		ldr	lr, [r0, #444]
+ 375              	.LVL44:
+ 273:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int ci, i, rgroup, iMCUheight, rows_left;
+ 274:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   jpeg_component_info *compptr;
+ 275:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JSAMPARRAY xbuf;
+ 276:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 277:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 376              		.loc 1 277 0
+ 377 0006 D0F8D8C0 		ldr	ip, [r0, #216]
+ 378              	.LVL45:
+ 379 000a 0027     		movs	r7, #0
+ 380 000c 0EE0     		b	.L24
+ 381              	.LVL46:
+ 382              	.L28:
+ 278:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ARM GAS  /tmp/ccgLGD7n.s 			page 13
+
+
+ 279:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Count sample rows in one iMCU row and in one row group */
+ 280:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     iMCUheight = compptr->v_samp_factor * compptr->DCT_v_scaled_size;
+ 281:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = iMCUheight / cinfo->min_DCT_v_scaled_size;
+ 282:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Count nondummy sample rows remaining for this component */
+ 283:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rows_left = (int) (compptr->downsampled_height % (JDIMENSION) iMCUheight);
+ 284:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (rows_left == 0) rows_left = iMCUheight;
+ 285:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Count nondummy row groups.  Should get same answer for each component,
+ 286:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * so we need only do it once.
+ 287:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      */
+ 288:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (ci == 0) {
+ 289:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->rowgroups_avail = (JDIMENSION) ((rows_left-1) / rgroup + 1);
+ 290:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 291:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Duplicate the last real sample row rgroup*2 times; this pads out the
+ 292:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * last partial rowgroup and ensures at least one full rowgroup of context.
+ 293:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      */
+ 294:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     xbuf = main->xbuffer[main->whichptr][ci];
+ 295:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup * 2; i++) {
+ 296:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf[rows_left + i] = xbuf[rows_left-1];
+ 383              		.loc 1 296 0 discriminator 3
+ 384 000e 5D18     		adds	r5, r3, r1
+ 385 0010 6FF04042 		mvn	r2, #-1073741824
+ 386 0014 0A44     		add	r2, r2, r1
+ 387 0016 54F82220 		ldr	r2, [r4, r2, lsl #2]
+ 388 001a 44F82520 		str	r2, [r4, r5, lsl #2]
+ 295:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf[rows_left + i] = xbuf[rows_left-1];
+ 389              		.loc 1 295 0 discriminator 3
+ 390 001e 0133     		adds	r3, r3, #1
+ 391              	.LVL47:
+ 392              	.L27:
+ 295:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf[rows_left + i] = xbuf[rows_left-1];
+ 393              		.loc 1 295 0 is_stmt 0 discriminator 1
+ 394 0020 B3EB460F 		cmp	r3, r6, lsl #1
+ 395 0024 F3DB     		blt	.L28
+ 278:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 396              		.loc 1 278 0 is_stmt 1
+ 397 0026 0137     		adds	r7, r7, #1
+ 398              	.LVL48:
+ 399 0028 0CF1580C 		add	ip, ip, #88
+ 400              	.LVL49:
+ 401              	.L24:
+ 277:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 402              		.loc 1 277 0 discriminator 1
+ 403 002c 436A     		ldr	r3, [r0, #36]
+ 404 002e BB42     		cmp	r3, r7
+ 405 0030 21DD     		ble	.L31
+ 280:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = iMCUheight / cinfo->min_DCT_v_scaled_size;
+ 406              		.loc 1 280 0
+ 407 0032 DCF80C30 		ldr	r3, [ip, #12]
+ 408 0036 DCF82810 		ldr	r1, [ip, #40]
+ 409 003a 01FB03F1 		mul	r1, r1, r3
+ 410              	.LVL50:
+ 281:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Count nondummy sample rows remaining for this component */
+ 411              		.loc 1 281 0
+ 412 003e D0F84461 		ldr	r6, [r0, #324]
+ 413 0042 91FBF6F6 		sdiv	r6, r1, r6
+ 414              	.LVL51:
+ 283:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (rows_left == 0) rows_left = iMCUheight;
+ARM GAS  /tmp/ccgLGD7n.s 			page 14
+
+
+ 415              		.loc 1 283 0
+ 416 0046 DCF83020 		ldr	r2, [ip, #48]
+ 417 004a B2FBF1F3 		udiv	r3, r2, r1
+ 418 004e 01FB1323 		mls	r3, r1, r3, r2
+ 419              	.LVL52:
+ 284:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Count nondummy row groups.  Should get same answer for each component,
+ 420              		.loc 1 284 0
+ 421 0052 03B1     		cbz	r3, .L25
+ 283:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (rows_left == 0) rows_left = iMCUheight;
+ 422              		.loc 1 283 0
+ 423 0054 1946     		mov	r1, r3
+ 424              	.LVL53:
+ 425              	.L25:
+ 288:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->rowgroups_avail = (JDIMENSION) ((rows_left-1) / rgroup + 1);
+ 426              		.loc 1 288 0
+ 427 0056 2FB9     		cbnz	r7, .L26
+ 289:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 428              		.loc 1 289 0
+ 429 0058 4B1E     		subs	r3, r1, #1
+ 430 005a 93FBF6F3 		sdiv	r3, r3, r6
+ 431 005e 0133     		adds	r3, r3, #1
+ 432 0060 CEF84830 		str	r3, [lr, #72]
+ 433              	.LVL54:
+ 434              	.L26:
+ 294:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     for (i = 0; i < rgroup * 2; i++) {
+ 435              		.loc 1 294 0
+ 436 0064 DEF84030 		ldr	r3, [lr, #64]
+ 437 0068 0E33     		adds	r3, r3, #14
+ 438 006a 5EF82330 		ldr	r3, [lr, r3, lsl #2]
+ 439 006e 53F82740 		ldr	r4, [r3, r7, lsl #2]
+ 440              	.LVL55:
+ 295:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       xbuf[rows_left + i] = xbuf[rows_left-1];
+ 441              		.loc 1 295 0
+ 442 0072 0023     		movs	r3, #0
+ 443 0074 D4E7     		b	.L27
+ 444              	.LVL56:
+ 445              	.L31:
+ 297:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 298:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 299:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 446              		.loc 1 299 0
+ 447 0076 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 448              		.cfi_endproc
+ 449              	.LFE6:
+ 451              		.section	.text.start_pass_main,"ax",%progbits
+ 452              		.align	1
+ 453              		.syntax unified
+ 454              		.thumb
+ 455              		.thumb_func
+ 456              		.fpu fpv5-sp-d16
+ 458              	start_pass_main:
+ 459              	.LFB7:
+ 300:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 301:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 302:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+ 303:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Initialize for a processing pass.
+ 304:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ARM GAS  /tmp/ccgLGD7n.s 			page 15
+
+
+ 305:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 306:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void)
+ 307:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** start_pass_main (j_decompress_ptr cinfo, J_BUF_MODE pass_mode)
+ 308:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 460              		.loc 1 308 0
+ 461              		.cfi_startproc
+ 462              		@ args = 0, pretend = 0, frame = 0
+ 463              		@ frame_needed = 0, uses_anonymous_args = 0
+ 464              	.LVL57:
+ 465 0000 10B5     		push	{r4, lr}
+ 466              	.LCFI4:
+ 467              		.cfi_def_cfa_offset 8
+ 468              		.cfi_offset 4, -8
+ 469              		.cfi_offset 14, -4
+ 309:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 470              		.loc 1 309 0
+ 471 0002 D0F8BC41 		ldr	r4, [r0, #444]
+ 472              	.LVL58:
+ 310:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 311:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   switch (pass_mode) {
+ 473              		.loc 1 311 0
+ 474 0006 41B1     		cbz	r1, .L34
+ 475 0008 0229     		cmp	r1, #2
+ 476 000a 19D0     		beq	.L35
+ 312:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   case JBUF_PASS_THRU:
+ 313:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (cinfo->upsample->need_context_rows) {
+ 314:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->pub.process_data = process_data_context_main;
+ 315:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       make_funny_pointers(cinfo); /* Create the xbuffer[] lists */
+ 316:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->whichptr = 0;	/* Read first iMCU row into xbuffer[0] */
+ 317:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->context_state = CTX_PREPARE_FOR_IMCU;
+ 318:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->iMCU_row_ctr = 0;
+ 319:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     } else {
+ 320:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       /* Simple case with no context needed */
+ 321:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->pub.process_data = process_data_simple_main;
+ 322:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 323:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = FALSE;	/* Mark buffer empty */
+ 324:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroup_ctr = 0;
+ 325:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     break;
+ 326:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #ifdef QUANT_2PASS_SUPPORTED
+ 327:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   case JBUF_CRANK_DEST:
+ 328:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* For last pass of 2-pass quantization, just crank the postprocessor */
+ 329:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->pub.process_data = process_data_crank_post;
+ 330:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     break;
+ 331:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #endif
+ 332:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   default:
+ 333:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     ERREXIT(cinfo, JERR_BAD_BUFFER_MODE);
+ 477              		.loc 1 333 0
+ 478 000c 0368     		ldr	r3, [r0]
+ 479 000e 0322     		movs	r2, #3
+ 480 0010 5A61     		str	r2, [r3, #20]
+ 481 0012 0368     		ldr	r3, [r0]
+ 482 0014 1B68     		ldr	r3, [r3]
+ 483 0016 9847     		blx	r3
+ 484              	.LVL59:
+ 334:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     break;
+ 335:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 336:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ARM GAS  /tmp/ccgLGD7n.s 			page 16
+
+
+ 485              		.loc 1 336 0
+ 486 0018 08E0     		b	.L32
+ 487              	.LVL60:
+ 488              	.L34:
+ 313:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->pub.process_data = process_data_context_main;
+ 489              		.loc 1 313 0
+ 490 001a D0F8D831 		ldr	r3, [r0, #472]
+ 491 001e 9B68     		ldr	r3, [r3, #8]
+ 492 0020 2BB9     		cbnz	r3, .L41
+ 321:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     }
+ 493              		.loc 1 321 0
+ 494 0022 094B     		ldr	r3, .L42
+ 495 0024 6360     		str	r3, [r4, #4]
+ 496              	.LVL61:
+ 497              	.L37:
+ 323:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroup_ctr = 0;
+ 498              		.loc 1 323 0
+ 499 0026 0023     		movs	r3, #0
+ 500 0028 2363     		str	r3, [r4, #48]
+ 324:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     break;
+ 501              		.loc 1 324 0
+ 502 002a 6363     		str	r3, [r4, #52]
+ 503              	.L32:
+ 504              		.loc 1 336 0
+ 505 002c 10BD     		pop	{r4, pc}
+ 506              	.LVL62:
+ 507              	.L41:
+ 314:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       make_funny_pointers(cinfo); /* Create the xbuffer[] lists */
+ 508              		.loc 1 314 0
+ 509 002e 074B     		ldr	r3, .L42+4
+ 510 0030 6360     		str	r3, [r4, #4]
+ 315:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->whichptr = 0;	/* Read first iMCU row into xbuffer[0] */
+ 511              		.loc 1 315 0
+ 512 0032 FFF7FEFF 		bl	make_funny_pointers
+ 513              	.LVL63:
+ 316:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->context_state = CTX_PREPARE_FOR_IMCU;
+ 514              		.loc 1 316 0
+ 515 0036 0023     		movs	r3, #0
+ 516 0038 2364     		str	r3, [r4, #64]
+ 317:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       main->iMCU_row_ctr = 0;
+ 517              		.loc 1 317 0
+ 518 003a 6364     		str	r3, [r4, #68]
+ 318:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     } else {
+ 519              		.loc 1 318 0
+ 520 003c E364     		str	r3, [r4, #76]
+ 521 003e F2E7     		b	.L37
+ 522              	.LVL64:
+ 523              	.L35:
+ 329:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     break;
+ 524              		.loc 1 329 0
+ 525 0040 034B     		ldr	r3, .L42+8
+ 526 0042 6360     		str	r3, [r4, #4]
+ 330:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #endif
+ 527              		.loc 1 330 0
+ 528 0044 F2E7     		b	.L32
+ 529              	.L43:
+ 530 0046 00BF     		.align	2
+ARM GAS  /tmp/ccgLGD7n.s 			page 17
+
+
+ 531              	.L42:
+ 532 0048 00000000 		.word	process_data_simple_main
+ 533 004c 00000000 		.word	process_data_context_main
+ 534 0050 00000000 		.word	process_data_crank_post
+ 535              		.cfi_endproc
+ 536              	.LFE7:
+ 538              		.section	.text.process_data_simple_main,"ax",%progbits
+ 539              		.align	1
+ 540              		.syntax unified
+ 541              		.thumb
+ 542              		.thumb_func
+ 543              		.fpu fpv5-sp-d16
+ 545              	process_data_simple_main:
+ 546              	.LFB8:
+ 337:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 338:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 339:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+ 340:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Process some data.
+ 341:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This handles the simple case where no context is required.
+ 342:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 343:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 344:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void)
+ 345:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** process_data_simple_main (j_decompress_ptr cinfo,
+ 346:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			  JSAMPARRAY output_buf, JDIMENSION *out_row_ctr,
+ 347:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			  JDIMENSION out_rows_avail)
+ 348:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 547              		.loc 1 348 0
+ 548              		.cfi_startproc
+ 549              		@ args = 0, pretend = 0, frame = 0
+ 550              		@ frame_needed = 0, uses_anonymous_args = 0
+ 551              	.LVL65:
+ 552 0000 2DE9F043 		push	{r4, r5, r6, r7, r8, r9, lr}
+ 553              	.LCFI5:
+ 554              		.cfi_def_cfa_offset 28
+ 555              		.cfi_offset 4, -28
+ 556              		.cfi_offset 5, -24
+ 557              		.cfi_offset 6, -20
+ 558              		.cfi_offset 7, -16
+ 559              		.cfi_offset 8, -12
+ 560              		.cfi_offset 9, -8
+ 561              		.cfi_offset 14, -4
+ 562 0004 85B0     		sub	sp, sp, #20
+ 563              	.LCFI6:
+ 564              		.cfi_def_cfa_offset 48
+ 565 0006 0546     		mov	r5, r0
+ 566 0008 0F46     		mov	r7, r1
+ 567 000a 9046     		mov	r8, r2
+ 568 000c 9946     		mov	r9, r3
+ 349:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 569              		.loc 1 349 0
+ 570 000e D0F8BC41 		ldr	r4, [r0, #444]
+ 571              	.LVL66:
+ 350:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   JDIMENSION rowgroups_avail;
+ 351:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 352:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Read input data if we haven't filled the main buffer yet */
+ 353:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   if (! main->buffer_full) {
+ 572              		.loc 1 353 0
+ARM GAS  /tmp/ccgLGD7n.s 			page 18
+
+
+ 573 0012 236B     		ldr	r3, [r4, #48]
+ 574              	.LVL67:
+ 575 0014 43B9     		cbnz	r3, .L45
+ 354:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (! (*cinfo->coef->decompress_data) (cinfo, main->buffer))
+ 576              		.loc 1 354 0
+ 577 0016 D0F8C031 		ldr	r3, [r0, #448]
+ 578 001a DB68     		ldr	r3, [r3, #12]
+ 579 001c 04F10801 		add	r1, r4, #8
+ 580              	.LVL68:
+ 581 0020 9847     		blx	r3
+ 582              	.LVL69:
+ 583 0022 C0B1     		cbz	r0, .L44
+ 355:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* suspension forced, can do nothing more */
+ 356:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = TRUE;	/* OK, we have an iMCU row to work with */
+ 584              		.loc 1 356 0
+ 585 0024 0123     		movs	r3, #1
+ 586 0026 2363     		str	r3, [r4, #48]
+ 587              	.L45:
+ 357:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 358:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 359:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* There are always min_DCT_scaled_size row groups in an iMCU row. */
+ 360:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   rowgroups_avail = (JDIMENSION) cinfo->min_DCT_v_scaled_size;
+ 588              		.loc 1 360 0
+ 589 0028 D5F84461 		ldr	r6, [r5, #324]
+ 590              	.LVL70:
+ 361:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Note: at the bottom of the image, we may pass extra garbage row groups
+ 362:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * to the postprocessor.  The postprocessor has to check for bottom
+ 363:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * of image anyway (at row resolution), so no point in us doing it too.
+ 364:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    */
+ 365:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 366:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Feed the postprocessor */
+ 367:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   (*cinfo->post->post_process_data) (cinfo, main->buffer,
+ 591              		.loc 1 367 0
+ 592 002c D5F8C431 		ldr	r3, [r5, #452]
+ 593 0030 CDF80890 		str	r9, [sp, #8]
+ 594 0034 CDF80480 		str	r8, [sp, #4]
+ 595 0038 0097     		str	r7, [sp]
+ 596 003a 5F68     		ldr	r7, [r3, #4]
+ 597              	.LVL71:
+ 598 003c 3346     		mov	r3, r6
+ 599 003e 04F13402 		add	r2, r4, #52
+ 600 0042 04F10801 		add	r1, r4, #8
+ 601 0046 2846     		mov	r0, r5
+ 602 0048 B847     		blx	r7
+ 603              	.LVL72:
+ 368:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				     &main->rowgroup_ctr, rowgroups_avail,
+ 369:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				     output_buf, out_row_ctr, out_rows_avail);
+ 370:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 371:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Has postprocessor consumed all the data yet? If so, mark buffer empty */
+ 372:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   if (main->rowgroup_ctr >= rowgroups_avail) {
+ 604              		.loc 1 372 0
+ 605 004a 636B     		ldr	r3, [r4, #52]
+ 606 004c B342     		cmp	r3, r6
+ 607 004e 02D3     		bcc	.L44
+ 373:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = FALSE;
+ 608              		.loc 1 373 0
+ 609 0050 0023     		movs	r3, #0
+ARM GAS  /tmp/ccgLGD7n.s 			page 19
+
+
+ 610 0052 2363     		str	r3, [r4, #48]
+ 374:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroup_ctr = 0;
+ 611              		.loc 1 374 0
+ 612 0054 6363     		str	r3, [r4, #52]
+ 613              	.LVL73:
+ 614              	.L44:
+ 375:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 376:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 615              		.loc 1 376 0
+ 616 0056 05B0     		add	sp, sp, #20
+ 617              	.LCFI7:
+ 618              		.cfi_def_cfa_offset 28
+ 619              		@ sp needed
+ 620 0058 BDE8F083 		pop	{r4, r5, r6, r7, r8, r9, pc}
+ 621              		.cfi_endproc
+ 622              	.LFE8:
+ 624              		.section	.text.process_data_context_main,"ax",%progbits
+ 625              		.align	1
+ 626              		.syntax unified
+ 627              		.thumb
+ 628              		.thumb_func
+ 629              		.fpu fpv5-sp-d16
+ 631              	process_data_context_main:
+ 632              	.LFB9:
+ 377:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 378:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 379:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+ 380:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Process some data.
+ 381:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * This handles the case where context rows must be provided.
+ 382:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 383:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 384:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void)
+ 385:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** process_data_context_main (j_decompress_ptr cinfo,
+ 386:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			   JSAMPARRAY output_buf, JDIMENSION *out_row_ctr,
+ 387:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			   JDIMENSION out_rows_avail)
+ 388:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 633              		.loc 1 388 0
+ 634              		.cfi_startproc
+ 635              		@ args = 0, pretend = 0, frame = 0
+ 636              		@ frame_needed = 0, uses_anonymous_args = 0
+ 637              	.LVL74:
+ 638 0000 2DE9F043 		push	{r4, r5, r6, r7, r8, r9, lr}
+ 639              	.LCFI8:
+ 640              		.cfi_def_cfa_offset 28
+ 641              		.cfi_offset 4, -28
+ 642              		.cfi_offset 5, -24
+ 643              		.cfi_offset 6, -20
+ 644              		.cfi_offset 7, -16
+ 645              		.cfi_offset 8, -12
+ 646              		.cfi_offset 9, -8
+ 647              		.cfi_offset 14, -4
+ 648 0004 85B0     		sub	sp, sp, #20
+ 649              	.LCFI9:
+ 650              		.cfi_def_cfa_offset 48
+ 651 0006 0546     		mov	r5, r0
+ 652 0008 8846     		mov	r8, r1
+ 653 000a 1646     		mov	r6, r2
+ARM GAS  /tmp/ccgLGD7n.s 			page 20
+
+
+ 654 000c 1F46     		mov	r7, r3
+ 389:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main = (my_main_ptr) cinfo->main;
+ 655              		.loc 1 389 0
+ 656 000e D0F8BC41 		ldr	r4, [r0, #444]
+ 657              	.LVL75:
+ 390:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 391:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Read input data if we haven't filled the main buffer yet */
+ 392:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   if (! main->buffer_full) {
+ 658              		.loc 1 392 0
+ 659 0012 236B     		ldr	r3, [r4, #48]
+ 660              	.LVL76:
+ 661 0014 6BB9     		cbnz	r3, .L49
+ 393:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (! (*cinfo->coef->decompress_data) (cinfo,
+ 662              		.loc 1 393 0
+ 663 0016 D0F8C021 		ldr	r2, [r0, #448]
+ 664              	.LVL77:
+ 394:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 					   main->xbuffer[main->whichptr]))
+ 665              		.loc 1 394 0
+ 666 001a 236C     		ldr	r3, [r4, #64]
+ 393:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (! (*cinfo->coef->decompress_data) (cinfo,
+ 667              		.loc 1 393 0
+ 668 001c 0E33     		adds	r3, r3, #14
+ 669 001e D268     		ldr	r2, [r2, #12]
+ 670 0020 54F82310 		ldr	r1, [r4, r3, lsl #2]
+ 671              	.LVL78:
+ 672 0024 9047     		blx	r2
+ 673              	.LVL79:
+ 674 0026 50B1     		cbz	r0, .L48
+ 395:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* suspension forced, can do nothing more */
+ 396:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = TRUE;	/* OK, we have an iMCU row to work with */
+ 675              		.loc 1 396 0
+ 676 0028 0123     		movs	r3, #1
+ 677 002a 2363     		str	r3, [r4, #48]
+ 397:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->iMCU_row_ctr++;	/* count rows received */
+ 678              		.loc 1 397 0
+ 679 002c E36C     		ldr	r3, [r4, #76]
+ 680 002e 0133     		adds	r3, r3, #1
+ 681 0030 E364     		str	r3, [r4, #76]
+ 682              	.L49:
+ 398:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 399:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 400:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Postprocessor typically will not swallow all the input data it is handed
+ 401:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * in one call (due to filling the output buffer first).  Must be prepared
+ 402:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * to exit and restart.  This switch lets us keep track of how far we got.
+ 403:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * Note that each case falls through to the next on successful completion.
+ 404:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    */
+ 405:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   switch (main->context_state) {
+ 683              		.loc 1 405 0
+ 684 0032 636C     		ldr	r3, [r4, #68]
+ 685 0034 012B     		cmp	r3, #1
+ 686 0036 2CD0     		beq	.L51
+ 687 0038 022B     		cmp	r3, #2
+ 688 003a 03D0     		beq	.L52
+ 689 003c E3B1     		cbz	r3, .L53
+ 690              	.LVL80:
+ 691              	.L48:
+ 406:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   case CTX_POSTPONED_ROW:
+ARM GAS  /tmp/ccgLGD7n.s 			page 21
+
+
+ 407:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Call postprocessor using previously set pointers for postponed row */
+ 408:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->post->post_process_data) (cinfo, main->xbuffer[main->whichptr],
+ 409:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			&main->rowgroup_ctr, main->rowgroups_avail,
+ 410:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			output_buf, out_row_ctr, out_rows_avail);
+ 411:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (main->rowgroup_ctr < main->rowgroups_avail)
+ 412:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Need to suspend */
+ 413:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->context_state = CTX_PREPARE_FOR_IMCU;
+ 414:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (*out_row_ctr >= out_rows_avail)
+ 415:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Postprocessor exactly filled output buf */
+ 416:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /*FALLTHROUGH*/
+ 417:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   case CTX_PREPARE_FOR_IMCU:
+ 418:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Prepare to process first M-1 row groups of this iMCU row */
+ 419:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroup_ctr = 0;
+ 420:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroups_avail = (JDIMENSION) (cinfo->min_DCT_v_scaled_size - 1);
+ 421:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Check for bottom of image: if so, tweak pointers to "duplicate"
+ 422:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      * the last sample row, and adjust rowgroups_avail to ignore padding rows.
+ 423:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****      */
+ 424:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (main->iMCU_row_ctr == cinfo->total_iMCU_rows)
+ 425:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       set_bottom_pointers(cinfo);
+ 426:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->context_state = CTX_PROCESS_IMCU;
+ 427:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /*FALLTHROUGH*/
+ 428:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   case CTX_PROCESS_IMCU:
+ 429:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Call postprocessor using previously set pointers */
+ 430:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->post->post_process_data) (cinfo, main->xbuffer[main->whichptr],
+ 431:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			&main->rowgroup_ctr, main->rowgroups_avail,
+ 432:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			output_buf, out_row_ctr, out_rows_avail);
+ 433:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (main->rowgroup_ctr < main->rowgroups_avail)
+ 434:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Need to suspend */
+ 435:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* After the first iMCU, change wraparound pointers to normal state */
+ 436:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (main->iMCU_row_ctr == 1)
+ 437:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       set_wraparound_pointers(cinfo);
+ 438:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Prepare to load new iMCU row using other xbuffer list */
+ 439:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->whichptr ^= 1;	/* 0=>1 or 1=>0 */
+ 440:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = FALSE;
+ 441:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Still need to process last row group of this iMCU row, */
+ 442:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* which is saved at index M+1 of the other xbuffer */
+ 443:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroup_ctr = (JDIMENSION) (cinfo->min_DCT_v_scaled_size + 1);
+ 444:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroups_avail = (JDIMENSION) (cinfo->min_DCT_v_scaled_size + 2);
+ 445:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->context_state = CTX_POSTPONED_ROW;
+ 446:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 447:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 692              		.loc 1 447 0
+ 693 003e 05B0     		add	sp, sp, #20
+ 694              	.LCFI10:
+ 695              		.cfi_remember_state
+ 696              		.cfi_def_cfa_offset 28
+ 697              		@ sp needed
+ 698 0040 BDE8F083 		pop	{r4, r5, r6, r7, r8, r9, pc}
+ 699              	.LVL81:
+ 700              	.L52:
+ 701              	.LCFI11:
+ 702              		.cfi_restore_state
+ 408:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			&main->rowgroup_ctr, main->rowgroups_avail,
+ 703              		.loc 1 408 0
+ 704 0044 D5F8C401 		ldr	r0, [r5, #452]
+ 705 0048 226C     		ldr	r2, [r4, #64]
+ 706 004a A36C     		ldr	r3, [r4, #72]
+ARM GAS  /tmp/ccgLGD7n.s 			page 22
+
+
+ 707 004c 0E32     		adds	r2, r2, #14
+ 708 004e 54F82210 		ldr	r1, [r4, r2, lsl #2]
+ 709 0052 0297     		str	r7, [sp, #8]
+ 710 0054 0196     		str	r6, [sp, #4]
+ 711 0056 CDF80080 		str	r8, [sp]
+ 712 005a D0F80490 		ldr	r9, [r0, #4]
+ 713 005e 04F13402 		add	r2, r4, #52
+ 714 0062 2846     		mov	r0, r5
+ 715 0064 C847     		blx	r9
+ 716              	.LVL82:
+ 411:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Need to suspend */
+ 717              		.loc 1 411 0
+ 718 0066 626B     		ldr	r2, [r4, #52]
+ 719 0068 A36C     		ldr	r3, [r4, #72]
+ 720 006a 9A42     		cmp	r2, r3
+ 721 006c E7D3     		bcc	.L48
+ 413:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (*out_row_ctr >= out_rows_avail)
+ 722              		.loc 1 413 0
+ 723 006e 0023     		movs	r3, #0
+ 724 0070 6364     		str	r3, [r4, #68]
+ 414:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Postprocessor exactly filled output buf */
+ 725              		.loc 1 414 0
+ 726 0072 3368     		ldr	r3, [r6]
+ 727 0074 BB42     		cmp	r3, r7
+ 728 0076 E2D2     		bcs	.L48
+ 729              	.L53:
+ 419:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroups_avail = (JDIMENSION) (cinfo->min_DCT_v_scaled_size - 1);
+ 730              		.loc 1 419 0
+ 731 0078 0023     		movs	r3, #0
+ 732 007a 6363     		str	r3, [r4, #52]
+ 420:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Check for bottom of image: if so, tweak pointers to "duplicate"
+ 733              		.loc 1 420 0
+ 734 007c D5F84431 		ldr	r3, [r5, #324]
+ 735 0080 013B     		subs	r3, r3, #1
+ 736 0082 A364     		str	r3, [r4, #72]
+ 424:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       set_bottom_pointers(cinfo);
+ 737              		.loc 1 424 0
+ 738 0084 E26C     		ldr	r2, [r4, #76]
+ 739 0086 D5F84831 		ldr	r3, [r5, #328]
+ 740 008a 9A42     		cmp	r2, r3
+ 741 008c 29D0     		beq	.L57
+ 742              	.L54:
+ 426:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /*FALLTHROUGH*/
+ 743              		.loc 1 426 0
+ 744 008e 0123     		movs	r3, #1
+ 745 0090 6364     		str	r3, [r4, #68]
+ 746              	.L51:
+ 430:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			&main->rowgroup_ctr, main->rowgroups_avail,
+ 747              		.loc 1 430 0
+ 748 0092 D5F8C401 		ldr	r0, [r5, #452]
+ 749 0096 226C     		ldr	r2, [r4, #64]
+ 750 0098 A36C     		ldr	r3, [r4, #72]
+ 751 009a 0E32     		adds	r2, r2, #14
+ 752 009c 54F82210 		ldr	r1, [r4, r2, lsl #2]
+ 753 00a0 0297     		str	r7, [sp, #8]
+ 754 00a2 0196     		str	r6, [sp, #4]
+ 755 00a4 CDF80080 		str	r8, [sp]
+ARM GAS  /tmp/ccgLGD7n.s 			page 23
+
+
+ 756 00a8 4668     		ldr	r6, [r0, #4]
+ 757              	.LVL83:
+ 758 00aa 04F13402 		add	r2, r4, #52
+ 759 00ae 2846     		mov	r0, r5
+ 760 00b0 B047     		blx	r6
+ 761              	.LVL84:
+ 433:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       return;			/* Need to suspend */
+ 762              		.loc 1 433 0
+ 763 00b2 626B     		ldr	r2, [r4, #52]
+ 764 00b4 A36C     		ldr	r3, [r4, #72]
+ 765 00b6 9A42     		cmp	r2, r3
+ 766 00b8 C1D3     		bcc	.L48
+ 436:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       set_wraparound_pointers(cinfo);
+ 767              		.loc 1 436 0
+ 768 00ba E36C     		ldr	r3, [r4, #76]
+ 769 00bc 012B     		cmp	r3, #1
+ 770 00be 14D0     		beq	.L58
+ 771              	.L55:
+ 439:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer_full = FALSE;
+ 772              		.loc 1 439 0
+ 773 00c0 236C     		ldr	r3, [r4, #64]
+ 774 00c2 83F00103 		eor	r3, r3, #1
+ 775 00c6 2364     		str	r3, [r4, #64]
+ 440:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Still need to process last row group of this iMCU row, */
+ 776              		.loc 1 440 0
+ 777 00c8 0023     		movs	r3, #0
+ 778 00ca 2363     		str	r3, [r4, #48]
+ 443:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->rowgroups_avail = (JDIMENSION) (cinfo->min_DCT_v_scaled_size + 2);
+ 779              		.loc 1 443 0
+ 780 00cc D5F84431 		ldr	r3, [r5, #324]
+ 781 00d0 0133     		adds	r3, r3, #1
+ 782 00d2 6363     		str	r3, [r4, #52]
+ 444:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->context_state = CTX_POSTPONED_ROW;
+ 783              		.loc 1 444 0
+ 784 00d4 D5F84431 		ldr	r3, [r5, #324]
+ 785 00d8 0233     		adds	r3, r3, #2
+ 786 00da A364     		str	r3, [r4, #72]
+ 445:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 787              		.loc 1 445 0
+ 788 00dc 0223     		movs	r3, #2
+ 789 00de 6364     		str	r3, [r4, #68]
+ 790 00e0 ADE7     		b	.L48
+ 791              	.LVL85:
+ 792              	.L57:
+ 425:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->context_state = CTX_PROCESS_IMCU;
+ 793              		.loc 1 425 0
+ 794 00e2 2846     		mov	r0, r5
+ 795 00e4 FFF7FEFF 		bl	set_bottom_pointers
+ 796              	.LVL86:
+ 797 00e8 D1E7     		b	.L54
+ 798              	.LVL87:
+ 799              	.L58:
+ 437:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     /* Prepare to load new iMCU row using other xbuffer list */
+ 800              		.loc 1 437 0
+ 801 00ea 2846     		mov	r0, r5
+ 802 00ec FFF7FEFF 		bl	set_wraparound_pointers
+ 803              	.LVL88:
+ARM GAS  /tmp/ccgLGD7n.s 			page 24
+
+
+ 804 00f0 E6E7     		b	.L55
+ 805              		.cfi_endproc
+ 806              	.LFE9:
+ 808              		.section	.text.process_data_crank_post,"ax",%progbits
+ 809              		.align	1
+ 810              		.syntax unified
+ 811              		.thumb
+ 812              		.thumb_func
+ 813              		.fpu fpv5-sp-d16
+ 815              	process_data_crank_post:
+ 816              	.LFB10:
+ 448:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 449:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 450:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+ 451:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Process some data.
+ 452:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Final pass of two-pass quantization: just call the postprocessor.
+ 453:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Source data will be the postprocessor controller's internal buffer.
+ 454:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 455:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 456:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #ifdef QUANT_2PASS_SUPPORTED
+ 457:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 458:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** METHODDEF(void)
+ 459:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** process_data_crank_post (j_decompress_ptr cinfo,
+ 460:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			 JSAMPARRAY output_buf, JDIMENSION *out_row_ctr,
+ 461:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			 JDIMENSION out_rows_avail)
+ 462:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 817              		.loc 1 462 0
+ 818              		.cfi_startproc
+ 819              		@ args = 0, pretend = 0, frame = 0
+ 820              		@ frame_needed = 0, uses_anonymous_args = 0
+ 821              	.LVL89:
+ 822 0000 10B5     		push	{r4, lr}
+ 823              	.LCFI12:
+ 824              		.cfi_def_cfa_offset 8
+ 825              		.cfi_offset 4, -8
+ 826              		.cfi_offset 14, -4
+ 827 0002 84B0     		sub	sp, sp, #16
+ 828              	.LCFI13:
+ 829              		.cfi_def_cfa_offset 24
+ 463:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   (*cinfo->post->post_process_data) (cinfo, (JSAMPIMAGE) NULL,
+ 830              		.loc 1 463 0
+ 831 0004 D0F8C441 		ldr	r4, [r0, #452]
+ 832 0008 0293     		str	r3, [sp, #8]
+ 833 000a 0192     		str	r2, [sp, #4]
+ 834 000c 0091     		str	r1, [sp]
+ 835 000e 6468     		ldr	r4, [r4, #4]
+ 836 0010 0023     		movs	r3, #0
+ 837              	.LVL90:
+ 838 0012 1A46     		mov	r2, r3
+ 839              	.LVL91:
+ 840 0014 1946     		mov	r1, r3
+ 841              	.LVL92:
+ 842 0016 A047     		blx	r4
+ 843              	.LVL93:
+ 464:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				     (JDIMENSION *) NULL, (JDIMENSION) 0,
+ 465:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				     output_buf, out_row_ctr, out_rows_avail);
+ 466:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ARM GAS  /tmp/ccgLGD7n.s 			page 25
+
+
+ 844              		.loc 1 466 0
+ 845 0018 04B0     		add	sp, sp, #16
+ 846              	.LCFI14:
+ 847              		.cfi_def_cfa_offset 8
+ 848              		@ sp needed
+ 849 001a 10BD     		pop	{r4, pc}
+ 850              		.cfi_endproc
+ 851              	.LFE10:
+ 853              		.section	.text.jinit_d_main_controller,"ax",%progbits
+ 854              		.align	1
+ 855              		.global	jinit_d_main_controller
+ 856              		.syntax unified
+ 857              		.thumb
+ 858              		.thumb_func
+ 859              		.fpu fpv5-sp-d16
+ 861              	jinit_d_main_controller:
+ 862              	.LFB11:
+ 467:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 468:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** #endif /* QUANT_2PASS_SUPPORTED */
+ 469:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 470:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 471:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** /*
+ 472:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  * Initialize main buffer controller.
+ 473:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****  */
+ 474:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 475:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** GLOBAL(void)
+ 476:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** jinit_d_main_controller (j_decompress_ptr cinfo, boolean need_full_buffer)
+ 477:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** {
+ 863              		.loc 1 477 0
+ 864              		.cfi_startproc
+ 865              		@ args = 0, pretend = 0, frame = 0
+ 866              		@ frame_needed = 0, uses_anonymous_args = 0
+ 867              	.LVL94:
+ 868 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+ 869              	.LCFI15:
+ 870              		.cfi_def_cfa_offset 32
+ 871              		.cfi_offset 3, -32
+ 872              		.cfi_offset 4, -28
+ 873              		.cfi_offset 5, -24
+ 874              		.cfi_offset 6, -20
+ 875              		.cfi_offset 7, -16
+ 876              		.cfi_offset 8, -12
+ 877              		.cfi_offset 9, -8
+ 878              		.cfi_offset 14, -4
+ 879 0004 0546     		mov	r5, r0
+ 880 0006 0C46     		mov	r4, r1
+ 478:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   my_main_ptr main;
+ 479:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   int ci, rgroup, ngroups;
+ 480:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   jpeg_component_info *compptr;
+ 481:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 482:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   main = (my_main_ptr)
+ 483:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 881              		.loc 1 483 0
+ 882 0008 4368     		ldr	r3, [r0, #4]
+ 883 000a 1B68     		ldr	r3, [r3]
+ 482:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 884              		.loc 1 482 0
+ARM GAS  /tmp/ccgLGD7n.s 			page 26
+
+
+ 885 000c 5022     		movs	r2, #80
+ 886 000e 0121     		movs	r1, #1
+ 887              	.LVL95:
+ 888 0010 9847     		blx	r3
+ 889              	.LVL96:
+ 890 0012 0746     		mov	r7, r0
+ 891              	.LVL97:
+ 484:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 				SIZEOF(my_main_controller));
+ 485:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   cinfo->main = (struct jpeg_d_main_controller *) main;
+ 892              		.loc 1 485 0
+ 893 0014 C5F8BC01 		str	r0, [r5, #444]
+ 486:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   main->pub.start_pass = start_pass_main;
+ 894              		.loc 1 486 0
+ 895 0018 224B     		ldr	r3, .L69
+ 896 001a 0360     		str	r3, [r0]
+ 487:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 488:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   if (need_full_buffer)		/* shouldn't happen */
+ 897              		.loc 1 488 0
+ 898 001c 34B1     		cbz	r4, .L62
+ 489:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     ERREXIT(cinfo, JERR_BAD_BUFFER_MODE);
+ 899              		.loc 1 489 0
+ 900 001e 2B68     		ldr	r3, [r5]
+ 901 0020 0322     		movs	r2, #3
+ 902 0022 5A61     		str	r2, [r3, #20]
+ 903 0024 2B68     		ldr	r3, [r5]
+ 904 0026 1B68     		ldr	r3, [r3]
+ 905 0028 2846     		mov	r0, r5
+ 906              	.LVL98:
+ 907 002a 9847     		blx	r3
+ 908              	.LVL99:
+ 909              	.L62:
+ 490:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 491:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   /* Allocate the workspace.
+ 492:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    * ngroups is the number of row groups we need.
+ 493:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****    */
+ 494:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   if (cinfo->upsample->need_context_rows) {
+ 910              		.loc 1 494 0
+ 911 002c D5F8D831 		ldr	r3, [r5, #472]
+ 912 0030 9B68     		ldr	r3, [r3, #8]
+ 913 0032 ABB1     		cbz	r3, .L63
+ 495:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     if (cinfo->min_DCT_v_scaled_size < 2) /* unsupported, see comments above */
+ 914              		.loc 1 495 0
+ 915 0034 D5F84431 		ldr	r3, [r5, #324]
+ 916 0038 012B     		cmp	r3, #1
+ 917 003a 06DC     		bgt	.L64
+ 496:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       ERREXIT(cinfo, JERR_NOTIMPL);
+ 918              		.loc 1 496 0
+ 919 003c 2B68     		ldr	r3, [r5]
+ 920 003e 3022     		movs	r2, #48
+ 921 0040 5A61     		str	r2, [r3, #20]
+ 922 0042 2B68     		ldr	r3, [r5]
+ 923 0044 1B68     		ldr	r3, [r3]
+ 924 0046 2846     		mov	r0, r5
+ 925 0048 9847     		blx	r3
+ 926              	.LVL100:
+ 927              	.L64:
+ 497:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     alloc_funny_pointers(cinfo); /* Alloc space for xbuffer[] lists */
+ARM GAS  /tmp/ccgLGD7n.s 			page 27
+
+
+ 928              		.loc 1 497 0
+ 929 004a 2846     		mov	r0, r5
+ 930 004c FFF7FEFF 		bl	alloc_funny_pointers
+ 931              	.LVL101:
+ 498:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     ngroups = cinfo->min_DCT_v_scaled_size + 2;
+ 932              		.loc 1 498 0
+ 933 0050 D5F84431 		ldr	r3, [r5, #324]
+ 934 0054 03F10208 		add	r8, r3, #2
+ 935              	.LVL102:
+ 936              	.L65:
+ 499:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   } else {
+ 500:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     ngroups = cinfo->min_DCT_v_scaled_size;
+ 501:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 502:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 
+ 503:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 937              		.loc 1 503 0
+ 938 0058 D5F8D840 		ldr	r4, [r5, #216]
+ 939              	.LVL103:
+ 940 005c 0026     		movs	r6, #0
+ 941 005e 1BE0     		b	.L66
+ 942              	.LVL104:
+ 943              	.L63:
+ 500:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 944              		.loc 1 500 0
+ 945 0060 D5F84481 		ldr	r8, [r5, #324]
+ 946              	.LVL105:
+ 947 0064 F8E7     		b	.L65
+ 948              	.LVL106:
+ 949              	.L67:
+ 504:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 505:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 950              		.loc 1 505 0
+ 951 0066 E268     		ldr	r2, [r4, #12]
+ 952 0068 A36A     		ldr	r3, [r4, #40]
+ 953 006a 03FB02F3 		mul	r3, r3, r2
+ 506:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 954              		.loc 1 506 0
+ 955 006e D5F84421 		ldr	r2, [r5, #324]
+ 505:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****       cinfo->min_DCT_v_scaled_size; /* height of a row group of component */
+ 956              		.loc 1 505 0
+ 957 0072 93FBF2F3 		sdiv	r3, r3, r2
+ 958              	.LVL107:
+ 507:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer[ci] = (*cinfo->mem->alloc_sarray)
+ 959              		.loc 1 507 0
+ 960 0076 6868     		ldr	r0, [r5, #4]
+ 508:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 509:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			 compptr->width_in_blocks * compptr->DCT_h_scaled_size,
+ 961              		.loc 1 509 0
+ 962 0078 E269     		ldr	r2, [r4, #28]
+ 963 007a 616A     		ldr	r1, [r4, #36]
+ 507:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     main->buffer[ci] = (*cinfo->mem->alloc_sarray)
+ 964              		.loc 1 507 0
+ 965 007c D0F80890 		ldr	r9, [r0, #8]
+ 966 0080 03FB08F3 		mul	r3, r3, r8
+ 967              	.LVL108:
+ 968 0084 01FB02F2 		mul	r2, r1, r2
+ 969 0088 0121     		movs	r1, #1
+ARM GAS  /tmp/ccgLGD7n.s 			page 28
+
+
+ 970 008a 2846     		mov	r0, r5
+ 971 008c C847     		blx	r9
+ 972              	.LVL109:
+ 973 008e B31C     		adds	r3, r6, #2
+ 974 0090 47F82300 		str	r0, [r7, r3, lsl #2]
+ 504:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****     rgroup = (compptr->v_samp_factor * compptr->DCT_v_scaled_size) /
+ 975              		.loc 1 504 0
+ 976 0094 0136     		adds	r6, r6, #1
+ 977              	.LVL110:
+ 978 0096 5834     		adds	r4, r4, #88
+ 979              	.LVL111:
+ 980              	.L66:
+ 503:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****        ci++, compptr++) {
+ 981              		.loc 1 503 0 discriminator 1
+ 982 0098 6B6A     		ldr	r3, [r5, #36]
+ 983 009a B342     		cmp	r3, r6
+ 984 009c E3DC     		bgt	.L67
+ 510:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** 			 (JDIMENSION) (rgroup * ngroups));
+ 511:Middlewares/Third_Party/LibJPEG/source/jdmainct.c ****   }
+ 512:Middlewares/Third_Party/LibJPEG/source/jdmainct.c **** }
+ 985              		.loc 1 512 0
+ 986 009e BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 987              	.LVL112:
+ 988              	.L70:
+ 989 00a2 00BF     		.align	2
+ 990              	.L69:
+ 991 00a4 00000000 		.word	start_pass_main
+ 992              		.cfi_endproc
+ 993              	.LFE11:
+ 995              		.text
+ 996              	.Letext0:
+ 997              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 998              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 999              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 1000              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 1001              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 1002              		.file 7 "Inc/jmorecfg.h"
+ 1003              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 1004              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 1005              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ARM GAS  /tmp/ccgLGD7n.s 			page 29
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jdmainct.c
+     /tmp/ccgLGD7n.s:18     .text.alloc_funny_pointers:0000000000000000 $t
+     /tmp/ccgLGD7n.s:24     .text.alloc_funny_pointers:0000000000000000 alloc_funny_pointers
+     /tmp/ccgLGD7n.s:123    .text.make_funny_pointers:0000000000000000 $t
+     /tmp/ccgLGD7n.s:129    .text.make_funny_pointers:0000000000000000 make_funny_pointers
+     /tmp/ccgLGD7n.s:254    .text.set_wraparound_pointers:0000000000000000 $t
+     /tmp/ccgLGD7n.s:260    .text.set_wraparound_pointers:0000000000000000 set_wraparound_pointers
+     /tmp/ccgLGD7n.s:352    .text.set_bottom_pointers:0000000000000000 $t
+     /tmp/ccgLGD7n.s:358    .text.set_bottom_pointers:0000000000000000 set_bottom_pointers
+     /tmp/ccgLGD7n.s:452    .text.start_pass_main:0000000000000000 $t
+     /tmp/ccgLGD7n.s:458    .text.start_pass_main:0000000000000000 start_pass_main
+     /tmp/ccgLGD7n.s:532    .text.start_pass_main:0000000000000048 $d
+     /tmp/ccgLGD7n.s:545    .text.process_data_simple_main:0000000000000000 process_data_simple_main
+     /tmp/ccgLGD7n.s:631    .text.process_data_context_main:0000000000000000 process_data_context_main
+     /tmp/ccgLGD7n.s:815    .text.process_data_crank_post:0000000000000000 process_data_crank_post
+     /tmp/ccgLGD7n.s:539    .text.process_data_simple_main:0000000000000000 $t
+     /tmp/ccgLGD7n.s:625    .text.process_data_context_main:0000000000000000 $t
+     /tmp/ccgLGD7n.s:809    .text.process_data_crank_post:0000000000000000 $t
+     /tmp/ccgLGD7n.s:854    .text.jinit_d_main_controller:0000000000000000 $t
+     /tmp/ccgLGD7n.s:861    .text.jinit_d_main_controller:0000000000000000 jinit_d_main_controller
+     /tmp/ccgLGD7n.s:991    .text.jinit_d_main_controller:00000000000000a4 $d
+
+NO UNDEFINED SYMBOLS

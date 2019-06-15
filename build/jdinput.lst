@@ -1,0 +1,2891 @@
+ARM GAS  /tmp/ccDOcQAg.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jdinput.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.finish_input_pass,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	finish_input_pass:
+  25              	.LFB8:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jdinput.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * jdinput.c
+   3:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Copyright (C) 1991-1997, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Modified 2002-2009 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * This file contains input control logic for the JPEG decompressor.
+  10:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * These routines are concerned with controlling the decompressor's input
+  11:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * processing (marker reading and coefficient decoding).  The actual input
+  12:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * reading is done in jdmarker.c, jdhuff.c, and jdarith.c.
+  13:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+  14:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  15:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #define JPEG_INTERNALS
+  16:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #include "jinclude.h"
+  17:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #include "jpeglib.h"
+  18:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  19:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  20:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* Private state */
+  21:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  22:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** typedef struct {
+  23:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   struct jpeg_input_controller pub; /* public fields */
+  24:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  25:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int inheaders;		/* Nonzero until first SOS is reached */
+  26:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** } my_input_controller;
+  27:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  28:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** typedef my_input_controller * my_inputctl_ptr;
+  29:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  30:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  31:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* Forward declarations */
+  32:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** METHODDEF(int) consume_markers JPP((j_decompress_ptr cinfo));
+ARM GAS  /tmp/ccDOcQAg.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  34:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  35:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+  36:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Routines to calculate various quantities related to the size of the image.
+  37:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+  38:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  39:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  40:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+  41:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Compute output image dimensions and related values.
+  42:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * NOTE: this is exported for possible use by application.
+  43:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Hence it mustn't do anything that can't be done twice.
+  44:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+  45:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  46:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** GLOBAL(void)
+  47:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** jpeg_core_output_dimensions (j_decompress_ptr cinfo)
+  48:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* Do computations that are needed before master selection phase.
+  49:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * This function is used for transcoding and full decompression.
+  50:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+  51:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+  52:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #ifdef IDCT_SCALING_SUPPORTED
+  53:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci;
+  54:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   jpeg_component_info *compptr;
+  55:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+  56:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Compute actual output image dimensions and DCT scaling choices. */
+  57:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom) {
+  58:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 1/block_size scaling */
+  59:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+  60:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width, (long) cinfo->block_size);
+  61:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+  62:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height, (long) cinfo->block_size);
+  63:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 1;
+  64:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 1;
+  65:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 2) {
+  66:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 2/block_size scaling */
+  67:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+  68:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 2L, (long) cinfo->block_size);
+  69:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+  70:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 2L, (long) cinfo->block_size);
+  71:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 2;
+  72:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 2;
+  73:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 3) {
+  74:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 3/block_size scaling */
+  75:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+  76:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 3L, (long) cinfo->block_size);
+  77:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+  78:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 3L, (long) cinfo->block_size);
+  79:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 3;
+  80:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 3;
+  81:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 4) {
+  82:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 4/block_size scaling */
+  83:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+  84:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 4L, (long) cinfo->block_size);
+  85:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+  86:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 4L, (long) cinfo->block_size);
+  87:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 4;
+  88:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 4;
+  89:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 5) {
+ARM GAS  /tmp/ccDOcQAg.s 			page 3
+
+
+  90:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 5/block_size scaling */
+  91:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+  92:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 5L, (long) cinfo->block_size);
+  93:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+  94:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 5L, (long) cinfo->block_size);
+  95:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 5;
+  96:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 5;
+  97:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 6) {
+  98:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 6/block_size scaling */
+  99:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 100:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 6L, (long) cinfo->block_size);
+ 101:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 102:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 6L, (long) cinfo->block_size);
+ 103:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 6;
+ 104:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 6;
+ 105:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 7) {
+ 106:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 7/block_size scaling */
+ 107:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 108:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 7L, (long) cinfo->block_size);
+ 109:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 110:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 7L, (long) cinfo->block_size);
+ 111:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 7;
+ 112:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 7;
+ 113:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 8) {
+ 114:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 8/block_size scaling */
+ 115:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 116:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 8L, (long) cinfo->block_size);
+ 117:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 118:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 8L, (long) cinfo->block_size);
+ 119:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 8;
+ 120:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 8;
+ 121:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 9) {
+ 122:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 9/block_size scaling */
+ 123:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 124:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 9L, (long) cinfo->block_size);
+ 125:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 126:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 9L, (long) cinfo->block_size);
+ 127:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 9;
+ 128:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 9;
+ 129:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 10) {
+ 130:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 10/block_size scaling */
+ 131:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 132:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 10L, (long) cinfo->block_size);
+ 133:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 134:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 10L, (long) cinfo->block_size);
+ 135:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 10;
+ 136:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 10;
+ 137:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 11) {
+ 138:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 11/block_size scaling */
+ 139:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 140:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 11L, (long) cinfo->block_size);
+ 141:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 142:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 11L, (long) cinfo->block_size);
+ 143:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 11;
+ 144:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 11;
+ 145:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 12) {
+ 146:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 12/block_size scaling */
+ARM GAS  /tmp/ccDOcQAg.s 			page 4
+
+
+ 147:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 148:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 12L, (long) cinfo->block_size);
+ 149:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 150:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 12L, (long) cinfo->block_size);
+ 151:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 12;
+ 152:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 12;
+ 153:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 13) {
+ 154:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 13/block_size scaling */
+ 155:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 156:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 13L, (long) cinfo->block_size);
+ 157:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 158:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 13L, (long) cinfo->block_size);
+ 159:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 13;
+ 160:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 13;
+ 161:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 14) {
+ 162:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 14/block_size scaling */
+ 163:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 164:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 14L, (long) cinfo->block_size);
+ 165:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 166:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 14L, (long) cinfo->block_size);
+ 167:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 14;
+ 168:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 14;
+ 169:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 15) {
+ 170:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 15/block_size scaling */
+ 171:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 172:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 15L, (long) cinfo->block_size);
+ 173:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 174:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 15L, (long) cinfo->block_size);
+ 175:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 15;
+ 176:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 15;
+ 177:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else {
+ 178:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 16/block_size scaling */
+ 179:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_width = (JDIMENSION)
+ 180:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 16L, (long) cinfo->block_size);
+ 181:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 182:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 16L, (long) cinfo->block_size);
+ 183:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 16;
+ 184:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 16;
+ 185:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 186:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 187:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Recompute dimensions of components */
+ 188:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 189:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 190:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_h_scaled_size = cinfo->min_DCT_h_scaled_size;
+ 191:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_v_scaled_size = cinfo->min_DCT_v_scaled_size;
+ 192:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 193:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 194:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #else /* !IDCT_SCALING_SUPPORTED */
+ 195:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 196:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Hardwire it to "no scaling" */
+ 197:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->output_width = cinfo->image_width;
+ 198:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->output_height = cinfo->image_height;
+ 199:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* jdinput.c has already initialized DCT_scaled_size,
+ 200:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * and has computed unscaled downsampled_width and downsampled_height.
+ 201:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    */
+ 202:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 203:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #endif /* IDCT_SCALING_SUPPORTED */
+ARM GAS  /tmp/ccDOcQAg.s 			page 5
+
+
+ 204:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 205:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 206:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 207:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** LOCAL(void)
+ 208:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** initial_setup (j_decompress_ptr cinfo)
+ 209:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* Called once, when first SOS marker is reached */
+ 210:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ 211:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci;
+ 212:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   jpeg_component_info *compptr;
+ 213:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 214:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Make sure image isn't bigger than I can handle */
+ 215:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if ((long) cinfo->image_height > (long) JPEG_MAX_DIMENSION ||
+ 216:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       (long) cinfo->image_width > (long) JPEG_MAX_DIMENSION)
+ 217:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT1(cinfo, JERR_IMAGE_TOO_BIG, (unsigned int) JPEG_MAX_DIMENSION);
+ 218:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 219:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* For now, precision must match compiled-in value... */
+ 220:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->data_precision != BITS_IN_JSAMPLE)
+ 221:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT1(cinfo, JERR_BAD_PRECISION, cinfo->data_precision);
+ 222:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 223:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Check that number of components won't exceed internal array sizes */
+ 224:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->num_components > MAX_COMPONENTS)
+ 225:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT2(cinfo, JERR_COMPONENT_COUNT, cinfo->num_components,
+ 226:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	     MAX_COMPONENTS);
+ 227:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 228:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Compute maximum sampling factors; check factor validity */
+ 229:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->max_h_samp_factor = 1;
+ 230:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->max_v_samp_factor = 1;
+ 231:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 232:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 233:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (compptr->h_samp_factor<=0 || compptr->h_samp_factor>MAX_SAMP_FACTOR ||
+ 234:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	compptr->v_samp_factor<=0 || compptr->v_samp_factor>MAX_SAMP_FACTOR)
+ 235:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT(cinfo, JERR_BAD_SAMPLING);
+ 236:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->max_h_samp_factor = MAX(cinfo->max_h_samp_factor,
+ 237:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				   compptr->h_samp_factor);
+ 238:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->max_v_samp_factor = MAX(cinfo->max_v_samp_factor,
+ 239:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				   compptr->v_samp_factor);
+ 240:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 241:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 242:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Derive block_size, natural_order, and lim_Se */
+ 243:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->is_baseline || (cinfo->progressive_mode &&
+ 244:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->comps_in_scan)) { /* no pseudo SOS marker */
+ 245:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->block_size = DCTSIZE;
+ 246:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->natural_order = jpeg_natural_order;
+ 247:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->lim_Se = DCTSIZE2-1;
+ 248:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     switch (cinfo->Se) {
+ 250:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 251:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 1;
+ 252:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order; /* not needed */
+ 253:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 254:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 255:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (2*2-1):
+ 256:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 2;
+ 257:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order2;
+ 258:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 259:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 260:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (3*3-1):
+ARM GAS  /tmp/ccDOcQAg.s 			page 6
+
+
+ 261:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 3;
+ 262:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order3;
+ 263:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 264:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 265:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (4*4-1):
+ 266:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 4;
+ 267:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order4;
+ 268:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 269:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 270:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (5*5-1):
+ 271:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 5;
+ 272:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order5;
+ 273:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 274:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 275:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (6*6-1):
+ 276:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 6;
+ 277:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order6;
+ 278:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 279:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 280:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (7*7-1):
+ 281:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 7;
+ 282:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order7;
+ 283:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 284:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 285:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (8*8-1):
+ 286:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 8;
+ 287:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 288:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 289:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 290:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (9*9-1):
+ 291:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 9;
+ 292:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 293:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 294:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 295:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (10*10-1):
+ 296:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 10;
+ 297:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 298:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 299:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 300:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (11*11-1):
+ 301:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 11;
+ 302:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 303:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 304:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 305:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (12*12-1):
+ 306:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 12;
+ 307:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 308:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 309:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 310:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (13*13-1):
+ 311:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 13;
+ 312:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 313:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 314:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 315:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (14*14-1):
+ 316:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 14;
+ 317:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ARM GAS  /tmp/ccDOcQAg.s 			page 7
+
+
+ 318:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 319:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 320:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (15*15-1):
+ 321:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 15;
+ 322:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 323:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 324:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 325:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (16*16-1):
+ 326:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->block_size = 16;
+ 327:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 328:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 329:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 330:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     default:
+ 331:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT4(cinfo, JERR_BAD_PROGRESSION,
+ 332:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	       cinfo->Ss, cinfo->Se, cinfo->Ah, cinfo->Al);
+ 333:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 334:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     }
+ 335:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 336:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* We initialize DCT_scaled_size and min_DCT_scaled_size to block_size.
+ 337:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * In the full decompressor,
+ 338:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * this will be overridden by jpeg_calc_output_dimensions in jdmaster.c;
+ 339:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * but in the transcoder,
+ 340:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * jpeg_calc_output_dimensions is not used, so we must do it here.
+ 341:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    */
+ 342:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->min_DCT_h_scaled_size = cinfo->block_size;
+ 343:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->min_DCT_v_scaled_size = cinfo->block_size;
+ 344:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 345:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Compute dimensions of components */
+ 346:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 347:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 348:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_h_scaled_size = cinfo->block_size;
+ 349:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_v_scaled_size = cinfo->block_size;
+ 350:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Size in DCT blocks */
+ 351:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->width_in_blocks = (JDIMENSION)
+ 352:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * (long) compptr->h_samp_factor,
+ 353:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_h_samp_factor * cinfo->block_size));
+ 354:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->height_in_blocks = (JDIMENSION)
+ 355:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * (long) compptr->v_samp_factor,
+ 356:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 357:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* downsampled_width and downsampled_height will also be overridden by
+ 358:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****      * jdmaster.c if we are doing full decompression.  The transcoder library
+ 359:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****      * doesn't use these values, but the calling application might.
+ 360:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****      */
+ 361:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Size in samples */
+ 362:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->downsampled_width = (JDIMENSION)
+ 363:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * (long) compptr->h_samp_factor,
+ 364:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) cinfo->max_h_samp_factor);
+ 365:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->downsampled_height = (JDIMENSION)
+ 366:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * (long) compptr->v_samp_factor,
+ 367:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) cinfo->max_v_samp_factor);
+ 368:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Mark component needed, until color conversion says otherwise */
+ 369:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->component_needed = TRUE;
+ 370:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Mark no quantization table yet saved for component */
+ 371:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->quant_table = NULL;
+ 372:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 373:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 374:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Compute number of fully interleaved MCU rows. */
+ARM GAS  /tmp/ccDOcQAg.s 			page 8
+
+
+ 375:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->total_iMCU_rows = (JDIMENSION)
+ 376:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     jdiv_round_up((long) cinfo->image_height,
+ 377:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	          (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 378:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 379:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Decide whether file contains multiple scans */
+ 380:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->comps_in_scan < cinfo->num_components || cinfo->progressive_mode)
+ 381:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->inputctl->has_multiple_scans = TRUE;
+ 382:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   else
+ 383:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->inputctl->has_multiple_scans = FALSE;
+ 384:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 385:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 386:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 387:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** LOCAL(void)
+ 388:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** per_scan_setup (j_decompress_ptr cinfo)
+ 389:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* Do computations that are needed before processing a JPEG scan */
+ 390:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /* cinfo->comps_in_scan and cinfo->cur_comp_info[] were set from SOS marker */
+ 391:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ 392:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci, mcublks, tmp;
+ 393:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   jpeg_component_info *compptr;
+ 394:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   
+ 395:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (cinfo->comps_in_scan == 1) {
+ 396:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 397:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Noninterleaved (single-component) scan */
+ 398:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr = cinfo->cur_comp_info[0];
+ 399:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 400:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Overall image size in MCUs */
+ 401:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCUs_per_row = compptr->width_in_blocks;
+ 402:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_rows_in_scan = compptr->height_in_blocks;
+ 403:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 404:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* For noninterleaved scan, always one block per MCU */
+ 405:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_width = 1;
+ 406:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_height = 1;
+ 407:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_blocks = 1;
+ 408:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_sample_width = compptr->DCT_h_scaled_size;
+ 409:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->last_col_width = 1;
+ 410:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* For noninterleaved scans, it is convenient to define last_row_height
+ 411:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****      * as the number of block rows present in the last iMCU row.
+ 412:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****      */
+ 413:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     tmp = (int) (compptr->height_in_blocks % compptr->v_samp_factor);
+ 414:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (tmp == 0) tmp = compptr->v_samp_factor;
+ 415:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->last_row_height = tmp;
+ 416:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 417:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Prepare array describing MCU composition */
+ 418:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->blocks_in_MCU = 1;
+ 419:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_membership[0] = 0;
+ 420:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 421:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else {
+ 422:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 423:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Interleaved (multi-component) scan */
+ 424:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (cinfo->comps_in_scan <= 0 || cinfo->comps_in_scan > MAX_COMPS_IN_SCAN)
+ 425:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT2(cinfo, JERR_COMPONENT_COUNT, cinfo->comps_in_scan,
+ 426:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	       MAX_COMPS_IN_SCAN);
+ 427:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 428:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Overall image size in MCUs */
+ 429:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCUs_per_row = (JDIMENSION)
+ 430:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width,
+ 431:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_h_samp_factor * cinfo->block_size));
+ARM GAS  /tmp/ccDOcQAg.s 			page 9
+
+
+ 432:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_rows_in_scan = (JDIMENSION)
+ 433:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height,
+ 434:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 435:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 436:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->blocks_in_MCU = 0;
+ 437:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 438:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
+ 439:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr = cinfo->cur_comp_info[ci];
+ 440:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Sampling factors give # of blocks of component in each MCU */
+ 441:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_width = compptr->h_samp_factor;
+ 442:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_height = compptr->v_samp_factor;
+ 443:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_blocks = compptr->MCU_width * compptr->MCU_height;
+ 444:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_sample_width = compptr->MCU_width * compptr->DCT_h_scaled_size;
+ 445:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Figure number of non-dummy blocks in last MCU column & row */
+ 446:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       tmp = (int) (compptr->width_in_blocks % compptr->MCU_width);
+ 447:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_width;
+ 448:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->last_col_width = tmp;
+ 449:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       tmp = (int) (compptr->height_in_blocks % compptr->MCU_height);
+ 450:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_height;
+ 451:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->last_row_height = tmp;
+ 452:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Prepare array describing MCU composition */
+ 453:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       mcublks = compptr->MCU_blocks;
+ 454:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (cinfo->blocks_in_MCU + mcublks > D_MAX_BLOCKS_IN_MCU)
+ 455:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	ERREXIT(cinfo, JERR_BAD_MCU_SIZE);
+ 456:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       while (mcublks-- > 0) {
+ 457:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	cinfo->MCU_membership[cinfo->blocks_in_MCU++] = ci;
+ 458:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 459:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     }
+ 460:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 461:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 462:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 463:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 464:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 465:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 466:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Save away a copy of the Q-table referenced by each component present
+ 467:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * in the current scan, unless already saved during a prior scan.
+ 468:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+ 469:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * In a multiple-scan JPEG file, the encoder could assign different components
+ 470:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * the same Q-table slot number, but change table definitions between scans
+ 471:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * so that each component uses a different Q-table.  (The IJG encoder is not
+ 472:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * currently capable of doing this, but other encoders might.)  Since we want
+ 473:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * to be able to dequantize all the components at the end of the file, this
+ 474:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * means that we have to save away the table actually used for each component.
+ 475:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * We do this by copying the table at the start of the first scan containing
+ 476:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * the component.
+ 477:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * The JPEG spec prohibits the encoder from changing the contents of a Q-table
+ 478:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * slot between scans of a component using that slot.  If the encoder does so
+ 479:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * anyway, this decoder will simply use the Q-table values that were current
+ 480:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * at the start of the first scan for the component.
+ 481:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+ 482:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * The decompressor output side looks only at the saved quant tables,
+ 483:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * not at the current Q-table slots.
+ 484:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 485:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 486:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** LOCAL(void)
+ 487:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** latch_quant_tables (j_decompress_ptr cinfo)
+ 488:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ARM GAS  /tmp/ccDOcQAg.s 			page 10
+
+
+ 489:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci, qtblno;
+ 490:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   jpeg_component_info *compptr;
+ 491:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   JQUANT_TBL * qtbl;
+ 492:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 493:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
+ 494:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr = cinfo->cur_comp_info[ci];
+ 495:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* No work if we already saved Q-table for this component */
+ 496:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (compptr->quant_table != NULL)
+ 497:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       continue;
+ 498:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Make sure specified quantization table is present */
+ 499:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     qtblno = compptr->quant_tbl_no;
+ 500:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (qtblno < 0 || qtblno >= NUM_QUANT_TBLS ||
+ 501:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	cinfo->quant_tbl_ptrs[qtblno] == NULL)
+ 502:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT1(cinfo, JERR_NO_QUANT_TABLE, qtblno);
+ 503:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* OK, save away the quantization table */
+ 504:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     qtbl = (JQUANT_TBL *)
+ 505:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 506:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				  SIZEOF(JQUANT_TBL));
+ 507:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     MEMCOPY(qtbl, cinfo->quant_tbl_ptrs[qtblno], SIZEOF(JQUANT_TBL));
+ 508:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->quant_table = qtbl;
+ 509:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 510:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 511:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 512:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 513:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 514:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Initialize the input modules to read a scan of compressed data.
+ 515:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * The first call to this is done by jdmaster.c after initializing
+ 516:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * the entire decompressor (during jpeg_start_decompress).
+ 517:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Subsequent calls come from consume_markers, below.
+ 518:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 519:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 520:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** METHODDEF(void)
+ 521:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** start_input_pass (j_decompress_ptr cinfo)
+ 522:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ 523:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   per_scan_setup(cinfo);
+ 524:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   latch_quant_tables(cinfo);
+ 525:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->entropy->start_pass) (cinfo);
+ 526:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->coef->start_input_pass) (cinfo);
+ 527:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->inputctl->consume_input = cinfo->coef->consume_data;
+ 528:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 529:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 530:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 531:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 532:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Finish up after inputting a compressed-data scan.
+ 533:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * This is called by the coefficient controller after it's read all
+ 534:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * the expected data of the scan.
+ 535:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 536:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 537:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** METHODDEF(void)
+ 538:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** finish_input_pass (j_decompress_ptr cinfo)
+ 539:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+  27              		.loc 1 539 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32              	.LVL0:
+ARM GAS  /tmp/ccDOcQAg.s 			page 11
+
+
+ 540:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->inputctl->consume_input = consume_markers;
+  33              		.loc 1 540 0
+  34 0000 D0F8C831 		ldr	r3, [r0, #456]
+  35 0004 014A     		ldr	r2, .L2
+  36 0006 1A60     		str	r2, [r3]
+ 541:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+  37              		.loc 1 541 0
+  38 0008 7047     		bx	lr
+  39              	.L3:
+  40 000a 00BF     		.align	2
+  41              	.L2:
+  42 000c 00000000 		.word	consume_markers
+  43              		.cfi_endproc
+  44              	.LFE8:
+  46              		.section	.text.reset_input_controller,"ax",%progbits
+  47              		.align	1
+  48              		.syntax unified
+  49              		.thumb
+  50              		.thumb_func
+  51              		.fpu fpv5-sp-d16
+  53              	reset_input_controller:
+  54              	.LFB10:
+ 542:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 543:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 544:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 545:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Read JPEG markers before, between, or after compressed-data scans.
+ 546:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Change state as necessary when a new scan is reached.
+ 547:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Return value is JPEG_SUSPENDED, JPEG_REACHED_SOS, or JPEG_REACHED_EOI.
+ 548:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+ 549:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * The consume_input method pointer points either here or to the
+ 550:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * coefficient controller's consume_data routine, depending on whether
+ 551:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * we are reading a compressed data segment or inter-segment markers.
+ 552:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  *
+ 553:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Note: This function should NOT return a pseudo SOS marker (with zero
+ 554:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * component number) to the caller.  A pseudo marker received by
+ 555:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * read_markers is processed and then skipped for other markers.
+ 556:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 557:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 558:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** METHODDEF(int)
+ 559:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** consume_markers (j_decompress_ptr cinfo)
+ 560:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ 561:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   my_inputctl_ptr inputctl = (my_inputctl_ptr) cinfo->inputctl;
+ 562:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int val;
+ 563:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 564:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   if (inputctl->pub.eoi_reached) /* After hitting EOI, read no further */
+ 565:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     return JPEG_REACHED_EOI;
+ 566:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 567:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (;;) {			/* Loop to pass pseudo SOS marker */
+ 568:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     val = (*cinfo->marker->read_markers) (cinfo);
+ 569:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 570:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     switch (val) {
+ 571:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case JPEG_REACHED_SOS:	/* Found SOS */
+ 572:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (inputctl->inheaders) { /* 1st SOS */
+ 573:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (inputctl->inheaders == 1)
+ 574:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  initial_setup(cinfo);
+ 575:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->comps_in_scan == 0) { /* pseudo SOS marker */
+ 576:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  inputctl->inheaders = 2;
+ARM GAS  /tmp/ccDOcQAg.s 			page 12
+
+
+ 577:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  break;
+ 578:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	}
+ 579:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	inputctl->inheaders = 0;
+ 580:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	/* Note: start_input_pass must be called by jdmaster.c
+ 581:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	 * before any more input can be consumed.  jdapimin.c is
+ 582:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	 * responsible for enforcing this sequencing.
+ 583:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	 */
+ 584:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       } else {			/* 2nd or later SOS marker */
+ 585:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (! inputctl->pub.has_multiple_scans)
+ 586:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  ERREXIT(cinfo, JERR_EOI_EXPECTED); /* Oops, I wasn't expecting this! */
+ 587:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->comps_in_scan == 0) /* unexpected pseudo SOS marker */
+ 588:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  break;
+ 589:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	start_input_pass(cinfo);
+ 590:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 591:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       return val;
+ 592:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case JPEG_REACHED_EOI:	/* Found EOI */
+ 593:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       inputctl->pub.eoi_reached = TRUE;
+ 594:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (inputctl->inheaders) { /* Tables-only datastream, apparently */
+ 595:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->marker->saw_SOF)
+ 596:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  ERREXIT(cinfo, JERR_SOF_NO_SOS);
+ 597:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       } else {
+ 598:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	/* Prevent infinite loop in coef ctlr's decompress_data routine
+ 599:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	 * if user set output_scan_number larger than number of scans.
+ 600:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	 */
+ 601:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->output_scan_number > cinfo->input_scan_number)
+ 602:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  cinfo->output_scan_number = cinfo->input_scan_number;
+ 603:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 604:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       return val;
+ 605:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case JPEG_SUSPENDED:
+ 606:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       return val;
+ 607:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     default:
+ 608:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       return val;
+ 609:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     }
+ 610:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 611:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 612:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 613:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 614:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 615:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Reset state to begin a fresh datastream.
+ 616:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 617:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 618:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** METHODDEF(void)
+ 619:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** reset_input_controller (j_decompress_ptr cinfo)
+ 620:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+  55              		.loc 1 620 0
+  56              		.cfi_startproc
+  57              		@ args = 0, pretend = 0, frame = 0
+  58              		@ frame_needed = 0, uses_anonymous_args = 0
+  59              	.LVL1:
+  60 0000 38B5     		push	{r3, r4, r5, lr}
+  61              	.LCFI0:
+  62              		.cfi_def_cfa_offset 16
+  63              		.cfi_offset 3, -16
+  64              		.cfi_offset 4, -12
+  65              		.cfi_offset 5, -8
+  66              		.cfi_offset 14, -4
+  67 0002 0446     		mov	r4, r0
+ARM GAS  /tmp/ccDOcQAg.s 			page 13
+
+
+ 621:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   my_inputctl_ptr inputctl = (my_inputctl_ptr) cinfo->inputctl;
+  68              		.loc 1 621 0
+  69 0004 D0F8C831 		ldr	r3, [r0, #456]
+  70              	.LVL2:
+ 622:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 623:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.consume_input = consume_markers;
+  71              		.loc 1 623 0
+  72 0008 084A     		ldr	r2, .L6
+  73 000a 1A60     		str	r2, [r3]
+ 624:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.has_multiple_scans = FALSE; /* "unknown" would be better */
+  74              		.loc 1 624 0
+  75 000c 0025     		movs	r5, #0
+  76 000e 1D61     		str	r5, [r3, #16]
+ 625:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.eoi_reached = FALSE;
+  77              		.loc 1 625 0
+  78 0010 5D61     		str	r5, [r3, #20]
+ 626:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->inheaders = 1;
+  79              		.loc 1 626 0
+  80 0012 0122     		movs	r2, #1
+  81 0014 9A61     		str	r2, [r3, #24]
+ 627:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Reset other modules */
+ 628:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->err->reset_error_mgr) ((j_common_ptr) cinfo);
+  82              		.loc 1 628 0
+  83 0016 0368     		ldr	r3, [r0]
+  84              	.LVL3:
+  85 0018 1B69     		ldr	r3, [r3, #16]
+  86 001a 9847     		blx	r3
+  87              	.LVL4:
+ 629:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->marker->reset_marker_reader) (cinfo);
+  88              		.loc 1 629 0
+  89 001c D4F8CC31 		ldr	r3, [r4, #460]
+  90 0020 1B68     		ldr	r3, [r3]
+  91 0022 2046     		mov	r0, r4
+  92 0024 9847     		blx	r3
+  93              	.LVL5:
+ 630:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Reset progression state -- would be cleaner if entropy decoder did this */
+ 631:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->coef_bits = NULL;
+  94              		.loc 1 631 0
+  95 0026 C4F8A050 		str	r5, [r4, #160]
+ 632:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+  96              		.loc 1 632 0
+  97 002a 38BD     		pop	{r3, r4, r5, pc}
+  98              	.LVL6:
+  99              	.L7:
+ 100              		.align	2
+ 101              	.L6:
+ 102 002c 00000000 		.word	consume_markers
+ 103              		.cfi_endproc
+ 104              	.LFE10:
+ 106              		.section	.text.per_scan_setup,"ax",%progbits
+ 107              		.align	1
+ 108              		.syntax unified
+ 109              		.thumb
+ 110              		.thumb_func
+ 111              		.fpu fpv5-sp-d16
+ 113              	per_scan_setup:
+ 114              	.LFB5:
+ARM GAS  /tmp/ccDOcQAg.s 			page 14
+
+
+ 391:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci, mcublks, tmp;
+ 115              		.loc 1 391 0
+ 116              		.cfi_startproc
+ 117              		@ args = 0, pretend = 0, frame = 0
+ 118              		@ frame_needed = 0, uses_anonymous_args = 0
+ 119              	.LVL7:
+ 120 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 121              	.LCFI1:
+ 122              		.cfi_def_cfa_offset 24
+ 123              		.cfi_offset 3, -24
+ 124              		.cfi_offset 4, -20
+ 125              		.cfi_offset 5, -16
+ 126              		.cfi_offset 6, -12
+ 127              		.cfi_offset 7, -8
+ 128              		.cfi_offset 14, -4
+ 395:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 129              		.loc 1 395 0
+ 130 0002 D0F85031 		ldr	r3, [r0, #336]
+ 131 0006 012B     		cmp	r3, #1
+ 132 0008 2AD0     		beq	.L21
+ 133 000a 0446     		mov	r4, r0
+ 424:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT2(cinfo, JERR_COMPONENT_COUNT, cinfo->comps_in_scan,
+ 134              		.loc 1 424 0
+ 135 000c 013B     		subs	r3, r3, #1
+ 136 000e 032B     		cmp	r3, #3
+ 137 0010 0CD9     		bls	.L12
+ 425:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	       MAX_COMPS_IN_SCAN);
+ 138              		.loc 1 425 0
+ 139 0012 0368     		ldr	r3, [r0]
+ 140 0014 1B22     		movs	r2, #27
+ 141 0016 5A61     		str	r2, [r3, #20]
+ 142 0018 0368     		ldr	r3, [r0]
+ 143 001a D0F85021 		ldr	r2, [r0, #336]
+ 144 001e 9A61     		str	r2, [r3, #24]
+ 145 0020 0368     		ldr	r3, [r0]
+ 146 0022 0422     		movs	r2, #4
+ 147 0024 DA61     		str	r2, [r3, #28]
+ 148 0026 0368     		ldr	r3, [r0]
+ 149 0028 1B68     		ldr	r3, [r3]
+ 150 002a 9847     		blx	r3
+ 151              	.LVL8:
+ 152              	.L12:
+ 431:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_rows_in_scan = (JDIMENSION)
+ 153              		.loc 1 431 0
+ 154 002c D4F83831 		ldr	r3, [r4, #312]
+ 155 0030 D4F8A811 		ldr	r1, [r4, #424]
+ 430:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_h_samp_factor * cinfo->block_size));
+ 156              		.loc 1 430 0
+ 157 0034 01FB03F1 		mul	r1, r1, r3
+ 158 0038 E069     		ldr	r0, [r4, #28]
+ 159 003a FFF7FEFF 		bl	jdiv_round_up
+ 160              	.LVL9:
+ 429:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width,
+ 161              		.loc 1 429 0
+ 162 003e C4F86401 		str	r0, [r4, #356]
+ 434:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 163              		.loc 1 434 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 15
+
+
+ 164 0042 D4F83C31 		ldr	r3, [r4, #316]
+ 165 0046 D4F8A811 		ldr	r1, [r4, #424]
+ 433:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 166              		.loc 1 433 0
+ 167 004a 01FB03F1 		mul	r1, r1, r3
+ 168 004e 206A     		ldr	r0, [r4, #32]
+ 169 0050 FFF7FEFF 		bl	jdiv_round_up
+ 170              	.LVL10:
+ 432:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height,
+ 171              		.loc 1 432 0
+ 172 0054 C4F86801 		str	r0, [r4, #360]
+ 436:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 173              		.loc 1 436 0
+ 174 0058 0026     		movs	r6, #0
+ 175 005a C4F86C61 		str	r6, [r4, #364]
+ 176              	.LVL11:
+ 438:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr = cinfo->cur_comp_info[ci];
+ 177              		.loc 1 438 0
+ 178 005e 2CE0     		b	.L13
+ 179              	.LVL12:
+ 180              	.L21:
+ 398:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 181              		.loc 1 398 0
+ 182 0060 D0F85431 		ldr	r3, [r0, #340]
+ 183              	.LVL13:
+ 401:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_rows_in_scan = compptr->height_in_blocks;
+ 184              		.loc 1 401 0
+ 185 0064 DA69     		ldr	r2, [r3, #28]
+ 186 0066 C0F86421 		str	r2, [r0, #356]
+ 402:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 187              		.loc 1 402 0
+ 188 006a 1A6A     		ldr	r2, [r3, #32]
+ 189 006c C0F86821 		str	r2, [r0, #360]
+ 405:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_height = 1;
+ 190              		.loc 1 405 0
+ 191 0070 0122     		movs	r2, #1
+ 192 0072 9A63     		str	r2, [r3, #56]
+ 406:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_blocks = 1;
+ 193              		.loc 1 406 0
+ 194 0074 DA63     		str	r2, [r3, #60]
+ 407:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->MCU_sample_width = compptr->DCT_h_scaled_size;
+ 195              		.loc 1 407 0
+ 196 0076 1A64     		str	r2, [r3, #64]
+ 408:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->last_col_width = 1;
+ 197              		.loc 1 408 0
+ 198 0078 596A     		ldr	r1, [r3, #36]
+ 199 007a 5964     		str	r1, [r3, #68]
+ 409:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* For noninterleaved scans, it is convenient to define last_row_height
+ 200              		.loc 1 409 0
+ 201 007c 9A64     		str	r2, [r3, #72]
+ 413:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (tmp == 0) tmp = compptr->v_samp_factor;
+ 202              		.loc 1 413 0
+ 203 007e 1C6A     		ldr	r4, [r3, #32]
+ 204 0080 DA68     		ldr	r2, [r3, #12]
+ 205 0082 B4FBF2F1 		udiv	r1, r4, r2
+ 206 0086 02FB1141 		mls	r1, r2, r1, r4
+ 207              	.LVL14:
+ARM GAS  /tmp/ccDOcQAg.s 			page 16
+
+
+ 414:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->last_row_height = tmp;
+ 208              		.loc 1 414 0
+ 209 008a 39B9     		cbnz	r1, .L22
+ 210              	.L10:
+ 211              	.LVL15:
+ 415:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 212              		.loc 1 415 0
+ 213 008c DA64     		str	r2, [r3, #76]
+ 418:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->MCU_membership[0] = 0;
+ 214              		.loc 1 418 0
+ 215 008e 0123     		movs	r3, #1
+ 216              	.LVL16:
+ 217 0090 C0F86C31 		str	r3, [r0, #364]
+ 419:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     
+ 218              		.loc 1 419 0
+ 219 0094 0023     		movs	r3, #0
+ 220 0096 C0F87031 		str	r3, [r0, #368]
+ 221              	.LVL17:
+ 222              	.L8:
+ 462:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 223              		.loc 1 462 0
+ 224 009a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 225              	.LVL18:
+ 226              	.L22:
+ 413:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (tmp == 0) tmp = compptr->v_samp_factor;
+ 227              		.loc 1 413 0
+ 228 009c 0A46     		mov	r2, r1
+ 229 009e F5E7     		b	.L10
+ 230              	.LVL19:
+ 231              	.L18:
+ 457:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 232              		.loc 1 457 0
+ 233 00a0 D4F86C31 		ldr	r3, [r4, #364]
+ 234 00a4 591C     		adds	r1, r3, #1
+ 235 00a6 C4F86C11 		str	r1, [r4, #364]
+ 236 00aa 5C33     		adds	r3, r3, #92
+ 237 00ac 44F82360 		str	r6, [r4, r3, lsl #2]
+ 456:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	cinfo->MCU_membership[cinfo->blocks_in_MCU++] = ci;
+ 238              		.loc 1 456 0
+ 239 00b0 1546     		mov	r5, r2
+ 240              	.LVL20:
+ 241              	.L17:
+ 242 00b2 6A1E     		subs	r2, r5, #1
+ 243              	.LVL21:
+ 244 00b4 002D     		cmp	r5, #0
+ 245 00b6 F3DC     		bgt	.L18
+ 438:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr = cinfo->cur_comp_info[ci];
+ 246              		.loc 1 438 0 discriminator 2
+ 247 00b8 0136     		adds	r6, r6, #1
+ 248              	.LVL22:
+ 249              	.L13:
+ 438:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr = cinfo->cur_comp_info[ci];
+ 250              		.loc 1 438 0 is_stmt 0 discriminator 1
+ 251 00ba D4F85031 		ldr	r3, [r4, #336]
+ 252 00be B342     		cmp	r3, r6
+ 253 00c0 EBDD     		ble	.L8
+ 439:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Sampling factors give # of blocks of component in each MCU */
+ARM GAS  /tmp/ccDOcQAg.s 			page 17
+
+
+ 254              		.loc 1 439 0 is_stmt 1
+ 255 00c2 06F15403 		add	r3, r6, #84
+ 256 00c6 04EB8303 		add	r3, r4, r3, lsl #2
+ 257 00ca 5B68     		ldr	r3, [r3, #4]
+ 258              	.LVL23:
+ 441:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_height = compptr->v_samp_factor;
+ 259              		.loc 1 441 0
+ 260 00cc 9A68     		ldr	r2, [r3, #8]
+ 261 00ce 9A63     		str	r2, [r3, #56]
+ 442:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_blocks = compptr->MCU_width * compptr->MCU_height;
+ 262              		.loc 1 442 0
+ 263 00d0 D968     		ldr	r1, [r3, #12]
+ 264 00d2 D963     		str	r1, [r3, #60]
+ 443:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->MCU_sample_width = compptr->MCU_width * compptr->DCT_h_scaled_size;
+ 265              		.loc 1 443 0
+ 266 00d4 01FB02F5 		mul	r5, r1, r2
+ 267 00d8 1D64     		str	r5, [r3, #64]
+ 444:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Figure number of non-dummy blocks in last MCU column & row */
+ 268              		.loc 1 444 0
+ 269 00da 586A     		ldr	r0, [r3, #36]
+ 270 00dc 00FB02F0 		mul	r0, r0, r2
+ 271 00e0 5864     		str	r0, [r3, #68]
+ 446:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_width;
+ 272              		.loc 1 446 0
+ 273 00e2 DF69     		ldr	r7, [r3, #28]
+ 274 00e4 B7FBF2F0 		udiv	r0, r7, r2
+ 275 00e8 02FB1070 		mls	r0, r2, r0, r7
+ 276              	.LVL24:
+ 447:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->last_col_width = tmp;
+ 277              		.loc 1 447 0
+ 278 00ec 00B1     		cbz	r0, .L14
+ 446:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_width;
+ 279              		.loc 1 446 0
+ 280 00ee 0246     		mov	r2, r0
+ 281              	.L14:
+ 282              	.LVL25:
+ 448:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       tmp = (int) (compptr->height_in_blocks % compptr->MCU_height);
+ 283              		.loc 1 448 0
+ 284 00f0 9A64     		str	r2, [r3, #72]
+ 449:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_height;
+ 285              		.loc 1 449 0
+ 286 00f2 186A     		ldr	r0, [r3, #32]
+ 287 00f4 B0FBF1F2 		udiv	r2, r0, r1
+ 288              	.LVL26:
+ 289 00f8 01FB1202 		mls	r2, r1, r2, r0
+ 290              	.LVL27:
+ 450:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       compptr->last_row_height = tmp;
+ 291              		.loc 1 450 0
+ 292 00fc 02B1     		cbz	r2, .L15
+ 449:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (tmp == 0) tmp = compptr->MCU_height;
+ 293              		.loc 1 449 0
+ 294 00fe 1146     		mov	r1, r2
+ 295              	.L15:
+ 296              	.LVL28:
+ 451:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       /* Prepare array describing MCU composition */
+ 297              		.loc 1 451 0
+ 298 0100 D964     		str	r1, [r3, #76]
+ARM GAS  /tmp/ccDOcQAg.s 			page 18
+
+
+ 299              	.LVL29:
+ 454:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	ERREXIT(cinfo, JERR_BAD_MCU_SIZE);
+ 300              		.loc 1 454 0
+ 301 0102 D4F86C31 		ldr	r3, [r4, #364]
+ 302              	.LVL30:
+ 303 0106 2B44     		add	r3, r3, r5
+ 304 0108 0A2B     		cmp	r3, #10
+ 305 010a D2DD     		ble	.L17
+ 455:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       while (mcublks-- > 0) {
+ 306              		.loc 1 455 0
+ 307 010c 2368     		ldr	r3, [r4]
+ 308 010e 0E22     		movs	r2, #14
+ 309 0110 5A61     		str	r2, [r3, #20]
+ 310 0112 2368     		ldr	r3, [r4]
+ 311 0114 1B68     		ldr	r3, [r3]
+ 312 0116 2046     		mov	r0, r4
+ 313 0118 9847     		blx	r3
+ 314              	.LVL31:
+ 315 011a CAE7     		b	.L17
+ 316              		.cfi_endproc
+ 317              	.LFE5:
+ 319              		.section	.text.initial_setup,"ax",%progbits
+ 320              		.align	1
+ 321              		.syntax unified
+ 322              		.thumb
+ 323              		.thumb_func
+ 324              		.fpu fpv5-sp-d16
+ 326              	initial_setup:
+ 327              	.LFB4:
+ 210:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci;
+ 328              		.loc 1 210 0
+ 329              		.cfi_startproc
+ 330              		@ args = 0, pretend = 0, frame = 0
+ 331              		@ frame_needed = 0, uses_anonymous_args = 0
+ 332              	.LVL32:
+ 333 0000 70B5     		push	{r4, r5, r6, lr}
+ 334              	.LCFI2:
+ 335              		.cfi_def_cfa_offset 16
+ 336              		.cfi_offset 4, -16
+ 337              		.cfi_offset 5, -12
+ 338              		.cfi_offset 6, -8
+ 339              		.cfi_offset 14, -4
+ 340 0002 0446     		mov	r4, r0
+ 215:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       (long) cinfo->image_width > (long) JPEG_MAX_DIMENSION)
+ 341              		.loc 1 215 0
+ 342 0004 026A     		ldr	r2, [r0, #32]
+ 343 0006 4FF6DC73 		movw	r3, #65500
+ 344 000a 9A42     		cmp	r2, r3
+ 345 000c 32DD     		ble	.L62
+ 346              	.L24:
+ 217:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 347              		.loc 1 217 0
+ 348 000e 2368     		ldr	r3, [r4]
+ 349 0010 2A22     		movs	r2, #42
+ 350 0012 5A61     		str	r2, [r3, #20]
+ 351 0014 2368     		ldr	r3, [r4]
+ 352 0016 4FF6DC72 		movw	r2, #65500
+ARM GAS  /tmp/ccDOcQAg.s 			page 19
+
+
+ 353 001a 9A61     		str	r2, [r3, #24]
+ 354 001c 2368     		ldr	r3, [r4]
+ 355 001e 1B68     		ldr	r3, [r3]
+ 356 0020 2046     		mov	r0, r4
+ 357              	.LVL33:
+ 358 0022 9847     		blx	r3
+ 359              	.LVL34:
+ 360              	.L25:
+ 220:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT1(cinfo, JERR_BAD_PRECISION, cinfo->data_precision);
+ 361              		.loc 1 220 0
+ 362 0024 D4F8D430 		ldr	r3, [r4, #212]
+ 363 0028 082B     		cmp	r3, #8
+ 364 002a 0AD0     		beq	.L26
+ 221:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 365              		.loc 1 221 0
+ 366 002c 2368     		ldr	r3, [r4]
+ 367 002e 1022     		movs	r2, #16
+ 368 0030 5A61     		str	r2, [r3, #20]
+ 369 0032 2368     		ldr	r3, [r4]
+ 370 0034 D4F8D420 		ldr	r2, [r4, #212]
+ 371 0038 9A61     		str	r2, [r3, #24]
+ 372 003a 2368     		ldr	r3, [r4]
+ 373 003c 1B68     		ldr	r3, [r3]
+ 374 003e 2046     		mov	r0, r4
+ 375 0040 9847     		blx	r3
+ 376              	.LVL35:
+ 377              	.L26:
+ 224:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT2(cinfo, JERR_COMPONENT_COUNT, cinfo->num_components,
+ 378              		.loc 1 224 0
+ 379 0042 636A     		ldr	r3, [r4, #36]
+ 380 0044 0A2B     		cmp	r3, #10
+ 381 0046 0CDD     		ble	.L27
+ 225:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	     MAX_COMPONENTS);
+ 382              		.loc 1 225 0
+ 383 0048 2368     		ldr	r3, [r4]
+ 384 004a 1B22     		movs	r2, #27
+ 385 004c 5A61     		str	r2, [r3, #20]
+ 386 004e 2368     		ldr	r3, [r4]
+ 387 0050 626A     		ldr	r2, [r4, #36]
+ 388 0052 9A61     		str	r2, [r3, #24]
+ 389 0054 2368     		ldr	r3, [r4]
+ 390 0056 0A22     		movs	r2, #10
+ 391 0058 DA61     		str	r2, [r3, #28]
+ 392 005a 2368     		ldr	r3, [r4]
+ 393 005c 1B68     		ldr	r3, [r3]
+ 394 005e 2046     		mov	r0, r4
+ 395 0060 9847     		blx	r3
+ 396              	.LVL36:
+ 397              	.L27:
+ 229:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->max_v_samp_factor = 1;
+ 398              		.loc 1 229 0
+ 399 0062 0123     		movs	r3, #1
+ 400 0064 C4F83831 		str	r3, [r4, #312]
+ 230:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   for (ci = 0, compptr = cinfo->comp_info; ci < cinfo->num_components;
+ 401              		.loc 1 230 0
+ 402 0068 C4F83C31 		str	r3, [r4, #316]
+ 403              	.LVL37:
+ARM GAS  /tmp/ccDOcQAg.s 			page 20
+
+
+ 231:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 404              		.loc 1 231 0
+ 405 006c D4F8D850 		ldr	r5, [r4, #216]
+ 406              	.LVL38:
+ 407 0070 0026     		movs	r6, #0
+ 408 0072 1CE0     		b	.L28
+ 409              	.LVL39:
+ 410              	.L62:
+ 216:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     ERREXIT1(cinfo, JERR_IMAGE_TOO_BIG, (unsigned int) JPEG_MAX_DIMENSION);
+ 411              		.loc 1 216 0 discriminator 1
+ 412 0074 C269     		ldr	r2, [r0, #28]
+ 215:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       (long) cinfo->image_width > (long) JPEG_MAX_DIMENSION)
+ 413              		.loc 1 215 0 discriminator 1
+ 414 0076 9A42     		cmp	r2, r3
+ 415 0078 D4DD     		ble	.L25
+ 416 007a C8E7     		b	.L24
+ 417              	.LVL40:
+ 418              	.L29:
+ 235:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->max_h_samp_factor = MAX(cinfo->max_h_samp_factor,
+ 419              		.loc 1 235 0
+ 420 007c 2368     		ldr	r3, [r4]
+ 421 007e 1322     		movs	r2, #19
+ 422 0080 5A61     		str	r2, [r3, #20]
+ 423 0082 2368     		ldr	r3, [r4]
+ 424 0084 1B68     		ldr	r3, [r3]
+ 425 0086 2046     		mov	r0, r4
+ 426 0088 9847     		blx	r3
+ 427              	.LVL41:
+ 428              	.L30:
+ 236:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				   compptr->h_samp_factor);
+ 429              		.loc 1 236 0
+ 430 008a AB68     		ldr	r3, [r5, #8]
+ 431 008c D4F83821 		ldr	r2, [r4, #312]
+ 432 0090 9342     		cmp	r3, r2
+ 433 0092 B8BF     		it	lt
+ 434 0094 1346     		movlt	r3, r2
+ 435 0096 C4F83831 		str	r3, [r4, #312]
+ 238:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				   compptr->v_samp_factor);
+ 436              		.loc 1 238 0
+ 437 009a EB68     		ldr	r3, [r5, #12]
+ 438 009c D4F83C21 		ldr	r2, [r4, #316]
+ 439 00a0 9342     		cmp	r3, r2
+ 440 00a2 B8BF     		it	lt
+ 441 00a4 1346     		movlt	r3, r2
+ 442 00a6 C4F83C31 		str	r3, [r4, #316]
+ 232:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (compptr->h_samp_factor<=0 || compptr->h_samp_factor>MAX_SAMP_FACTOR ||
+ 443              		.loc 1 232 0
+ 444 00aa 0136     		adds	r6, r6, #1
+ 445              	.LVL42:
+ 446 00ac 5835     		adds	r5, r5, #88
+ 447              	.LVL43:
+ 448              	.L28:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 449              		.loc 1 231 0 discriminator 1
+ 450 00ae 636A     		ldr	r3, [r4, #36]
+ 451 00b0 B342     		cmp	r3, r6
+ 452 00b2 09DD     		ble	.L63
+ARM GAS  /tmp/ccDOcQAg.s 			page 21
+
+
+ 233:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	compptr->v_samp_factor<=0 || compptr->v_samp_factor>MAX_SAMP_FACTOR)
+ 453              		.loc 1 233 0
+ 454 00b4 AB68     		ldr	r3, [r5, #8]
+ 455 00b6 013B     		subs	r3, r3, #1
+ 456 00b8 032B     		cmp	r3, #3
+ 457 00ba DFD8     		bhi	.L29
+ 234:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT(cinfo, JERR_BAD_SAMPLING);
+ 458              		.loc 1 234 0 discriminator 1
+ 459 00bc EB68     		ldr	r3, [r5, #12]
+ 233:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	compptr->v_samp_factor<=0 || compptr->v_samp_factor>MAX_SAMP_FACTOR)
+ 460              		.loc 1 233 0 discriminator 1
+ 461 00be 002B     		cmp	r3, #0
+ 462 00c0 DCDD     		ble	.L29
+ 234:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT(cinfo, JERR_BAD_SAMPLING);
+ 463              		.loc 1 234 0
+ 464 00c2 042B     		cmp	r3, #4
+ 465 00c4 E1DD     		ble	.L30
+ 466 00c6 D9E7     		b	.L29
+ 467              	.L63:
+ 243:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->comps_in_scan)) { /* no pseudo SOS marker */
+ 468              		.loc 1 243 0
+ 469 00c8 D4F8DC30 		ldr	r3, [r4, #220]
+ 470 00cc 2BB9     		cbnz	r3, .L32
+ 243:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->comps_in_scan)) { /* no pseudo SOS marker */
+ 471              		.loc 1 243 0 is_stmt 0 discriminator 1
+ 472 00ce D4F8E030 		ldr	r3, [r4, #224]
+ 473 00d2 ABB1     		cbz	r3, .L33
+ 244:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->block_size = DCTSIZE;
+ 474              		.loc 1 244 0 is_stmt 1 discriminator 2
+ 475 00d4 D4F85031 		ldr	r3, [r4, #336]
+ 243:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->comps_in_scan)) { /* no pseudo SOS marker */
+ 476              		.loc 1 243 0 discriminator 2
+ 477 00d8 93B1     		cbz	r3, .L33
+ 478              	.L32:
+ 245:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->natural_order = jpeg_natural_order;
+ 479              		.loc 1 245 0
+ 480 00da 0823     		movs	r3, #8
+ 481 00dc C4F8A831 		str	r3, [r4, #424]
+ 246:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->lim_Se = DCTSIZE2-1;
+ 482              		.loc 1 246 0
+ 483 00e0 A14B     		ldr	r3, .L68
+ 484 00e2 C4F8AC31 		str	r3, [r4, #428]
+ 247:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else
+ 485              		.loc 1 247 0
+ 486 00e6 3F23     		movs	r3, #63
+ 487 00e8 C4F8B031 		str	r3, [r4, #432]
+ 488              	.L34:
+ 342:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->min_DCT_v_scaled_size = cinfo->block_size;
+ 489              		.loc 1 342 0
+ 490 00ec D4F8A831 		ldr	r3, [r4, #424]
+ 491 00f0 C4F84031 		str	r3, [r4, #320]
+ 343:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 492              		.loc 1 343 0
+ 493 00f4 C4F84431 		str	r3, [r4, #324]
+ 494              	.LVL44:
+ 346:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 495              		.loc 1 346 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 22
+
+
+ 496 00f8 D4F8D850 		ldr	r5, [r4, #216]
+ 497              	.LVL45:
+ 498 00fc 0026     		movs	r6, #0
+ 499 00fe 12E1     		b	.L56
+ 500              	.LVL46:
+ 501              	.L33:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 502              		.loc 1 249 0
+ 503 0100 D4F89C31 		ldr	r3, [r4, #412]
+ 504 0104 3F2B     		cmp	r3, #63
+ 505 0106 00F09A80 		beq	.L36
+ 506 010a 16DD     		ble	.L64
+ 507 010c 8F2B     		cmp	r3, #143
+ 508 010e 00F0B480 		beq	.L46
+ 509 0112 42DD     		ble	.L65
+ 510 0114 C32B     		cmp	r3, #195
+ 511 0116 00F0BA80 		beq	.L51
+ 512 011a 4EDD     		ble	.L66
+ 513 011c E02B     		cmp	r3, #224
+ 514 011e 00F0C080 		beq	.L54
+ 515 0122 FF2B     		cmp	r3, #255
+ 516 0124 12D1     		bne	.L35
+ 326:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 517              		.loc 1 326 0
+ 518 0126 1023     		movs	r3, #16
+ 519 0128 C4F8A831 		str	r3, [r4, #424]
+ 327:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 520              		.loc 1 327 0
+ 521 012c 8E4B     		ldr	r3, .L68
+ 522 012e C4F8AC31 		str	r3, [r4, #428]
+ 328:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 523              		.loc 1 328 0
+ 524 0132 3F23     		movs	r3, #63
+ 525 0134 C4F8B031 		str	r3, [r4, #432]
+ 329:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     default:
+ 526              		.loc 1 329 0
+ 527 0138 D8E7     		b	.L34
+ 528              	.L64:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 529              		.loc 1 249 0
+ 530 013a 0F2B     		cmp	r3, #15
+ 531 013c 64D0     		beq	.L38
+ 532 013e 1DDC     		bgt	.L39
+ 533 0140 032B     		cmp	r3, #3
+ 534 0142 4FD0     		beq	.L40
+ 535 0144 082B     		cmp	r3, #8
+ 536 0146 56D0     		beq	.L41
+ 537 0148 002B     		cmp	r3, #0
+ 538 014a 42D0     		beq	.L67
+ 539              	.L35:
+ 331:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	       cinfo->Ss, cinfo->Se, cinfo->Ah, cinfo->Al);
+ 540              		.loc 1 331 0
+ 541 014c 2368     		ldr	r3, [r4]
+ 542 014e 1122     		movs	r2, #17
+ 543 0150 5A61     		str	r2, [r3, #20]
+ 544 0152 2368     		ldr	r3, [r4]
+ 545 0154 D4F89821 		ldr	r2, [r4, #408]
+ARM GAS  /tmp/ccDOcQAg.s 			page 23
+
+
+ 546 0158 9A61     		str	r2, [r3, #24]
+ 547 015a 2368     		ldr	r3, [r4]
+ 548 015c D4F89C21 		ldr	r2, [r4, #412]
+ 549 0160 DA61     		str	r2, [r3, #28]
+ 550 0162 2368     		ldr	r3, [r4]
+ 551 0164 D4F8A021 		ldr	r2, [r4, #416]
+ 552 0168 1A62     		str	r2, [r3, #32]
+ 553 016a 2368     		ldr	r3, [r4]
+ 554 016c D4F8A421 		ldr	r2, [r4, #420]
+ 555 0170 5A62     		str	r2, [r3, #36]
+ 556 0172 2368     		ldr	r3, [r4]
+ 557 0174 1B68     		ldr	r3, [r3]
+ 558 0176 2046     		mov	r0, r4
+ 559 0178 9847     		blx	r3
+ 560              	.LVL47:
+ 333:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     }
+ 561              		.loc 1 333 0
+ 562 017a B7E7     		b	.L34
+ 563              	.L39:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 564              		.loc 1 249 0
+ 565 017c 232B     		cmp	r3, #35
+ 566 017e 4CD0     		beq	.L43
+ 567 0180 302B     		cmp	r3, #48
+ 568 0182 53D0     		beq	.L44
+ 569 0184 182B     		cmp	r3, #24
+ 570 0186 E1D1     		bne	.L35
+ 271:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order5;
+ 571              		.loc 1 271 0
+ 572 0188 0522     		movs	r2, #5
+ 573 018a C4F8A821 		str	r2, [r4, #424]
+ 272:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 574              		.loc 1 272 0
+ 575 018e 774A     		ldr	r2, .L68+4
+ 576 0190 C4F8AC21 		str	r2, [r4, #428]
+ 273:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 577              		.loc 1 273 0
+ 578 0194 C4F8B031 		str	r3, [r4, #432]
+ 274:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (6*6-1):
+ 579              		.loc 1 274 0
+ 580 0198 A8E7     		b	.L34
+ 581              	.L65:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 582              		.loc 1 249 0
+ 583 019a 632B     		cmp	r3, #99
+ 584 019c 59D0     		beq	.L48
+ 585 019e 782B     		cmp	r3, #120
+ 586 01a0 61D0     		beq	.L49
+ 587 01a2 502B     		cmp	r3, #80
+ 588 01a4 D2D1     		bne	.L35
+ 291:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 589              		.loc 1 291 0
+ 590 01a6 0923     		movs	r3, #9
+ 591 01a8 C4F8A831 		str	r3, [r4, #424]
+ 292:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 592              		.loc 1 292 0
+ 593 01ac 6E4B     		ldr	r3, .L68
+ARM GAS  /tmp/ccDOcQAg.s 			page 24
+
+
+ 594 01ae C4F8AC31 		str	r3, [r4, #428]
+ 293:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 595              		.loc 1 293 0
+ 596 01b2 3F23     		movs	r3, #63
+ 597 01b4 C4F8B031 		str	r3, [r4, #432]
+ 294:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (10*10-1):
+ 598              		.loc 1 294 0
+ 599 01b8 98E7     		b	.L34
+ 600              	.L66:
+ 249:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (1*1-1):
+ 601              		.loc 1 249 0
+ 602 01ba A82B     		cmp	r3, #168
+ 603 01bc C6D1     		bne	.L35
+ 311:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 604              		.loc 1 311 0
+ 605 01be 0D23     		movs	r3, #13
+ 606 01c0 C4F8A831 		str	r3, [r4, #424]
+ 312:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 607              		.loc 1 312 0
+ 608 01c4 684B     		ldr	r3, .L68
+ 609 01c6 C4F8AC31 		str	r3, [r4, #428]
+ 313:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 610              		.loc 1 313 0
+ 611 01ca 3F23     		movs	r3, #63
+ 612 01cc C4F8B031 		str	r3, [r4, #432]
+ 314:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (14*14-1):
+ 613              		.loc 1 314 0
+ 614 01d0 8CE7     		b	.L34
+ 615              	.L67:
+ 251:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order; /* not needed */
+ 616              		.loc 1 251 0
+ 617 01d2 0122     		movs	r2, #1
+ 618 01d4 C4F8A821 		str	r2, [r4, #424]
+ 252:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 619              		.loc 1 252 0
+ 620 01d8 634A     		ldr	r2, .L68
+ 621 01da C4F8AC21 		str	r2, [r4, #428]
+ 253:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 622              		.loc 1 253 0
+ 623 01de C4F8B031 		str	r3, [r4, #432]
+ 254:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (2*2-1):
+ 624              		.loc 1 254 0
+ 625 01e2 83E7     		b	.L34
+ 626              	.L40:
+ 256:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order2;
+ 627              		.loc 1 256 0
+ 628 01e4 0222     		movs	r2, #2
+ 629 01e6 C4F8A821 		str	r2, [r4, #424]
+ 257:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 630              		.loc 1 257 0
+ 631 01ea 614A     		ldr	r2, .L68+8
+ 632 01ec C4F8AC21 		str	r2, [r4, #428]
+ 258:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 633              		.loc 1 258 0
+ 634 01f0 C4F8B031 		str	r3, [r4, #432]
+ 259:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (3*3-1):
+ 635              		.loc 1 259 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 25
+
+
+ 636 01f4 7AE7     		b	.L34
+ 637              	.L41:
+ 261:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order3;
+ 638              		.loc 1 261 0
+ 639 01f6 0322     		movs	r2, #3
+ 640 01f8 C4F8A821 		str	r2, [r4, #424]
+ 262:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 641              		.loc 1 262 0
+ 642 01fc 5D4A     		ldr	r2, .L68+12
+ 643 01fe C4F8AC21 		str	r2, [r4, #428]
+ 263:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 644              		.loc 1 263 0
+ 645 0202 C4F8B031 		str	r3, [r4, #432]
+ 264:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (4*4-1):
+ 646              		.loc 1 264 0
+ 647 0206 71E7     		b	.L34
+ 648              	.L38:
+ 266:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order4;
+ 649              		.loc 1 266 0
+ 650 0208 0422     		movs	r2, #4
+ 651 020a C4F8A821 		str	r2, [r4, #424]
+ 267:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 652              		.loc 1 267 0
+ 653 020e 5A4A     		ldr	r2, .L68+16
+ 654 0210 C4F8AC21 		str	r2, [r4, #428]
+ 268:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 655              		.loc 1 268 0
+ 656 0214 C4F8B031 		str	r3, [r4, #432]
+ 269:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (5*5-1):
+ 657              		.loc 1 269 0
+ 658 0218 68E7     		b	.L34
+ 659              	.L43:
+ 276:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order6;
+ 660              		.loc 1 276 0
+ 661 021a 0622     		movs	r2, #6
+ 662 021c C4F8A821 		str	r2, [r4, #424]
+ 277:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 663              		.loc 1 277 0
+ 664 0220 564A     		ldr	r2, .L68+20
+ 665 0222 C4F8AC21 		str	r2, [r4, #428]
+ 278:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 666              		.loc 1 278 0
+ 667 0226 C4F8B031 		str	r3, [r4, #432]
+ 279:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (7*7-1):
+ 668              		.loc 1 279 0
+ 669 022a 5FE7     		b	.L34
+ 670              	.L44:
+ 281:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order7;
+ 671              		.loc 1 281 0
+ 672 022c 0722     		movs	r2, #7
+ 673 022e C4F8A821 		str	r2, [r4, #424]
+ 282:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = cinfo->Se;
+ 674              		.loc 1 282 0
+ 675 0232 534A     		ldr	r2, .L68+24
+ 676 0234 C4F8AC21 		str	r2, [r4, #428]
+ 283:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 677              		.loc 1 283 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 26
+
+
+ 678 0238 C4F8B031 		str	r3, [r4, #432]
+ 284:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (8*8-1):
+ 679              		.loc 1 284 0
+ 680 023c 56E7     		b	.L34
+ 681              	.L36:
+ 286:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 682              		.loc 1 286 0
+ 683 023e 0823     		movs	r3, #8
+ 684 0240 C4F8A831 		str	r3, [r4, #424]
+ 287:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 685              		.loc 1 287 0
+ 686 0244 484B     		ldr	r3, .L68
+ 687 0246 C4F8AC31 		str	r3, [r4, #428]
+ 288:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 688              		.loc 1 288 0
+ 689 024a 3F23     		movs	r3, #63
+ 690 024c C4F8B031 		str	r3, [r4, #432]
+ 289:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (9*9-1):
+ 691              		.loc 1 289 0
+ 692 0250 4CE7     		b	.L34
+ 693              	.L48:
+ 296:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 694              		.loc 1 296 0
+ 695 0252 0A23     		movs	r3, #10
+ 696 0254 C4F8A831 		str	r3, [r4, #424]
+ 297:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 697              		.loc 1 297 0
+ 698 0258 434B     		ldr	r3, .L68
+ 699 025a C4F8AC31 		str	r3, [r4, #428]
+ 298:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 700              		.loc 1 298 0
+ 701 025e 3F23     		movs	r3, #63
+ 702 0260 C4F8B031 		str	r3, [r4, #432]
+ 299:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (11*11-1):
+ 703              		.loc 1 299 0
+ 704 0264 42E7     		b	.L34
+ 705              	.L49:
+ 301:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 706              		.loc 1 301 0
+ 707 0266 0B23     		movs	r3, #11
+ 708 0268 C4F8A831 		str	r3, [r4, #424]
+ 302:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 709              		.loc 1 302 0
+ 710 026c 3E4B     		ldr	r3, .L68
+ 711 026e C4F8AC31 		str	r3, [r4, #428]
+ 303:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 712              		.loc 1 303 0
+ 713 0272 3F23     		movs	r3, #63
+ 714 0274 C4F8B031 		str	r3, [r4, #432]
+ 304:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (12*12-1):
+ 715              		.loc 1 304 0
+ 716 0278 38E7     		b	.L34
+ 717              	.L46:
+ 306:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 718              		.loc 1 306 0
+ 719 027a 0C23     		movs	r3, #12
+ 720 027c C4F8A831 		str	r3, [r4, #424]
+ARM GAS  /tmp/ccDOcQAg.s 			page 27
+
+
+ 307:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 721              		.loc 1 307 0
+ 722 0280 394B     		ldr	r3, .L68
+ 723 0282 C4F8AC31 		str	r3, [r4, #428]
+ 308:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 724              		.loc 1 308 0
+ 725 0286 3F23     		movs	r3, #63
+ 726 0288 C4F8B031 		str	r3, [r4, #432]
+ 309:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (13*13-1):
+ 727              		.loc 1 309 0
+ 728 028c 2EE7     		b	.L34
+ 729              	.L51:
+ 316:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 730              		.loc 1 316 0
+ 731 028e 0E23     		movs	r3, #14
+ 732 0290 C4F8A831 		str	r3, [r4, #424]
+ 317:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 733              		.loc 1 317 0
+ 734 0294 344B     		ldr	r3, .L68
+ 735 0296 C4F8AC31 		str	r3, [r4, #428]
+ 318:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 736              		.loc 1 318 0
+ 737 029a 3F23     		movs	r3, #63
+ 738 029c C4F8B031 		str	r3, [r4, #432]
+ 319:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (15*15-1):
+ 739              		.loc 1 319 0
+ 740 02a0 24E7     		b	.L34
+ 741              	.L54:
+ 321:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->natural_order = jpeg_natural_order;
+ 742              		.loc 1 321 0
+ 743 02a2 0F23     		movs	r3, #15
+ 744 02a4 C4F8A831 		str	r3, [r4, #424]
+ 322:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       cinfo->lim_Se = DCTSIZE2-1;
+ 745              		.loc 1 322 0
+ 746 02a8 2F4B     		ldr	r3, .L68
+ 747 02aa C4F8AC31 		str	r3, [r4, #428]
+ 323:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       break;
+ 748              		.loc 1 323 0
+ 749 02ae 3F23     		movs	r3, #63
+ 750 02b0 C4F8B031 		str	r3, [r4, #432]
+ 324:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case (16*16-1):
+ 751              		.loc 1 324 0
+ 752 02b4 1AE7     		b	.L34
+ 753              	.L57:
+ 348:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_v_scaled_size = cinfo->block_size;
+ 754              		.loc 1 348 0
+ 755 02b6 D4F8A831 		ldr	r3, [r4, #424]
+ 756 02ba 6B62     		str	r3, [r5, #36]
+ 349:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Size in DCT blocks */
+ 757              		.loc 1 349 0
+ 758 02bc D4F8A831 		ldr	r3, [r4, #424]
+ 759 02c0 AB62     		str	r3, [r5, #40]
+ 352:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_h_samp_factor * cinfo->block_size));
+ 760              		.loc 1 352 0
+ 761 02c2 E369     		ldr	r3, [r4, #28]
+ 762 02c4 A868     		ldr	r0, [r5, #8]
+ 353:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->height_in_blocks = (JDIMENSION)
+ARM GAS  /tmp/ccDOcQAg.s 			page 28
+
+
+ 763              		.loc 1 353 0
+ 764 02c6 D4F83821 		ldr	r2, [r4, #312]
+ 765 02ca D4F8A811 		ldr	r1, [r4, #424]
+ 352:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_h_samp_factor * cinfo->block_size));
+ 766              		.loc 1 352 0
+ 767 02ce 01FB02F1 		mul	r1, r1, r2
+ 768 02d2 00FB03F0 		mul	r0, r0, r3
+ 769 02d6 FFF7FEFF 		bl	jdiv_round_up
+ 770              	.LVL48:
+ 351:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * (long) compptr->h_samp_factor,
+ 771              		.loc 1 351 0
+ 772 02da E861     		str	r0, [r5, #28]
+ 355:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 773              		.loc 1 355 0
+ 774 02dc 236A     		ldr	r3, [r4, #32]
+ 775 02de E868     		ldr	r0, [r5, #12]
+ 356:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* downsampled_width and downsampled_height will also be overridden by
+ 776              		.loc 1 356 0
+ 777 02e0 D4F83C21 		ldr	r2, [r4, #316]
+ 778 02e4 D4F8A811 		ldr	r1, [r4, #424]
+ 355:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 779              		.loc 1 355 0
+ 780 02e8 01FB02F1 		mul	r1, r1, r2
+ 781 02ec 00FB03F0 		mul	r0, r0, r3
+ 782 02f0 FFF7FEFF 		bl	jdiv_round_up
+ 783              	.LVL49:
+ 354:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * (long) compptr->v_samp_factor,
+ 784              		.loc 1 354 0
+ 785 02f4 2862     		str	r0, [r5, #32]
+ 363:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) cinfo->max_h_samp_factor);
+ 786              		.loc 1 363 0
+ 787 02f6 E369     		ldr	r3, [r4, #28]
+ 788 02f8 A868     		ldr	r0, [r5, #8]
+ 789 02fa D4F83811 		ldr	r1, [r4, #312]
+ 790 02fe 00FB03F0 		mul	r0, r0, r3
+ 791 0302 FFF7FEFF 		bl	jdiv_round_up
+ 792              	.LVL50:
+ 362:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * (long) compptr->h_samp_factor,
+ 793              		.loc 1 362 0
+ 794 0306 E862     		str	r0, [r5, #44]
+ 366:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 		    (long) cinfo->max_v_samp_factor);
+ 795              		.loc 1 366 0
+ 796 0308 236A     		ldr	r3, [r4, #32]
+ 797 030a E868     		ldr	r0, [r5, #12]
+ 798 030c D4F83C11 		ldr	r1, [r4, #316]
+ 799 0310 00FB03F0 		mul	r0, r0, r3
+ 800 0314 FFF7FEFF 		bl	jdiv_round_up
+ 801              	.LVL51:
+ 365:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * (long) compptr->v_samp_factor,
+ 802              		.loc 1 365 0
+ 803 0318 2863     		str	r0, [r5, #48]
+ 369:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Mark no quantization table yet saved for component */
+ 804              		.loc 1 369 0
+ 805 031a 0123     		movs	r3, #1
+ 806 031c 6B63     		str	r3, [r5, #52]
+ 371:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 807              		.loc 1 371 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 29
+
+
+ 808 031e 0023     		movs	r3, #0
+ 809 0320 2B65     		str	r3, [r5, #80]
+ 347:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_h_scaled_size = cinfo->block_size;
+ 810              		.loc 1 347 0
+ 811 0322 0136     		adds	r6, r6, #1
+ 812              	.LVL52:
+ 813 0324 5835     		adds	r5, r5, #88
+ 814              	.LVL53:
+ 815              	.L56:
+ 346:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 816              		.loc 1 346 0 discriminator 1
+ 817 0326 636A     		ldr	r3, [r4, #36]
+ 818 0328 B342     		cmp	r3, r6
+ 819 032a C4DC     		bgt	.L57
+ 377:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 820              		.loc 1 377 0
+ 821 032c D4F83C31 		ldr	r3, [r4, #316]
+ 822 0330 D4F8A811 		ldr	r1, [r4, #424]
+ 376:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	          (long) (cinfo->max_v_samp_factor * cinfo->block_size));
+ 823              		.loc 1 376 0
+ 824 0334 01FB03F1 		mul	r1, r1, r3
+ 825 0338 206A     		ldr	r0, [r4, #32]
+ 826 033a FFF7FEFF 		bl	jdiv_round_up
+ 827              	.LVL54:
+ 375:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     jdiv_round_up((long) cinfo->image_height,
+ 828              		.loc 1 375 0
+ 829 033e C4F84801 		str	r0, [r4, #328]
+ 380:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->inputctl->has_multiple_scans = TRUE;
+ 830              		.loc 1 380 0
+ 831 0342 D4F85021 		ldr	r2, [r4, #336]
+ 832 0346 636A     		ldr	r3, [r4, #36]
+ 833 0348 9A42     		cmp	r2, r3
+ 834 034a 07DB     		blt	.L58
+ 380:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->inputctl->has_multiple_scans = TRUE;
+ 835              		.loc 1 380 0 is_stmt 0 discriminator 1
+ 836 034c D4F8E030 		ldr	r3, [r4, #224]
+ 837 0350 23B9     		cbnz	r3, .L58
+ 383:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 838              		.loc 1 383 0 is_stmt 1
+ 839 0352 D4F8C831 		ldr	r3, [r4, #456]
+ 840 0356 0022     		movs	r2, #0
+ 841 0358 1A61     		str	r2, [r3, #16]
+ 384:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 842              		.loc 1 384 0
+ 843 035a 03E0     		b	.L23
+ 844              	.L58:
+ 381:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   else
+ 845              		.loc 1 381 0
+ 846 035c D4F8C831 		ldr	r3, [r4, #456]
+ 847 0360 0122     		movs	r2, #1
+ 848 0362 1A61     		str	r2, [r3, #16]
+ 849              	.L23:
+ 384:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 850              		.loc 1 384 0
+ 851 0364 70BD     		pop	{r4, r5, r6, pc}
+ 852              	.LVL55:
+ 853              	.L69:
+ARM GAS  /tmp/ccDOcQAg.s 			page 30
+
+
+ 854 0366 00BF     		.align	2
+ 855              	.L68:
+ 856 0368 00000000 		.word	jpeg_natural_order
+ 857 036c 00000000 		.word	jpeg_natural_order5
+ 858 0370 00000000 		.word	jpeg_natural_order2
+ 859 0374 00000000 		.word	jpeg_natural_order3
+ 860 0378 00000000 		.word	jpeg_natural_order4
+ 861 037c 00000000 		.word	jpeg_natural_order6
+ 862 0380 00000000 		.word	jpeg_natural_order7
+ 863              		.cfi_endproc
+ 864              	.LFE4:
+ 866              		.section	.text.latch_quant_tables,"ax",%progbits
+ 867              		.align	1
+ 868              		.syntax unified
+ 869              		.thumb
+ 870              		.thumb_func
+ 871              		.fpu fpv5-sp-d16
+ 873              	latch_quant_tables:
+ 874              	.LFB6:
+ 488:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int ci, qtblno;
+ 875              		.loc 1 488 0
+ 876              		.cfi_startproc
+ 877              		@ args = 0, pretend = 0, frame = 0
+ 878              		@ frame_needed = 0, uses_anonymous_args = 0
+ 879              	.LVL56:
+ 880 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 881              	.LCFI3:
+ 882              		.cfi_def_cfa_offset 24
+ 883              		.cfi_offset 4, -24
+ 884              		.cfi_offset 5, -20
+ 885              		.cfi_offset 6, -16
+ 886              		.cfi_offset 7, -12
+ 887              		.cfi_offset 8, -8
+ 888              		.cfi_offset 14, -4
+ 889 0004 0446     		mov	r4, r0
+ 890              	.LVL57:
+ 493:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr = cinfo->cur_comp_info[ci];
+ 891              		.loc 1 493 0
+ 892 0006 0025     		movs	r5, #0
+ 893 0008 19E0     		b	.L71
+ 894              	.LVL58:
+ 895              	.L73:
+ 502:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* OK, save away the quantization table */
+ 896              		.loc 1 502 0
+ 897 000a 2368     		ldr	r3, [r4]
+ 898 000c 3622     		movs	r2, #54
+ 899 000e 5A61     		str	r2, [r3, #20]
+ 900 0010 2368     		ldr	r3, [r4]
+ 901 0012 9E61     		str	r6, [r3, #24]
+ 902 0014 2368     		ldr	r3, [r4]
+ 903 0016 1B68     		ldr	r3, [r3]
+ 904 0018 2046     		mov	r0, r4
+ 905 001a 9847     		blx	r3
+ 906              	.LVL59:
+ 907              	.L74:
+ 505:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				  SIZEOF(JQUANT_TBL));
+ 908              		.loc 1 505 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 31
+
+
+ 909 001c 6368     		ldr	r3, [r4, #4]
+ 910 001e 1B68     		ldr	r3, [r3]
+ 504:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 911              		.loc 1 504 0
+ 912 0020 8422     		movs	r2, #132
+ 913 0022 0121     		movs	r1, #1
+ 914 0024 2046     		mov	r0, r4
+ 915 0026 9847     		blx	r3
+ 916              	.LVL60:
+ 917 0028 8046     		mov	r8, r0
+ 918              	.LVL61:
+ 507:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->quant_table = qtbl;
+ 919              		.loc 1 507 0
+ 920 002a 2836     		adds	r6, r6, #40
+ 921              	.LVL62:
+ 922 002c 04EB8606 		add	r6, r4, r6, lsl #2
+ 923              	.LVL63:
+ 924 0030 8422     		movs	r2, #132
+ 925 0032 7168     		ldr	r1, [r6, #4]
+ 926 0034 FFF7FEFF 		bl	memcpy
+ 927              	.LVL64:
+ 508:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 928              		.loc 1 508 0
+ 929 0038 C7F85080 		str	r8, [r7, #80]
+ 930              	.LVL65:
+ 931              	.L72:
+ 493:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr = cinfo->cur_comp_info[ci];
+ 932              		.loc 1 493 0 discriminator 2
+ 933 003c 0135     		adds	r5, r5, #1
+ 934              	.LVL66:
+ 935              	.L71:
+ 493:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr = cinfo->cur_comp_info[ci];
+ 936              		.loc 1 493 0 is_stmt 0 discriminator 1
+ 937 003e D4F85031 		ldr	r3, [r4, #336]
+ 938 0042 AB42     		cmp	r3, r5
+ 939 0044 12DD     		ble	.L77
+ 494:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* No work if we already saved Q-table for this component */
+ 940              		.loc 1 494 0 is_stmt 1
+ 941 0046 05F15403 		add	r3, r5, #84
+ 942 004a 04EB8303 		add	r3, r4, r3, lsl #2
+ 943 004e 5F68     		ldr	r7, [r3, #4]
+ 944              	.LVL67:
+ 496:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       continue;
+ 945              		.loc 1 496 0
+ 946 0050 3B6D     		ldr	r3, [r7, #80]
+ 947 0052 002B     		cmp	r3, #0
+ 948 0054 F2D1     		bne	.L72
+ 499:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     if (qtblno < 0 || qtblno >= NUM_QUANT_TBLS ||
+ 949              		.loc 1 499 0
+ 950 0056 3E69     		ldr	r6, [r7, #16]
+ 951              	.LVL68:
+ 500:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	cinfo->quant_tbl_ptrs[qtblno] == NULL)
+ 952              		.loc 1 500 0
+ 953 0058 032E     		cmp	r6, #3
+ 954 005a D6D8     		bhi	.L73
+ 501:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       ERREXIT1(cinfo, JERR_NO_QUANT_TABLE, qtblno);
+ 955              		.loc 1 501 0 discriminator 1
+ARM GAS  /tmp/ccDOcQAg.s 			page 32
+
+
+ 956 005c 06F12803 		add	r3, r6, #40
+ 957 0060 04EB8303 		add	r3, r4, r3, lsl #2
+ 958 0064 5B68     		ldr	r3, [r3, #4]
+ 500:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	cinfo->quant_tbl_ptrs[qtblno] == NULL)
+ 959              		.loc 1 500 0 discriminator 1
+ 960 0066 002B     		cmp	r3, #0
+ 961 0068 D8D1     		bne	.L74
+ 962 006a CEE7     		b	.L73
+ 963              	.LVL69:
+ 964              	.L77:
+ 510:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 965              		.loc 1 510 0
+ 966 006c BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 967              		.cfi_endproc
+ 968              	.LFE6:
+ 970              		.section	.text.start_input_pass,"ax",%progbits
+ 971              		.align	1
+ 972              		.syntax unified
+ 973              		.thumb
+ 974              		.thumb_func
+ 975              		.fpu fpv5-sp-d16
+ 977              	start_input_pass:
+ 978              	.LFB7:
+ 522:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   per_scan_setup(cinfo);
+ 979              		.loc 1 522 0
+ 980              		.cfi_startproc
+ 981              		@ args = 0, pretend = 0, frame = 0
+ 982              		@ frame_needed = 0, uses_anonymous_args = 0
+ 983              	.LVL70:
+ 984 0000 10B5     		push	{r4, lr}
+ 985              	.LCFI4:
+ 986              		.cfi_def_cfa_offset 8
+ 987              		.cfi_offset 4, -8
+ 988              		.cfi_offset 14, -4
+ 989 0002 0446     		mov	r4, r0
+ 523:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   latch_quant_tables(cinfo);
+ 990              		.loc 1 523 0
+ 991 0004 FFF7FEFF 		bl	per_scan_setup
+ 992              	.LVL71:
+ 524:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->entropy->start_pass) (cinfo);
+ 993              		.loc 1 524 0
+ 994 0008 2046     		mov	r0, r4
+ 995 000a FFF7FEFF 		bl	latch_quant_tables
+ 996              	.LVL72:
+ 525:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   (*cinfo->coef->start_input_pass) (cinfo);
+ 997              		.loc 1 525 0
+ 998 000e D4F8D031 		ldr	r3, [r4, #464]
+ 999 0012 1B68     		ldr	r3, [r3]
+ 1000 0014 2046     		mov	r0, r4
+ 1001 0016 9847     		blx	r3
+ 1002              	.LVL73:
+ 526:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->inputctl->consume_input = cinfo->coef->consume_data;
+ 1003              		.loc 1 526 0
+ 1004 0018 D4F8C031 		ldr	r3, [r4, #448]
+ 1005 001c 1B68     		ldr	r3, [r3]
+ 1006 001e 2046     		mov	r0, r4
+ 1007 0020 9847     		blx	r3
+ARM GAS  /tmp/ccDOcQAg.s 			page 33
+
+
+ 1008              	.LVL74:
+ 527:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 1009              		.loc 1 527 0
+ 1010 0022 D4F8C021 		ldr	r2, [r4, #448]
+ 1011 0026 D4F8C831 		ldr	r3, [r4, #456]
+ 1012 002a 5268     		ldr	r2, [r2, #4]
+ 1013 002c 1A60     		str	r2, [r3]
+ 528:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 1014              		.loc 1 528 0
+ 1015 002e 10BD     		pop	{r4, pc}
+ 1016              		.cfi_endproc
+ 1017              	.LFE7:
+ 1019              		.section	.text.consume_markers,"ax",%progbits
+ 1020              		.align	1
+ 1021              		.syntax unified
+ 1022              		.thumb
+ 1023              		.thumb_func
+ 1024              		.fpu fpv5-sp-d16
+ 1026              	consume_markers:
+ 1027              	.LFB9:
+ 560:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   my_inputctl_ptr inputctl = (my_inputctl_ptr) cinfo->inputctl;
+ 1028              		.loc 1 560 0
+ 1029              		.cfi_startproc
+ 1030              		@ args = 0, pretend = 0, frame = 0
+ 1031              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1032              	.LVL75:
+ 1033 0000 70B5     		push	{r4, r5, r6, lr}
+ 1034              	.LCFI5:
+ 1035              		.cfi_def_cfa_offset 16
+ 1036              		.cfi_offset 4, -16
+ 1037              		.cfi_offset 5, -12
+ 1038              		.cfi_offset 6, -8
+ 1039              		.cfi_offset 14, -4
+ 1040 0002 0446     		mov	r4, r0
+ 561:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   int val;
+ 1041              		.loc 1 561 0
+ 1042 0004 D0F8C861 		ldr	r6, [r0, #456]
+ 1043              	.LVL76:
+ 564:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     return JPEG_REACHED_EOI;
+ 1044              		.loc 1 564 0
+ 1045 0008 7369     		ldr	r3, [r6, #20]
+ 1046 000a 002B     		cmp	r3, #0
+ 1047 000c 47D1     		bne	.L91
+ 1048              	.LVL77:
+ 1049              	.L82:
+ 568:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 1050              		.loc 1 568 0
+ 1051 000e D4F8CC31 		ldr	r3, [r4, #460]
+ 1052 0012 5B68     		ldr	r3, [r3, #4]
+ 1053 0014 2046     		mov	r0, r4
+ 1054 0016 9847     		blx	r3
+ 1055              	.LVL78:
+ 1056 0018 0546     		mov	r5, r0
+ 1057              	.LVL79:
+ 570:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     case JPEG_REACHED_SOS:	/* Found SOS */
+ 1058              		.loc 1 570 0
+ 1059 001a 0128     		cmp	r0, #1
+ARM GAS  /tmp/ccDOcQAg.s 			page 34
+
+
+ 1060 001c 03D0     		beq	.L83
+ 1061 001e 0228     		cmp	r0, #2
+ 1062 0020 23D0     		beq	.L84
+ 1063              	.LVL80:
+ 1064              	.L80:
+ 611:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 1065              		.loc 1 611 0
+ 1066 0022 2846     		mov	r0, r5
+ 1067 0024 70BD     		pop	{r4, r5, r6, pc}
+ 1068              	.LVL81:
+ 1069              	.L83:
+ 572:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (inputctl->inheaders == 1)
+ 1070              		.loc 1 572 0
+ 1071 0026 B369     		ldr	r3, [r6, #24]
+ 1072 0028 73B1     		cbz	r3, .L85
+ 573:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  initial_setup(cinfo);
+ 1073              		.loc 1 573 0
+ 1074 002a 012B     		cmp	r3, #1
+ 1075 002c 05D0     		beq	.L93
+ 1076              	.LVL82:
+ 1077              	.L86:
+ 575:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  inputctl->inheaders = 2;
+ 1078              		.loc 1 575 0
+ 1079 002e D4F85031 		ldr	r3, [r4, #336]
+ 1080 0032 33B9     		cbnz	r3, .L87
+ 576:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  break;
+ 1081              		.loc 1 576 0
+ 1082 0034 0223     		movs	r3, #2
+ 1083 0036 B361     		str	r3, [r6, #24]
+ 577:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	}
+ 1084              		.loc 1 577 0
+ 1085 0038 E9E7     		b	.L82
+ 1086              	.LVL83:
+ 1087              	.L93:
+ 574:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->comps_in_scan == 0) { /* pseudo SOS marker */
+ 1088              		.loc 1 574 0
+ 1089 003a 2046     		mov	r0, r4
+ 1090              	.LVL84:
+ 1091 003c FFF7FEFF 		bl	initial_setup
+ 1092              	.LVL85:
+ 1093 0040 F5E7     		b	.L86
+ 1094              	.L87:
+ 579:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	/* Note: start_input_pass must be called by jdmaster.c
+ 1095              		.loc 1 579 0
+ 1096 0042 0023     		movs	r3, #0
+ 1097 0044 B361     		str	r3, [r6, #24]
+ 1098 0046 ECE7     		b	.L80
+ 1099              	.LVL86:
+ 1100              	.L85:
+ 585:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  ERREXIT(cinfo, JERR_EOI_EXPECTED); /* Oops, I wasn't expecting this! */
+ 1101              		.loc 1 585 0
+ 1102 0048 3369     		ldr	r3, [r6, #16]
+ 1103 004a 33B9     		cbnz	r3, .L89
+ 586:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->comps_in_scan == 0) /* unexpected pseudo SOS marker */
+ 1104              		.loc 1 586 0
+ 1105 004c 2368     		ldr	r3, [r4]
+ 1106 004e 2422     		movs	r2, #36
+ARM GAS  /tmp/ccDOcQAg.s 			page 35
+
+
+ 1107 0050 5A61     		str	r2, [r3, #20]
+ 1108 0052 2368     		ldr	r3, [r4]
+ 1109 0054 1B68     		ldr	r3, [r3]
+ 1110 0056 2046     		mov	r0, r4
+ 1111              	.LVL87:
+ 1112 0058 9847     		blx	r3
+ 1113              	.LVL88:
+ 1114              	.L89:
+ 587:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  break;
+ 1115              		.loc 1 587 0
+ 1116 005a D4F85031 		ldr	r3, [r4, #336]
+ 1117 005e 002B     		cmp	r3, #0
+ 1118 0060 D5D0     		beq	.L82
+ 589:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 1119              		.loc 1 589 0
+ 1120 0062 2046     		mov	r0, r4
+ 1121 0064 FFF7FEFF 		bl	start_input_pass
+ 1122              	.LVL89:
+ 1123 0068 DBE7     		b	.L80
+ 1124              	.LVL90:
+ 1125              	.L84:
+ 593:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       if (inputctl->inheaders) { /* Tables-only datastream, apparently */
+ 1126              		.loc 1 593 0
+ 1127 006a 0123     		movs	r3, #1
+ 1128 006c 7361     		str	r3, [r6, #20]
+ 594:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	if (cinfo->marker->saw_SOF)
+ 1129              		.loc 1 594 0
+ 1130 006e B369     		ldr	r3, [r6, #24]
+ 1131 0070 63B1     		cbz	r3, .L90
+ 595:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  ERREXIT(cinfo, JERR_SOF_NO_SOS);
+ 1132              		.loc 1 595 0
+ 1133 0072 D4F8CC31 		ldr	r3, [r4, #460]
+ 1134 0076 1B69     		ldr	r3, [r3, #16]
+ 1135 0078 002B     		cmp	r3, #0
+ 1136 007a D2D0     		beq	.L80
+ 596:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       } else {
+ 1137              		.loc 1 596 0
+ 1138 007c 2368     		ldr	r3, [r4]
+ 1139 007e 3D22     		movs	r2, #61
+ 1140 0080 5A61     		str	r2, [r3, #20]
+ 1141 0082 2368     		ldr	r3, [r4]
+ 1142 0084 1B68     		ldr	r3, [r3]
+ 1143 0086 2046     		mov	r0, r4
+ 1144              	.LVL91:
+ 1145 0088 9847     		blx	r3
+ 1146              	.LVL92:
+ 1147 008a CAE7     		b	.L80
+ 1148              	.LVL93:
+ 1149              	.L90:
+ 601:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 	  cinfo->output_scan_number = cinfo->input_scan_number;
+ 1150              		.loc 1 601 0
+ 1151 008c D4F89820 		ldr	r2, [r4, #152]
+ 1152 0090 D4F89030 		ldr	r3, [r4, #144]
+ 1153 0094 9A42     		cmp	r2, r3
+ 1154 0096 C4DD     		ble	.L80
+ 602:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       }
+ 1155              		.loc 1 602 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 36
+
+
+ 1156 0098 C4F89830 		str	r3, [r4, #152]
+ 1157 009c C1E7     		b	.L80
+ 1158              	.LVL94:
+ 1159              	.L91:
+ 565:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 1160              		.loc 1 565 0
+ 1161 009e 0225     		movs	r5, #2
+ 1162 00a0 BFE7     		b	.L80
+ 1163              		.cfi_endproc
+ 1164              	.LFE9:
+ 1166              		.section	.text.jpeg_core_output_dimensions,"ax",%progbits
+ 1167              		.align	1
+ 1168              		.global	jpeg_core_output_dimensions
+ 1169              		.syntax unified
+ 1170              		.thumb
+ 1171              		.thumb_func
+ 1172              		.fpu fpv5-sp-d16
+ 1174              	jpeg_core_output_dimensions:
+ 1175              	.LFB3:
+  51:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** #ifdef IDCT_SCALING_SUPPORTED
+ 1176              		.loc 1 51 0
+ 1177              		.cfi_startproc
+ 1178              		@ args = 0, pretend = 0, frame = 0
+ 1179              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1180              	.LVL95:
+ 1181 0000 38B5     		push	{r3, r4, r5, lr}
+ 1182              	.LCFI6:
+ 1183              		.cfi_def_cfa_offset 16
+ 1184              		.cfi_offset 3, -16
+ 1185              		.cfi_offset 4, -12
+ 1186              		.cfi_offset 5, -8
+ 1187              		.cfi_offset 14, -4
+ 1188 0002 0446     		mov	r4, r0
+  57:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 1/block_size scaling */
+ 1189              		.loc 1 57 0
+ 1190 0004 C36A     		ldr	r3, [r0, #44]
+ 1191 0006 D0F8A811 		ldr	r1, [r0, #424]
+ 1192 000a 01FB03F3 		mul	r3, r1, r3
+ 1193 000e 026B     		ldr	r2, [r0, #48]
+ 1194 0010 9342     		cmp	r3, r2
+ 1195 0012 5CD9     		bls	.L114
+  65:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 2/block_size scaling */
+ 1196              		.loc 1 65 0
+ 1197 0014 B3EB420F 		cmp	r3, r2, lsl #1
+ 1198 0018 6CD9     		bls	.L115
+  73:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 3/block_size scaling */
+ 1199              		.loc 1 73 0
+ 1200 001a 02EB4200 		add	r0, r2, r2, lsl #1
+ 1201              	.LVL96:
+ 1202 001e 8342     		cmp	r3, r0
+ 1203 0020 7AD9     		bls	.L116
+  81:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 4/block_size scaling */
+ 1204              		.loc 1 81 0
+ 1205 0022 B3EB820F 		cmp	r3, r2, lsl #2
+ 1206 0026 40F28B80 		bls	.L117
+  89:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 5/block_size scaling */
+ 1207              		.loc 1 89 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 37
+
+
+ 1208 002a 02EB8200 		add	r0, r2, r2, lsl #2
+ 1209 002e 8342     		cmp	r3, r0
+ 1210 0030 40F29880 		bls	.L118
+  97:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 6/block_size scaling */
+ 1211              		.loc 1 97 0
+ 1212 0034 02EB4205 		add	r5, r2, r2, lsl #1
+ 1213 0038 6800     		lsls	r0, r5, #1
+ 1214 003a 8342     		cmp	r3, r0
+ 1215 003c 40F2A680 		bls	.L119
+ 105:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 7/block_size scaling */
+ 1216              		.loc 1 105 0
+ 1217 0040 C2EBC200 		rsb	r0, r2, r2, lsl #3
+ 1218 0044 8342     		cmp	r3, r0
+ 1219 0046 40F2B780 		bls	.L120
+ 113:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 8/block_size scaling */
+ 1220              		.loc 1 113 0
+ 1221 004a B3EBC20F 		cmp	r3, r2, lsl #3
+ 1222 004e 40F2C780 		bls	.L121
+ 121:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 9/block_size scaling */
+ 1223              		.loc 1 121 0
+ 1224 0052 02EBC200 		add	r0, r2, r2, lsl #3
+ 1225 0056 8342     		cmp	r3, r0
+ 1226 0058 40F2D480 		bls	.L122
+ 129:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 10/block_size scaling */
+ 1227              		.loc 1 129 0
+ 1228 005c 02EB8205 		add	r5, r2, r2, lsl #2
+ 1229 0060 6800     		lsls	r0, r5, #1
+ 1230 0062 8342     		cmp	r3, r0
+ 1231 0064 40F2E280 		bls	.L123
+ 137:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 11/block_size scaling */
+ 1232              		.loc 1 137 0
+ 1233 0068 02EB8200 		add	r0, r2, r2, lsl #2
+ 1234 006c 02EB4000 		add	r0, r2, r0, lsl #1
+ 1235 0070 8342     		cmp	r3, r0
+ 1236 0072 40F2F180 		bls	.L124
+ 145:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 12/block_size scaling */
+ 1237              		.loc 1 145 0
+ 1238 0076 02EB4205 		add	r5, r2, r2, lsl #1
+ 1239 007a A800     		lsls	r0, r5, #2
+ 1240 007c 8342     		cmp	r3, r0
+ 1241 007e 40F20381 		bls	.L125
+ 153:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 13/block_size scaling */
+ 1242              		.loc 1 153 0
+ 1243 0082 02EB4200 		add	r0, r2, r2, lsl #1
+ 1244 0086 02EB8000 		add	r0, r2, r0, lsl #2
+ 1245 008a 8342     		cmp	r3, r0
+ 1246 008c 40F21281 		bls	.L126
+ 161:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 14/block_size scaling */
+ 1247              		.loc 1 161 0
+ 1248 0090 C2EBC205 		rsb	r5, r2, r2, lsl #3
+ 1249 0094 6800     		lsls	r0, r5, #1
+ 1250 0096 8342     		cmp	r3, r0
+ 1251 0098 40F22481 		bls	.L127
+ 169:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     /* Provide 15/block_size scaling */
+ 1252              		.loc 1 169 0
+ 1253 009c C2EB0212 		rsb	r2, r2, r2, lsl #4
+ 1254 00a0 9342     		cmp	r3, r2
+ARM GAS  /tmp/ccDOcQAg.s 			page 38
+
+
+ 1255 00a2 00F23581 		bhi	.L110
+ 172:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1256              		.loc 1 172 0
+ 1257 00a6 E069     		ldr	r0, [r4, #28]
+ 1258 00a8 C0EB0010 		rsb	r0, r0, r0, lsl #4
+ 1259 00ac FFF7FEFF 		bl	jdiv_round_up
+ 1260              	.LVL97:
+ 171:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 15L, (long) cinfo->block_size);
+ 1261              		.loc 1 171 0
+ 1262 00b0 2067     		str	r0, [r4, #112]
+ 174:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 15;
+ 1263              		.loc 1 174 0
+ 1264 00b2 206A     		ldr	r0, [r4, #32]
+ 1265 00b4 D4F8A811 		ldr	r1, [r4, #424]
+ 1266 00b8 C0EB0010 		rsb	r0, r0, r0, lsl #4
+ 1267 00bc FFF7FEFF 		bl	jdiv_round_up
+ 1268              	.LVL98:
+ 173:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 15L, (long) cinfo->block_size);
+ 1269              		.loc 1 173 0
+ 1270 00c0 6067     		str	r0, [r4, #116]
+ 175:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 15;
+ 1271              		.loc 1 175 0
+ 1272 00c2 0F23     		movs	r3, #15
+ 1273 00c4 C4F84031 		str	r3, [r4, #320]
+ 176:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else {
+ 1274              		.loc 1 176 0
+ 1275 00c8 C4F84431 		str	r3, [r4, #324]
+ 1276 00cc 0EE0     		b	.L96
+ 1277              	.LVL99:
+ 1278              	.L114:
+  60:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1279              		.loc 1 60 0
+ 1280 00ce C069     		ldr	r0, [r0, #28]
+ 1281              	.LVL100:
+ 1282 00d0 FFF7FEFF 		bl	jdiv_round_up
+ 1283              	.LVL101:
+  59:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width, (long) cinfo->block_size);
+ 1284              		.loc 1 59 0
+ 1285 00d4 2067     		str	r0, [r4, #112]
+  62:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 1;
+ 1286              		.loc 1 62 0
+ 1287 00d6 D4F8A811 		ldr	r1, [r4, #424]
+ 1288 00da 206A     		ldr	r0, [r4, #32]
+ 1289 00dc FFF7FEFF 		bl	jdiv_round_up
+ 1290              	.LVL102:
+  61:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height, (long) cinfo->block_size);
+ 1291              		.loc 1 61 0
+ 1292 00e0 6067     		str	r0, [r4, #116]
+  63:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 1;
+ 1293              		.loc 1 63 0
+ 1294 00e2 0123     		movs	r3, #1
+ 1295 00e4 C4F84031 		str	r3, [r4, #320]
+  64:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 2) {
+ 1296              		.loc 1 64 0
+ 1297 00e8 C4F84431 		str	r3, [r4, #324]
+ 1298              	.L96:
+ 1299              	.LVL103:
+ARM GAS  /tmp/ccDOcQAg.s 			page 39
+
+
+ 188:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 1300              		.loc 1 188 0
+ 1301 00ec D4F8D830 		ldr	r3, [r4, #216]
+ 1302              	.LVL104:
+ 1303 00f0 0022     		movs	r2, #0
+ 1304 00f2 27E1     		b	.L111
+ 1305              	.LVL105:
+ 1306              	.L115:
+  68:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1307              		.loc 1 68 0
+ 1308 00f4 C069     		ldr	r0, [r0, #28]
+ 1309              	.LVL106:
+ 1310 00f6 4000     		lsls	r0, r0, #1
+ 1311 00f8 FFF7FEFF 		bl	jdiv_round_up
+ 1312              	.LVL107:
+  67:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 2L, (long) cinfo->block_size);
+ 1313              		.loc 1 67 0
+ 1314 00fc 2067     		str	r0, [r4, #112]
+  70:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 2;
+ 1315              		.loc 1 70 0
+ 1316 00fe 206A     		ldr	r0, [r4, #32]
+ 1317 0100 D4F8A811 		ldr	r1, [r4, #424]
+ 1318 0104 4000     		lsls	r0, r0, #1
+ 1319 0106 FFF7FEFF 		bl	jdiv_round_up
+ 1320              	.LVL108:
+  69:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 2L, (long) cinfo->block_size);
+ 1321              		.loc 1 69 0
+ 1322 010a 6067     		str	r0, [r4, #116]
+  71:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 2;
+ 1323              		.loc 1 71 0
+ 1324 010c 0223     		movs	r3, #2
+ 1325 010e C4F84031 		str	r3, [r4, #320]
+  72:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 3) {
+ 1326              		.loc 1 72 0
+ 1327 0112 C4F84431 		str	r3, [r4, #324]
+ 1328 0116 E9E7     		b	.L96
+ 1329              	.L116:
+  76:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1330              		.loc 1 76 0
+ 1331 0118 E069     		ldr	r0, [r4, #28]
+ 1332 011a 00EB4000 		add	r0, r0, r0, lsl #1
+ 1333 011e FFF7FEFF 		bl	jdiv_round_up
+ 1334              	.LVL109:
+  75:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 3L, (long) cinfo->block_size);
+ 1335              		.loc 1 75 0
+ 1336 0122 2067     		str	r0, [r4, #112]
+  78:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 3;
+ 1337              		.loc 1 78 0
+ 1338 0124 206A     		ldr	r0, [r4, #32]
+ 1339 0126 D4F8A811 		ldr	r1, [r4, #424]
+ 1340 012a 00EB4000 		add	r0, r0, r0, lsl #1
+ 1341 012e FFF7FEFF 		bl	jdiv_round_up
+ 1342              	.LVL110:
+  77:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 3L, (long) cinfo->block_size);
+ 1343              		.loc 1 77 0
+ 1344 0132 6067     		str	r0, [r4, #116]
+  79:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 3;
+ARM GAS  /tmp/ccDOcQAg.s 			page 40
+
+
+ 1345              		.loc 1 79 0
+ 1346 0134 0323     		movs	r3, #3
+ 1347 0136 C4F84031 		str	r3, [r4, #320]
+  80:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 4) {
+ 1348              		.loc 1 80 0
+ 1349 013a C4F84431 		str	r3, [r4, #324]
+ 1350 013e D5E7     		b	.L96
+ 1351              	.L117:
+  84:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1352              		.loc 1 84 0
+ 1353 0140 E069     		ldr	r0, [r4, #28]
+ 1354 0142 8000     		lsls	r0, r0, #2
+ 1355 0144 FFF7FEFF 		bl	jdiv_round_up
+ 1356              	.LVL111:
+  83:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 4L, (long) cinfo->block_size);
+ 1357              		.loc 1 83 0
+ 1358 0148 2067     		str	r0, [r4, #112]
+  86:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 4;
+ 1359              		.loc 1 86 0
+ 1360 014a 206A     		ldr	r0, [r4, #32]
+ 1361 014c D4F8A811 		ldr	r1, [r4, #424]
+ 1362 0150 8000     		lsls	r0, r0, #2
+ 1363 0152 FFF7FEFF 		bl	jdiv_round_up
+ 1364              	.LVL112:
+  85:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 4L, (long) cinfo->block_size);
+ 1365              		.loc 1 85 0
+ 1366 0156 6067     		str	r0, [r4, #116]
+  87:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 4;
+ 1367              		.loc 1 87 0
+ 1368 0158 0423     		movs	r3, #4
+ 1369 015a C4F84031 		str	r3, [r4, #320]
+  88:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 5) {
+ 1370              		.loc 1 88 0
+ 1371 015e C4F84431 		str	r3, [r4, #324]
+ 1372 0162 C3E7     		b	.L96
+ 1373              	.L118:
+  92:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1374              		.loc 1 92 0
+ 1375 0164 E069     		ldr	r0, [r4, #28]
+ 1376 0166 00EB8000 		add	r0, r0, r0, lsl #2
+ 1377 016a FFF7FEFF 		bl	jdiv_round_up
+ 1378              	.LVL113:
+  91:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 5L, (long) cinfo->block_size);
+ 1379              		.loc 1 91 0
+ 1380 016e 2067     		str	r0, [r4, #112]
+  94:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 5;
+ 1381              		.loc 1 94 0
+ 1382 0170 206A     		ldr	r0, [r4, #32]
+ 1383 0172 D4F8A811 		ldr	r1, [r4, #424]
+ 1384 0176 00EB8000 		add	r0, r0, r0, lsl #2
+ 1385 017a FFF7FEFF 		bl	jdiv_round_up
+ 1386              	.LVL114:
+  93:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 5L, (long) cinfo->block_size);
+ 1387              		.loc 1 93 0
+ 1388 017e 6067     		str	r0, [r4, #116]
+  95:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 5;
+ 1389              		.loc 1 95 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 41
+
+
+ 1390 0180 0523     		movs	r3, #5
+ 1391 0182 C4F84031 		str	r3, [r4, #320]
+  96:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 6) {
+ 1392              		.loc 1 96 0
+ 1393 0186 C4F84431 		str	r3, [r4, #324]
+ 1394 018a AFE7     		b	.L96
+ 1395              	.L119:
+ 100:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1396              		.loc 1 100 0
+ 1397 018c E369     		ldr	r3, [r4, #28]
+ 1398 018e 03EB4303 		add	r3, r3, r3, lsl #1
+ 1399 0192 5800     		lsls	r0, r3, #1
+ 1400 0194 FFF7FEFF 		bl	jdiv_round_up
+ 1401              	.LVL115:
+  99:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 6L, (long) cinfo->block_size);
+ 1402              		.loc 1 99 0
+ 1403 0198 2067     		str	r0, [r4, #112]
+ 102:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 6;
+ 1404              		.loc 1 102 0
+ 1405 019a 236A     		ldr	r3, [r4, #32]
+ 1406 019c 03EB4303 		add	r3, r3, r3, lsl #1
+ 1407 01a0 5800     		lsls	r0, r3, #1
+ 1408 01a2 D4F8A811 		ldr	r1, [r4, #424]
+ 1409 01a6 FFF7FEFF 		bl	jdiv_round_up
+ 1410              	.LVL116:
+ 101:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 6L, (long) cinfo->block_size);
+ 1411              		.loc 1 101 0
+ 1412 01aa 6067     		str	r0, [r4, #116]
+ 103:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 6;
+ 1413              		.loc 1 103 0
+ 1414 01ac 0623     		movs	r3, #6
+ 1415 01ae C4F84031 		str	r3, [r4, #320]
+ 104:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 7) {
+ 1416              		.loc 1 104 0
+ 1417 01b2 C4F84431 		str	r3, [r4, #324]
+ 1418 01b6 99E7     		b	.L96
+ 1419              	.L120:
+ 108:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1420              		.loc 1 108 0
+ 1421 01b8 E069     		ldr	r0, [r4, #28]
+ 1422 01ba C0EBC000 		rsb	r0, r0, r0, lsl #3
+ 1423 01be FFF7FEFF 		bl	jdiv_round_up
+ 1424              	.LVL117:
+ 107:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 7L, (long) cinfo->block_size);
+ 1425              		.loc 1 107 0
+ 1426 01c2 2067     		str	r0, [r4, #112]
+ 110:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 7;
+ 1427              		.loc 1 110 0
+ 1428 01c4 206A     		ldr	r0, [r4, #32]
+ 1429 01c6 D4F8A811 		ldr	r1, [r4, #424]
+ 1430 01ca C0EBC000 		rsb	r0, r0, r0, lsl #3
+ 1431 01ce FFF7FEFF 		bl	jdiv_round_up
+ 1432              	.LVL118:
+ 109:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 7L, (long) cinfo->block_size);
+ 1433              		.loc 1 109 0
+ 1434 01d2 6067     		str	r0, [r4, #116]
+ 111:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 7;
+ARM GAS  /tmp/ccDOcQAg.s 			page 42
+
+
+ 1435              		.loc 1 111 0
+ 1436 01d4 0723     		movs	r3, #7
+ 1437 01d6 C4F84031 		str	r3, [r4, #320]
+ 112:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 8) {
+ 1438              		.loc 1 112 0
+ 1439 01da C4F84431 		str	r3, [r4, #324]
+ 1440 01de 85E7     		b	.L96
+ 1441              	.L121:
+ 116:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1442              		.loc 1 116 0
+ 1443 01e0 E069     		ldr	r0, [r4, #28]
+ 1444 01e2 C000     		lsls	r0, r0, #3
+ 1445 01e4 FFF7FEFF 		bl	jdiv_round_up
+ 1446              	.LVL119:
+ 115:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 8L, (long) cinfo->block_size);
+ 1447              		.loc 1 115 0
+ 1448 01e8 2067     		str	r0, [r4, #112]
+ 118:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 8;
+ 1449              		.loc 1 118 0
+ 1450 01ea 206A     		ldr	r0, [r4, #32]
+ 1451 01ec D4F8A811 		ldr	r1, [r4, #424]
+ 1452 01f0 C000     		lsls	r0, r0, #3
+ 1453 01f2 FFF7FEFF 		bl	jdiv_round_up
+ 1454              	.LVL120:
+ 117:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 8L, (long) cinfo->block_size);
+ 1455              		.loc 1 117 0
+ 1456 01f6 6067     		str	r0, [r4, #116]
+ 119:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 8;
+ 1457              		.loc 1 119 0
+ 1458 01f8 0823     		movs	r3, #8
+ 1459 01fa C4F84031 		str	r3, [r4, #320]
+ 120:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 9) {
+ 1460              		.loc 1 120 0
+ 1461 01fe C4F84431 		str	r3, [r4, #324]
+ 1462 0202 73E7     		b	.L96
+ 1463              	.L122:
+ 124:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1464              		.loc 1 124 0
+ 1465 0204 E069     		ldr	r0, [r4, #28]
+ 1466 0206 00EBC000 		add	r0, r0, r0, lsl #3
+ 1467 020a FFF7FEFF 		bl	jdiv_round_up
+ 1468              	.LVL121:
+ 123:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 9L, (long) cinfo->block_size);
+ 1469              		.loc 1 123 0
+ 1470 020e 2067     		str	r0, [r4, #112]
+ 126:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 9;
+ 1471              		.loc 1 126 0
+ 1472 0210 206A     		ldr	r0, [r4, #32]
+ 1473 0212 D4F8A811 		ldr	r1, [r4, #424]
+ 1474 0216 00EBC000 		add	r0, r0, r0, lsl #3
+ 1475 021a FFF7FEFF 		bl	jdiv_round_up
+ 1476              	.LVL122:
+ 125:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 9L, (long) cinfo->block_size);
+ 1477              		.loc 1 125 0
+ 1478 021e 6067     		str	r0, [r4, #116]
+ 127:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 9;
+ 1479              		.loc 1 127 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 43
+
+
+ 1480 0220 0923     		movs	r3, #9
+ 1481 0222 C4F84031 		str	r3, [r4, #320]
+ 128:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 10) {
+ 1482              		.loc 1 128 0
+ 1483 0226 C4F84431 		str	r3, [r4, #324]
+ 1484 022a 5FE7     		b	.L96
+ 1485              	.L123:
+ 132:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1486              		.loc 1 132 0
+ 1487 022c E369     		ldr	r3, [r4, #28]
+ 1488 022e 03EB8303 		add	r3, r3, r3, lsl #2
+ 1489 0232 5800     		lsls	r0, r3, #1
+ 1490 0234 FFF7FEFF 		bl	jdiv_round_up
+ 1491              	.LVL123:
+ 131:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 10L, (long) cinfo->block_size);
+ 1492              		.loc 1 131 0
+ 1493 0238 2067     		str	r0, [r4, #112]
+ 134:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 10;
+ 1494              		.loc 1 134 0
+ 1495 023a 236A     		ldr	r3, [r4, #32]
+ 1496 023c 03EB8303 		add	r3, r3, r3, lsl #2
+ 1497 0240 5800     		lsls	r0, r3, #1
+ 1498 0242 D4F8A811 		ldr	r1, [r4, #424]
+ 1499 0246 FFF7FEFF 		bl	jdiv_round_up
+ 1500              	.LVL124:
+ 133:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 10L, (long) cinfo->block_size);
+ 1501              		.loc 1 133 0
+ 1502 024a 6067     		str	r0, [r4, #116]
+ 135:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 10;
+ 1503              		.loc 1 135 0
+ 1504 024c 0A23     		movs	r3, #10
+ 1505 024e C4F84031 		str	r3, [r4, #320]
+ 136:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 11) {
+ 1506              		.loc 1 136 0
+ 1507 0252 C4F84431 		str	r3, [r4, #324]
+ 1508 0256 49E7     		b	.L96
+ 1509              	.L124:
+ 140:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1510              		.loc 1 140 0
+ 1511 0258 E369     		ldr	r3, [r4, #28]
+ 1512 025a 03EB8300 		add	r0, r3, r3, lsl #2
+ 1513 025e 03EB4000 		add	r0, r3, r0, lsl #1
+ 1514 0262 FFF7FEFF 		bl	jdiv_round_up
+ 1515              	.LVL125:
+ 139:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 11L, (long) cinfo->block_size);
+ 1516              		.loc 1 139 0
+ 1517 0266 2067     		str	r0, [r4, #112]
+ 142:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 11;
+ 1518              		.loc 1 142 0
+ 1519 0268 236A     		ldr	r3, [r4, #32]
+ 1520 026a 03EB8300 		add	r0, r3, r3, lsl #2
+ 1521 026e D4F8A811 		ldr	r1, [r4, #424]
+ 1522 0272 03EB4000 		add	r0, r3, r0, lsl #1
+ 1523 0276 FFF7FEFF 		bl	jdiv_round_up
+ 1524              	.LVL126:
+ 141:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 11L, (long) cinfo->block_size);
+ 1525              		.loc 1 141 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 44
+
+
+ 1526 027a 6067     		str	r0, [r4, #116]
+ 143:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 11;
+ 1527              		.loc 1 143 0
+ 1528 027c 0B23     		movs	r3, #11
+ 1529 027e C4F84031 		str	r3, [r4, #320]
+ 144:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 12) {
+ 1530              		.loc 1 144 0
+ 1531 0282 C4F84431 		str	r3, [r4, #324]
+ 1532 0286 31E7     		b	.L96
+ 1533              	.L125:
+ 148:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1534              		.loc 1 148 0
+ 1535 0288 E369     		ldr	r3, [r4, #28]
+ 1536 028a 03EB4303 		add	r3, r3, r3, lsl #1
+ 1537 028e 9800     		lsls	r0, r3, #2
+ 1538 0290 FFF7FEFF 		bl	jdiv_round_up
+ 1539              	.LVL127:
+ 147:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 12L, (long) cinfo->block_size);
+ 1540              		.loc 1 147 0
+ 1541 0294 2067     		str	r0, [r4, #112]
+ 150:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 12;
+ 1542              		.loc 1 150 0
+ 1543 0296 236A     		ldr	r3, [r4, #32]
+ 1544 0298 03EB4303 		add	r3, r3, r3, lsl #1
+ 1545 029c 9800     		lsls	r0, r3, #2
+ 1546 029e D4F8A811 		ldr	r1, [r4, #424]
+ 1547 02a2 FFF7FEFF 		bl	jdiv_round_up
+ 1548              	.LVL128:
+ 149:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 12L, (long) cinfo->block_size);
+ 1549              		.loc 1 149 0
+ 1550 02a6 6067     		str	r0, [r4, #116]
+ 151:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 12;
+ 1551              		.loc 1 151 0
+ 1552 02a8 0C23     		movs	r3, #12
+ 1553 02aa C4F84031 		str	r3, [r4, #320]
+ 152:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 13) {
+ 1554              		.loc 1 152 0
+ 1555 02ae C4F84431 		str	r3, [r4, #324]
+ 1556 02b2 1BE7     		b	.L96
+ 1557              	.L126:
+ 156:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1558              		.loc 1 156 0
+ 1559 02b4 E369     		ldr	r3, [r4, #28]
+ 1560 02b6 03EB4300 		add	r0, r3, r3, lsl #1
+ 1561 02ba 03EB8000 		add	r0, r3, r0, lsl #2
+ 1562 02be FFF7FEFF 		bl	jdiv_round_up
+ 1563              	.LVL129:
+ 155:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 13L, (long) cinfo->block_size);
+ 1564              		.loc 1 155 0
+ 1565 02c2 2067     		str	r0, [r4, #112]
+ 158:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 13;
+ 1566              		.loc 1 158 0
+ 1567 02c4 236A     		ldr	r3, [r4, #32]
+ 1568 02c6 03EB4300 		add	r0, r3, r3, lsl #1
+ 1569 02ca D4F8A811 		ldr	r1, [r4, #424]
+ 1570 02ce 03EB8000 		add	r0, r3, r0, lsl #2
+ 1571 02d2 FFF7FEFF 		bl	jdiv_round_up
+ARM GAS  /tmp/ccDOcQAg.s 			page 45
+
+
+ 1572              	.LVL130:
+ 157:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 13L, (long) cinfo->block_size);
+ 1573              		.loc 1 157 0
+ 1574 02d6 6067     		str	r0, [r4, #116]
+ 159:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 13;
+ 1575              		.loc 1 159 0
+ 1576 02d8 0D23     		movs	r3, #13
+ 1577 02da C4F84031 		str	r3, [r4, #320]
+ 160:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 14) {
+ 1578              		.loc 1 160 0
+ 1579 02de C4F84431 		str	r3, [r4, #324]
+ 1580 02e2 03E7     		b	.L96
+ 1581              	.L127:
+ 164:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1582              		.loc 1 164 0
+ 1583 02e4 E369     		ldr	r3, [r4, #28]
+ 1584 02e6 C3EBC303 		rsb	r3, r3, r3, lsl #3
+ 1585 02ea 5800     		lsls	r0, r3, #1
+ 1586 02ec FFF7FEFF 		bl	jdiv_round_up
+ 1587              	.LVL131:
+ 163:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 14L, (long) cinfo->block_size);
+ 1588              		.loc 1 163 0
+ 1589 02f0 2067     		str	r0, [r4, #112]
+ 166:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 14;
+ 1590              		.loc 1 166 0
+ 1591 02f2 236A     		ldr	r3, [r4, #32]
+ 1592 02f4 C3EBC303 		rsb	r3, r3, r3, lsl #3
+ 1593 02f8 5800     		lsls	r0, r3, #1
+ 1594 02fa D4F8A811 		ldr	r1, [r4, #424]
+ 1595 02fe FFF7FEFF 		bl	jdiv_round_up
+ 1596              	.LVL132:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 14L, (long) cinfo->block_size);
+ 1597              		.loc 1 165 0
+ 1598 0302 6067     		str	r0, [r4, #116]
+ 167:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 14;
+ 1599              		.loc 1 167 0
+ 1600 0304 0E23     		movs	r3, #14
+ 1601 0306 C4F84031 		str	r3, [r4, #320]
+ 168:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   } else if (cinfo->scale_num * cinfo->block_size <= cinfo->scale_denom * 15) {
+ 1602              		.loc 1 168 0
+ 1603 030a C4F84431 		str	r3, [r4, #324]
+ 1604 030e EDE6     		b	.L96
+ 1605              	.L110:
+ 180:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->output_height = (JDIMENSION)
+ 1606              		.loc 1 180 0
+ 1607 0310 E069     		ldr	r0, [r4, #28]
+ 1608 0312 0001     		lsls	r0, r0, #4
+ 1609 0314 FFF7FEFF 		bl	jdiv_round_up
+ 1610              	.LVL133:
+ 179:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_width * 16L, (long) cinfo->block_size);
+ 1611              		.loc 1 179 0
+ 1612 0318 2067     		str	r0, [r4, #112]
+ 182:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_h_scaled_size = 16;
+ 1613              		.loc 1 182 0
+ 1614 031a 206A     		ldr	r0, [r4, #32]
+ 1615 031c D4F8A811 		ldr	r1, [r4, #424]
+ 1616 0320 0001     		lsls	r0, r0, #4
+ARM GAS  /tmp/ccDOcQAg.s 			page 46
+
+
+ 1617 0322 FFF7FEFF 		bl	jdiv_round_up
+ 1618              	.LVL134:
+ 181:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****       jdiv_round_up((long) cinfo->image_height * 16L, (long) cinfo->block_size);
+ 1619              		.loc 1 181 0
+ 1620 0326 6067     		str	r0, [r4, #116]
+ 183:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     cinfo->min_DCT_v_scaled_size = 16;
+ 1621              		.loc 1 183 0
+ 1622 0328 1023     		movs	r3, #16
+ 1623 032a C4F84031 		str	r3, [r4, #320]
+ 184:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 1624              		.loc 1 184 0
+ 1625 032e C4F84431 		str	r3, [r4, #324]
+ 1626 0332 DBE6     		b	.L96
+ 1627              	.LVL135:
+ 1628              	.L112:
+ 190:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_v_scaled_size = cinfo->min_DCT_v_scaled_size;
+ 1629              		.loc 1 190 0
+ 1630 0334 D4F84011 		ldr	r1, [r4, #320]
+ 1631 0338 5962     		str	r1, [r3, #36]
+ 191:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   }
+ 1632              		.loc 1 191 0
+ 1633 033a D4F84411 		ldr	r1, [r4, #324]
+ 1634 033e 9962     		str	r1, [r3, #40]
+ 189:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     compptr->DCT_h_scaled_size = cinfo->min_DCT_h_scaled_size;
+ 1635              		.loc 1 189 0
+ 1636 0340 0132     		adds	r2, r2, #1
+ 1637              	.LVL136:
+ 1638 0342 5833     		adds	r3, r3, #88
+ 1639              	.LVL137:
+ 1640              	.L111:
+ 188:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****        ci++, compptr++) {
+ 1641              		.loc 1 188 0 discriminator 1
+ 1642 0344 616A     		ldr	r1, [r4, #36]
+ 1643 0346 9142     		cmp	r1, r2
+ 1644 0348 F4DC     		bgt	.L112
+ 204:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 1645              		.loc 1 204 0
+ 1646 034a 38BD     		pop	{r3, r4, r5, pc}
+ 1647              		.cfi_endproc
+ 1648              	.LFE3:
+ 1650              		.section	.text.jinit_input_controller,"ax",%progbits
+ 1651              		.align	1
+ 1652              		.global	jinit_input_controller
+ 1653              		.syntax unified
+ 1654              		.thumb
+ 1655              		.thumb_func
+ 1656              		.fpu fpv5-sp-d16
+ 1658              	jinit_input_controller:
+ 1659              	.LFB11:
+ 633:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 634:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 635:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** /*
+ 636:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * Initialize the input controller module.
+ 637:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  * This is called only once, when the decompression object is created.
+ 638:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****  */
+ 639:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 640:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** GLOBAL(void)
+ARM GAS  /tmp/ccDOcQAg.s 			page 47
+
+
+ 641:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** jinit_input_controller (j_decompress_ptr cinfo)
+ 642:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** {
+ 1660              		.loc 1 642 0
+ 1661              		.cfi_startproc
+ 1662              		@ args = 0, pretend = 0, frame = 0
+ 1663              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1664              	.LVL138:
+ 1665 0000 10B5     		push	{r4, lr}
+ 1666              	.LCFI7:
+ 1667              		.cfi_def_cfa_offset 8
+ 1668              		.cfi_offset 4, -8
+ 1669              		.cfi_offset 14, -4
+ 1670 0002 0446     		mov	r4, r0
+ 643:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   my_inputctl_ptr inputctl;
+ 644:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 
+ 645:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Create subobject in permanent pool */
+ 646:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl = (my_inputctl_ptr)
+ 647:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+ 1671              		.loc 1 647 0
+ 1672 0004 4368     		ldr	r3, [r0, #4]
+ 1673 0006 1B68     		ldr	r3, [r3]
+ 646:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+ 1674              		.loc 1 646 0
+ 1675 0008 1C22     		movs	r2, #28
+ 1676 000a 0021     		movs	r1, #0
+ 1677 000c 9847     		blx	r3
+ 1678              	.LVL139:
+ 648:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** 				SIZEOF(my_input_controller));
+ 649:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   cinfo->inputctl = (struct jpeg_input_controller *) inputctl;
+ 1679              		.loc 1 649 0
+ 1680 000e C4F8C801 		str	r0, [r4, #456]
+ 650:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Initialize method pointers */
+ 651:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.consume_input = consume_markers;
+ 1681              		.loc 1 651 0
+ 1682 0012 074B     		ldr	r3, .L130
+ 1683 0014 0360     		str	r3, [r0]
+ 652:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.reset_input_controller = reset_input_controller;
+ 1684              		.loc 1 652 0
+ 1685 0016 074B     		ldr	r3, .L130+4
+ 1686 0018 4360     		str	r3, [r0, #4]
+ 653:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.start_input_pass = start_input_pass;
+ 1687              		.loc 1 653 0
+ 1688 001a 074B     		ldr	r3, .L130+8
+ 1689 001c 8360     		str	r3, [r0, #8]
+ 654:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.finish_input_pass = finish_input_pass;
+ 1690              		.loc 1 654 0
+ 1691 001e 074B     		ldr	r3, .L130+12
+ 1692 0020 C360     		str	r3, [r0, #12]
+ 655:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   /* Initialize state: can't use reset_input_controller since we don't
+ 656:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    * want to try to reset other modules yet.
+ 657:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****    */
+ 658:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.has_multiple_scans = FALSE; /* "unknown" would be better */
+ 1693              		.loc 1 658 0
+ 1694 0022 0023     		movs	r3, #0
+ 1695 0024 0361     		str	r3, [r0, #16]
+ 659:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->pub.eoi_reached = FALSE;
+ 1696              		.loc 1 659 0
+ARM GAS  /tmp/ccDOcQAg.s 			page 48
+
+
+ 1697 0026 4361     		str	r3, [r0, #20]
+ 660:Middlewares/Third_Party/LibJPEG/source/jdinput.c ****   inputctl->inheaders = 1;
+ 1698              		.loc 1 660 0
+ 1699 0028 0123     		movs	r3, #1
+ 1700 002a 8361     		str	r3, [r0, #24]
+ 661:Middlewares/Third_Party/LibJPEG/source/jdinput.c **** }
+ 1701              		.loc 1 661 0
+ 1702 002c 10BD     		pop	{r4, pc}
+ 1703              	.LVL140:
+ 1704              	.L131:
+ 1705 002e 00BF     		.align	2
+ 1706              	.L130:
+ 1707 0030 00000000 		.word	consume_markers
+ 1708 0034 00000000 		.word	reset_input_controller
+ 1709 0038 00000000 		.word	start_input_pass
+ 1710 003c 00000000 		.word	finish_input_pass
+ 1711              		.cfi_endproc
+ 1712              	.LFE11:
+ 1714              		.text
+ 1715              	.Letext0:
+ 1716              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 1717              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 1718              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 1719              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 1720              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 1721              		.file 7 "Inc/jmorecfg.h"
+ 1722              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 1723              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 1724              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ 1725              		.file 11 "<built-in>"
+ARM GAS  /tmp/ccDOcQAg.s 			page 49
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jdinput.c
+     /tmp/ccDOcQAg.s:18     .text.finish_input_pass:0000000000000000 $t
+     /tmp/ccDOcQAg.s:24     .text.finish_input_pass:0000000000000000 finish_input_pass
+     /tmp/ccDOcQAg.s:42     .text.finish_input_pass:000000000000000c $d
+     /tmp/ccDOcQAg.s:1026   .text.consume_markers:0000000000000000 consume_markers
+     /tmp/ccDOcQAg.s:47     .text.reset_input_controller:0000000000000000 $t
+     /tmp/ccDOcQAg.s:53     .text.reset_input_controller:0000000000000000 reset_input_controller
+     /tmp/ccDOcQAg.s:102    .text.reset_input_controller:000000000000002c $d
+     /tmp/ccDOcQAg.s:107    .text.per_scan_setup:0000000000000000 $t
+     /tmp/ccDOcQAg.s:113    .text.per_scan_setup:0000000000000000 per_scan_setup
+     /tmp/ccDOcQAg.s:320    .text.initial_setup:0000000000000000 $t
+     /tmp/ccDOcQAg.s:326    .text.initial_setup:0000000000000000 initial_setup
+     /tmp/ccDOcQAg.s:856    .text.initial_setup:0000000000000368 $d
+     /tmp/ccDOcQAg.s:867    .text.latch_quant_tables:0000000000000000 $t
+     /tmp/ccDOcQAg.s:873    .text.latch_quant_tables:0000000000000000 latch_quant_tables
+     /tmp/ccDOcQAg.s:971    .text.start_input_pass:0000000000000000 $t
+     /tmp/ccDOcQAg.s:977    .text.start_input_pass:0000000000000000 start_input_pass
+     /tmp/ccDOcQAg.s:1020   .text.consume_markers:0000000000000000 $t
+     /tmp/ccDOcQAg.s:1167   .text.jpeg_core_output_dimensions:0000000000000000 $t
+     /tmp/ccDOcQAg.s:1174   .text.jpeg_core_output_dimensions:0000000000000000 jpeg_core_output_dimensions
+     /tmp/ccDOcQAg.s:1651   .text.jinit_input_controller:0000000000000000 $t
+     /tmp/ccDOcQAg.s:1658   .text.jinit_input_controller:0000000000000000 jinit_input_controller
+     /tmp/ccDOcQAg.s:1707   .text.jinit_input_controller:0000000000000030 $d
+
+UNDEFINED SYMBOLS
+jdiv_round_up
+jpeg_natural_order
+jpeg_natural_order5
+jpeg_natural_order2
+jpeg_natural_order3
+jpeg_natural_order4
+jpeg_natural_order6
+jpeg_natural_order7
+memcpy

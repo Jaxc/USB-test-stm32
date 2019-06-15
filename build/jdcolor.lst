@@ -1,0 +1,2035 @@
+ARM GAS  /tmp/ccM20jrO.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jdcolor.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.build_ycc_rgb_table,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	build_ycc_rgb_table:
+  25              	.LFB3:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jdcolor.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * jdcolor.c
+   3:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Copyright (C) 1991-1997, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Modified 2011 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * This file contains output colorspace conversion routines.
+  10:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+  11:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  12:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define JPEG_INTERNALS
+  13:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #include "jinclude.h"
+  14:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #include "jpeglib.h"
+  15:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  16:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  17:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /* Private subobject */
+  18:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  19:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** typedef struct {
+  20:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   struct jpeg_color_deconverter pub; /* public fields */
+  21:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  22:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* Private state for YCC->RGB conversion */
+  23:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   int * Cr_r_tab;		/* => table for Cr to R conversion */
+  24:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   int * Cb_b_tab;		/* => table for Cb to B conversion */
+  25:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 * Cr_g_tab;		/* => table for Cr to G conversion */
+  26:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 * Cb_g_tab;		/* => table for Cb to G conversion */
+  27:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  28:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* Private state for RGB->Y conversion */
+  29:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 * rgb_y_tab;		/* => table for RGB to Y conversion */
+  30:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** } my_color_deconverter;
+  31:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  32:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** typedef my_color_deconverter * my_cconvert_ptr;
+ARM GAS  /tmp/ccM20jrO.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  34:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  35:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /**************** YCbCr -> RGB conversion: most common case **************/
+  36:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /****************   RGB -> Y   conversion: less common case **************/
+  37:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  38:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+  39:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * YCbCr is defined per CCIR 601-1, except that Cb and Cr are
+  40:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * normalized to the range 0..MAXJSAMPLE rather than -0.5 .. 0.5.
+  41:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * The conversion equations to be implemented are therefore
+  42:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+  43:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *	R = Y                + 1.40200 * Cr
+  44:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *	G = Y - 0.34414 * Cb - 0.71414 * Cr
+  45:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *	B = Y + 1.77200 * Cb
+  46:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+  47:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *	Y = 0.29900 * R + 0.58700 * G + 0.11400 * B
+  48:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+  49:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * where Cb and Cr represent the incoming values less CENTERJSAMPLE.
+  50:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * (These numbers are derived from TIFF 6.0 section 21, dated 3-June-92.)
+  51:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+  52:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * To avoid floating-point arithmetic, we represent the fractional constants
+  53:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * as integers scaled up by 2^16 (about 4 digits precision); we have to divide
+  54:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * the products by 2^16, with appropriate rounding, to get the correct answer.
+  55:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Notice that Y, being an integral input, does not contribute any fraction
+  56:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * so it need not participate in the rounding.
+  57:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+  58:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * For even more speed, we avoid doing any multiplications in the inner loop
+  59:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * by precalculating the constants times Cb and Cr for all possible values.
+  60:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * For 8-bit JSAMPLEs this is very reasonable (only 256 entries per table);
+  61:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * for 12-bit samples it is still acceptable.  It's not very reasonable for
+  62:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * 16-bit samples, but if you want lossless storage you shouldn't be changing
+  63:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * colorspace anyway.
+  64:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * The Cr=>R and Cb=>B values can be rounded to integers in advance; the
+  65:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * values for the G calculation are left scaled up, since we must add them
+  66:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * together before rounding.
+  67:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+  68:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  69:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define SCALEBITS	16	/* speediest right-shift on some machines */
+  70:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define ONE_HALF	((INT32) 1 << (SCALEBITS-1))
+  71:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define FIX(x)		((INT32) ((x) * (1L<<SCALEBITS) + 0.5))
+  72:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  73:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /* We allocate one big table for RGB->Y conversion and divide it up into
+  74:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * three parts, instead of doing three alloc_small requests.  This lets us
+  75:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * use a single table base address, which can be held in a register in the
+  76:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * inner loops on many machines (more than can hold all three addresses,
+  77:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * anyway).
+  78:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+  79:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  80:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define R_Y_OFF		0			/* offset to R => Y section */
+  81:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define G_Y_OFF		(1*(MAXJSAMPLE+1))	/* offset to G => Y section */
+  82:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define B_Y_OFF		(2*(MAXJSAMPLE+1))	/* etc. */
+  83:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** #define TABLE_SIZE	(3*(MAXJSAMPLE+1))
+  84:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  85:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  86:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+  87:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Initialize tables for YCC->RGB colorspace conversion.
+  88:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+  89:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ARM GAS  /tmp/ccM20jrO.s 			page 3
+
+
+  90:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** LOCAL(void)
+  91:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** build_ycc_rgb_table (j_decompress_ptr cinfo)
+  92:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+  27              		.loc 1 92 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 38B5     		push	{r3, r4, r5, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 16
+  35              		.cfi_offset 3, -16
+  36              		.cfi_offset 4, -12
+  37              		.cfi_offset 5, -8
+  38              		.cfi_offset 14, -4
+  39 0002 0546     		mov	r5, r0
+  93:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+  40              		.loc 1 93 0
+  41 0004 D0F8DC41 		ldr	r4, [r0, #476]
+  42              	.LVL1:
+  94:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   int i;
+  95:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 x;
+  96:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   SHIFT_TEMPS
+  97:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+  98:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->Cr_r_tab = (int *)
+  99:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  43              		.loc 1 99 0
+  44 0008 4368     		ldr	r3, [r0, #4]
+  45 000a 1B68     		ldr	r3, [r3]
+  46 000c 4FF48062 		mov	r2, #1024
+  47 0010 0121     		movs	r1, #1
+  48 0012 9847     		blx	r3
+  49              	.LVL2:
+  98:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  50              		.loc 1 98 0
+  51 0014 A060     		str	r0, [r4, #8]
+ 100:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				(MAXJSAMPLE+1) * SIZEOF(int));
+ 101:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->Cb_b_tab = (int *)
+ 102:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  52              		.loc 1 102 0
+  53 0016 6B68     		ldr	r3, [r5, #4]
+  54 0018 1B68     		ldr	r3, [r3]
+  55 001a 4FF48062 		mov	r2, #1024
+  56 001e 0121     		movs	r1, #1
+  57 0020 2846     		mov	r0, r5
+  58 0022 9847     		blx	r3
+  59              	.LVL3:
+ 101:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  60              		.loc 1 101 0
+  61 0024 E060     		str	r0, [r4, #12]
+ 103:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				(MAXJSAMPLE+1) * SIZEOF(int));
+ 104:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->Cr_g_tab = (INT32 *)
+ 105:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  62              		.loc 1 105 0
+  63 0026 6B68     		ldr	r3, [r5, #4]
+  64 0028 1B68     		ldr	r3, [r3]
+  65 002a 4FF48062 		mov	r2, #1024
+ARM GAS  /tmp/ccM20jrO.s 			page 4
+
+
+  66 002e 0121     		movs	r1, #1
+  67 0030 2846     		mov	r0, r5
+  68 0032 9847     		blx	r3
+  69              	.LVL4:
+ 104:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  70              		.loc 1 104 0
+  71 0034 2061     		str	r0, [r4, #16]
+ 106:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				(MAXJSAMPLE+1) * SIZEOF(INT32));
+ 107:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->Cb_g_tab = (INT32 *)
+ 108:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  72              		.loc 1 108 0
+  73 0036 6B68     		ldr	r3, [r5, #4]
+  74 0038 1B68     		ldr	r3, [r3]
+  75 003a 4FF48062 		mov	r2, #1024
+  76 003e 0121     		movs	r1, #1
+  77 0040 2846     		mov	r0, r5
+  78 0042 9847     		blx	r3
+  79              	.LVL5:
+ 107:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  80              		.loc 1 107 0
+  81 0044 6061     		str	r0, [r4, #20]
+  82              	.LVL6:
+ 109:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				(MAXJSAMPLE+1) * SIZEOF(INT32));
+ 110:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 111:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   for (i = 0, x = -CENTERJSAMPLE; i <= MAXJSAMPLE; i++, x++) {
+  83              		.loc 1 111 0
+  84 0046 6FF07F01 		mvn	r1, #127
+  85 004a 0022     		movs	r2, #0
+  86 004c 21E0     		b	.L2
+  87              	.LVL7:
+  88              	.L3:
+ 112:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 113:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* The Cb or Cr value we are thinking of is x = i - CENTERJSAMPLE */
+ 114:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* Cr=>R value is nearest int to 1.40200 * x */
+ 115:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cconvert->Cr_r_tab[i] = (int)
+ 116:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  89              		.loc 1 116 0 discriminator 3
+  90 004e 124B     		ldr	r3, .L5
+  91 0050 03FB01F3 		mul	r3, r3, r1
+  92 0054 03F50043 		add	r3, r3, #32768
+ 115:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  93              		.loc 1 115 0 discriminator 3
+  94 0058 A068     		ldr	r0, [r4, #8]
+  95              		.loc 1 116 0 discriminator 3
+  96 005a 1B14     		asrs	r3, r3, #16
+ 115:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);
+  97              		.loc 1 115 0 discriminator 3
+  98 005c 40F82230 		str	r3, [r0, r2, lsl #2]
+ 117:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* Cb=>B value is nearest int to 1.77200 * x */
+ 118:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cconvert->Cb_b_tab[i] = (int)
+ 119:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+  99              		.loc 1 119 0 discriminator 3
+ 100 0060 0E4B     		ldr	r3, .L5+4
+ 101 0062 03FB01F3 		mul	r3, r3, r1
+ 102 0066 03F50043 		add	r3, r3, #32768
+ 118:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+ 103              		.loc 1 118 0 discriminator 3
+ARM GAS  /tmp/ccM20jrO.s 			page 5
+
+
+ 104 006a E068     		ldr	r0, [r4, #12]
+ 105              		.loc 1 119 0 discriminator 3
+ 106 006c 1B14     		asrs	r3, r3, #16
+ 118:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    RIGHT_SHIFT(FIX(1.77200) * x + ONE_HALF, SCALEBITS);
+ 107              		.loc 1 118 0 discriminator 3
+ 108 006e 40F82230 		str	r3, [r0, r2, lsl #2]
+ 120:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* Cr=>G value is scaled-up -0.71414 * x */
+ 121:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cconvert->Cr_g_tab[i] = (- FIX(0.71414)) * x;
+ 109              		.loc 1 121 0 discriminator 3
+ 110 0072 2069     		ldr	r0, [r4, #16]
+ 111 0074 0A4B     		ldr	r3, .L5+8
+ 112 0076 03FB01F3 		mul	r3, r3, r1
+ 113 007a 40F82230 		str	r3, [r0, r2, lsl #2]
+ 122:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* Cb=>G value is scaled-up -0.34414 * x */
+ 123:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* We also add in ONE_HALF so that need not do it in inner loop */
+ 124:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cconvert->Cb_g_tab[i] = (- FIX(0.34414)) * x + ONE_HALF;
+ 114              		.loc 1 124 0 discriminator 3
+ 115 007e 094B     		ldr	r3, .L5+12
+ 116 0080 03FB01F3 		mul	r3, r3, r1
+ 117 0084 6069     		ldr	r0, [r4, #20]
+ 118 0086 03F50043 		add	r3, r3, #32768
+ 119 008a 40F82230 		str	r3, [r0, r2, lsl #2]
+ 111:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 120              		.loc 1 111 0 discriminator 3
+ 121 008e 0132     		adds	r2, r2, #1
+ 122              	.LVL8:
+ 123 0090 0131     		adds	r1, r1, #1
+ 124              	.LVL9:
+ 125              	.L2:
+ 111:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* i is the actual input pixel value, in the range 0..MAXJSAMPLE */
+ 126              		.loc 1 111 0 is_stmt 0 discriminator 1
+ 127 0092 FF2A     		cmp	r2, #255
+ 128 0094 DBDD     		ble	.L3
+ 125:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 126:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 129              		.loc 1 126 0 is_stmt 1
+ 130 0096 38BD     		pop	{r3, r4, r5, pc}
+ 131              	.LVL10:
+ 132              	.L6:
+ 133              		.align	2
+ 134              	.L5:
+ 135 0098 E9660100 		.word	91881
+ 136 009c A2C50100 		.word	116130
+ 137 00a0 2E49FFFF 		.word	-46802
+ 138 00a4 E6A7FFFF 		.word	-22554
+ 139              		.cfi_endproc
+ 140              	.LFE3:
+ 142              		.section	.text.ycc_rgb_convert,"ax",%progbits
+ 143              		.align	1
+ 144              		.syntax unified
+ 145              		.thumb
+ 146              		.thumb_func
+ 147              		.fpu fpv5-sp-d16
+ 149              	ycc_rgb_convert:
+ 150              	.LFB4:
+ 127:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 128:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ARM GAS  /tmp/ccM20jrO.s 			page 6
+
+
+ 129:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 130:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Convert some rows of samples to the output colorspace.
+ 131:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  *
+ 132:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Note that we change from noninterleaved, one-plane-per-component format
+ 133:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * to interleaved-pixel format.  The output buffer is therefore three times
+ 134:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * as wide as the input buffer.
+ 135:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * A starting row offset is provided only for the input buffer.  The caller
+ 136:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * can easily adjust the passed output_buf value to accommodate any row
+ 137:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * offset required on that side.
+ 138:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 139:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 140:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 141:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** ycc_rgb_convert (j_decompress_ptr cinfo,
+ 142:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		 JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 143:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		 JSAMPARRAY output_buf, int num_rows)
+ 144:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 151              		.loc 1 144 0
+ 152              		.cfi_startproc
+ 153              		@ args = 4, pretend = 0, frame = 24
+ 154              		@ frame_needed = 0, uses_anonymous_args = 0
+ 155              	.LVL11:
+ 156 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 157              	.LCFI1:
+ 158              		.cfi_def_cfa_offset 36
+ 159              		.cfi_offset 4, -36
+ 160              		.cfi_offset 5, -32
+ 161              		.cfi_offset 6, -28
+ 162              		.cfi_offset 7, -24
+ 163              		.cfi_offset 8, -20
+ 164              		.cfi_offset 9, -16
+ 165              		.cfi_offset 10, -12
+ 166              		.cfi_offset 11, -8
+ 167              		.cfi_offset 14, -4
+ 168 0004 87B0     		sub	sp, sp, #28
+ 169              	.LCFI2:
+ 170              		.cfi_def_cfa_offset 64
+ 171 0006 8A46     		mov	r10, r1
+ 172 0008 0292     		str	r2, [sp, #8]
+ 145:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+ 173              		.loc 1 145 0
+ 174 000a D0F8DC21 		ldr	r2, [r0, #476]
+ 175              	.LVL12:
+ 146:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int y, cb, cr;
+ 147:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW outptr;
+ 148:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr0, inptr1, inptr2;
+ 149:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION col;
+ 150:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 176              		.loc 1 150 0
+ 177 000e D0F870B0 		ldr	fp, [r0, #112]
+ 178              	.LVL13:
+ 151:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* copy these pointers into registers if possible */
+ 152:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPLE * range_limit = cinfo->sample_range_limit;
+ 179              		.loc 1 152 0
+ 180 0012 D0F84C41 		ldr	r4, [r0, #332]
+ 181              	.LVL14:
+ 153:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int * Crrtab = cconvert->Cr_r_tab;
+ 182              		.loc 1 153 0
+ARM GAS  /tmp/ccM20jrO.s 			page 7
+
+
+ 183 0016 D2F80890 		ldr	r9, [r2, #8]
+ 184              	.LVL15:
+ 154:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int * Cbbtab = cconvert->Cb_b_tab;
+ 185              		.loc 1 154 0
+ 186 001a D168     		ldr	r1, [r2, #12]
+ 187              	.LVL16:
+ 188 001c 0591     		str	r1, [sp, #20]
+ 189              	.LVL17:
+ 155:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register INT32 * Crgtab = cconvert->Cr_g_tab;
+ 190              		.loc 1 155 0
+ 191 001e 1169     		ldr	r1, [r2, #16]
+ 192              	.LVL18:
+ 193 0020 0191     		str	r1, [sp, #4]
+ 194              	.LVL19:
+ 156:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register INT32 * Cbgtab = cconvert->Cb_g_tab;
+ 195              		.loc 1 156 0
+ 196 0022 D2F81480 		ldr	r8, [r2, #20]
+ 197              	.LVL20:
+ 157:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   SHIFT_TEMPS
+ 158:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 159:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 198              		.loc 1 159 0
+ 199 0026 21E0     		b	.L8
+ 200              	.LVL21:
+ 201              	.L10:
+ 160:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 161:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 162:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 163:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 164:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 165:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 166:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 202              		.loc 1 166 0 discriminator 3
+ 203 0028 1EF80120 		ldrb	r2, [lr, r1]	@ zero_extendqisi2
+ 204              	.LVL22:
+ 167:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cb = GETJSAMPLE(inptr1[col]);
+ 205              		.loc 1 167 0 discriminator 3
+ 206 002c 1CF80150 		ldrb	r5, [ip, r1]	@ zero_extendqisi2
+ 207              	.LVL23:
+ 168:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cr = GETJSAMPLE(inptr2[col]);
+ 208              		.loc 1 168 0 discriminator 3
+ 209 0030 7E5C     		ldrb	r6, [r7, r1]	@ zero_extendqisi2
+ 210              	.LVL24:
+ 169:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* Range-limiting is essential due to noise introduced by DCT losses. */
+ 170:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_RED] =   range_limit[y + Crrtab[cr]];
+ 211              		.loc 1 170 0 discriminator 3
+ 212 0032 59F82630 		ldr	r3, [r9, r6, lsl #2]
+ 213 0036 1344     		add	r3, r3, r2
+ 214 0038 E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 215 003a 0370     		strb	r3, [r0]
+ 171:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_GREEN] = range_limit[y +
+ 172:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 			      ((int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr],
+ 216              		.loc 1 172 0 discriminator 3
+ 217 003c 58F82530 		ldr	r3, [r8, r5, lsl #2]
+ 218 0040 0093     		str	r3, [sp]
+ 219 0042 019B     		ldr	r3, [sp, #4]
+ 220 0044 53F82660 		ldr	r6, [r3, r6, lsl #2]
+ARM GAS  /tmp/ccM20jrO.s 			page 8
+
+
+ 221              	.LVL25:
+ 222 0048 009B     		ldr	r3, [sp]
+ 223 004a 3344     		add	r3, r3, r6
+ 171:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_GREEN] = range_limit[y +
+ 224              		.loc 1 171 0 discriminator 3
+ 225 004c 02EB2343 		add	r3, r2, r3, asr #16
+ 226 0050 E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 227 0052 4370     		strb	r3, [r0, #1]
+ 173:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 						 SCALEBITS))];
+ 174:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_BLUE] =  range_limit[y + Cbbtab[cb]];
+ 228              		.loc 1 174 0 discriminator 3
+ 229 0054 5AF82530 		ldr	r3, [r10, r5, lsl #2]
+ 230 0058 1A44     		add	r2, r2, r3
+ 231              	.LVL26:
+ 232 005a A35C     		ldrb	r3, [r4, r2]	@ zero_extendqisi2
+ 233 005c 8370     		strb	r3, [r0, #2]
+ 175:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr += RGB_PIXELSIZE;
+ 234              		.loc 1 175 0 discriminator 3
+ 235 005e 0330     		adds	r0, r0, #3
+ 236              	.LVL27:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 237              		.loc 1 165 0 discriminator 3
+ 238 0060 0131     		adds	r1, r1, #1
+ 239              	.LVL28:
+ 240              	.L9:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 241              		.loc 1 165 0 is_stmt 0 discriminator 1
+ 242 0062 5945     		cmp	r1, fp
+ 243 0064 E0D3     		bcc	.L10
+ 244 0066 DDF810A0 		ldr	r10, [sp, #16]
+ 164:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 245              		.loc 1 164 0 is_stmt 1
+ 246 006a 039B     		ldr	r3, [sp, #12]
+ 247              	.LVL29:
+ 248              	.L8:
+ 159:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 249              		.loc 1 159 0
+ 250 006c 109A     		ldr	r2, [sp, #64]
+ 251 006e 013A     		subs	r2, r2, #1
+ 252              	.LVL30:
+ 253 0070 1092     		str	r2, [sp, #64]
+ 254 0072 17D4     		bmi	.L13
+ 160:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 255              		.loc 1 160 0
+ 256 0074 DAF80020 		ldr	r2, [r10]
+ 257              	.LVL31:
+ 258 0078 0299     		ldr	r1, [sp, #8]
+ 259 007a 52F821E0 		ldr	lr, [r2, r1, lsl #2]
+ 260              	.LVL32:
+ 161:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 261              		.loc 1 161 0
+ 262 007e DAF80420 		ldr	r2, [r10, #4]
+ 263 0082 52F821C0 		ldr	ip, [r2, r1, lsl #2]
+ 264              	.LVL33:
+ 162:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 265              		.loc 1 162 0
+ 266 0086 DAF80820 		ldr	r2, [r10, #8]
+ARM GAS  /tmp/ccM20jrO.s 			page 9
+
+
+ 267 008a 52F82170 		ldr	r7, [r2, r1, lsl #2]
+ 268              	.LVL34:
+ 163:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 269              		.loc 1 163 0
+ 270 008e 4A1C     		adds	r2, r1, #1
+ 271 0090 0292     		str	r2, [sp, #8]
+ 272              	.LVL35:
+ 164:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 273              		.loc 1 164 0
+ 274 0092 1A1D     		adds	r2, r3, #4
+ 275              	.LVL36:
+ 276 0094 0392     		str	r2, [sp, #12]
+ 277              	.LVL37:
+ 278 0096 1868     		ldr	r0, [r3]
+ 279              	.LVL38:
+ 165:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 280              		.loc 1 165 0
+ 281 0098 0021     		movs	r1, #0
+ 282 009a CDF810A0 		str	r10, [sp, #16]
+ 283 009e DDF814A0 		ldr	r10, [sp, #20]
+ 284 00a2 DEE7     		b	.L9
+ 285              	.LVL39:
+ 286              	.L13:
+ 176:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 177:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 178:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 287              		.loc 1 178 0
+ 288 00a4 07B0     		add	sp, sp, #28
+ 289              	.LCFI3:
+ 290              		.cfi_def_cfa_offset 36
+ 291              		@ sp needed
+ 292 00a6 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 293              		.cfi_endproc
+ 294              	.LFE4:
+ 296              		.section	.text.build_rgb_y_table,"ax",%progbits
+ 297              		.align	1
+ 298              		.syntax unified
+ 299              		.thumb
+ 300              		.thumb_func
+ 301              		.fpu fpv5-sp-d16
+ 303              	build_rgb_y_table:
+ 304              	.LFB5:
+ 179:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 180:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 181:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /**************** Cases other than YCbCr -> RGB **************/
+ 182:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 183:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 184:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 185:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Initialize for RGB->grayscale colorspace conversion.
+ 186:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 187:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 188:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** LOCAL(void)
+ 189:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** build_rgb_y_table (j_decompress_ptr cinfo)
+ 190:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 305              		.loc 1 190 0
+ 306              		.cfi_startproc
+ 307              		@ args = 0, pretend = 0, frame = 0
+ARM GAS  /tmp/ccM20jrO.s 			page 10
+
+
+ 308              		@ frame_needed = 0, uses_anonymous_args = 0
+ 309              	.LVL40:
+ 310 0000 10B5     		push	{r4, lr}
+ 311              	.LCFI4:
+ 312              		.cfi_def_cfa_offset 8
+ 313              		.cfi_offset 4, -8
+ 314              		.cfi_offset 14, -4
+ 191:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+ 315              		.loc 1 191 0
+ 316 0002 D0F8DC41 		ldr	r4, [r0, #476]
+ 317              	.LVL41:
+ 192:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 * rgb_y_tab;
+ 193:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   INT32 i;
+ 194:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 195:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* Allocate and fill in the conversion tables. */
+ 196:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->rgb_y_tab = rgb_y_tab = (INT32 *)
+ 197:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 318              		.loc 1 197 0
+ 319 0006 4368     		ldr	r3, [r0, #4]
+ 320 0008 1B68     		ldr	r3, [r3]
+ 196:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 321              		.loc 1 196 0
+ 322 000a 4FF44062 		mov	r2, #3072
+ 323 000e 0121     		movs	r1, #1
+ 324 0010 9847     		blx	r3
+ 325              	.LVL42:
+ 326 0012 A061     		str	r0, [r4, #24]
+ 327              	.LVL43:
+ 198:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				(TABLE_SIZE * SIZEOF(INT32)));
+ 199:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 200:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   for (i = 0; i <= MAXJSAMPLE; i++) {
+ 328              		.loc 1 200 0
+ 329 0014 0023     		movs	r3, #0
+ 330 0016 18E0     		b	.L15
+ 331              	.LVL44:
+ 332              	.L16:
+ 201:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     rgb_y_tab[i+R_Y_OFF] = FIX(0.29900) * i;
+ 333              		.loc 1 201 0 discriminator 3
+ 334 0018 44F68B42 		movw	r2, #19595
+ 335 001c 02FB03F2 		mul	r2, r2, r3
+ 336 0020 40F82320 		str	r2, [r0, r3, lsl #2]
+ 202:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     rgb_y_tab[i+G_Y_OFF] = FIX(0.58700) * i;
+ 337              		.loc 1 202 0 discriminator 3
+ 338 0024 03F58071 		add	r1, r3, #256
+ 339 0028 49F24662 		movw	r2, #38470
+ 340 002c 02FB03F2 		mul	r2, r2, r3
+ 341 0030 40F82120 		str	r2, [r0, r1, lsl #2]
+ 203:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     rgb_y_tab[i+B_Y_OFF] = FIX(0.11400) * i + ONE_HALF;
+ 342              		.loc 1 203 0 discriminator 3
+ 343 0034 41F62F52 		movw	r2, #7471
+ 344 0038 02FB03F2 		mul	r2, r2, r3
+ 345 003c 03F50071 		add	r1, r3, #512
+ 346 0040 02F50042 		add	r2, r2, #32768
+ 347 0044 40F82120 		str	r2, [r0, r1, lsl #2]
+ 200:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     rgb_y_tab[i+R_Y_OFF] = FIX(0.29900) * i;
+ 348              		.loc 1 200 0 discriminator 3
+ 349 0048 0133     		adds	r3, r3, #1
+ARM GAS  /tmp/ccM20jrO.s 			page 11
+
+
+ 350              	.LVL45:
+ 351              	.L15:
+ 200:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     rgb_y_tab[i+R_Y_OFF] = FIX(0.29900) * i;
+ 352              		.loc 1 200 0 is_stmt 0 discriminator 1
+ 353 004a FF2B     		cmp	r3, #255
+ 354 004c E4DD     		ble	.L16
+ 204:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 205:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 355              		.loc 1 205 0 is_stmt 1
+ 356 004e 10BD     		pop	{r4, pc}
+ 357              		.cfi_endproc
+ 358              	.LFE5:
+ 360              		.section	.text.rgb_gray_convert,"ax",%progbits
+ 361              		.align	1
+ 362              		.syntax unified
+ 363              		.thumb
+ 364              		.thumb_func
+ 365              		.fpu fpv5-sp-d16
+ 367              	rgb_gray_convert:
+ 368              	.LFB6:
+ 206:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 207:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 208:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 209:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Convert RGB to grayscale.
+ 210:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 211:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 212:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 213:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** rgb_gray_convert (j_decompress_ptr cinfo,
+ 214:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		  JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 215:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		  JSAMPARRAY output_buf, int num_rows)
+ 216:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 369              		.loc 1 216 0
+ 370              		.cfi_startproc
+ 371              		@ args = 4, pretend = 0, frame = 0
+ 372              		@ frame_needed = 0, uses_anonymous_args = 0
+ 373              	.LVL46:
+ 374 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 375              	.LCFI5:
+ 376              		.cfi_def_cfa_offset 36
+ 377              		.cfi_offset 4, -36
+ 378              		.cfi_offset 5, -32
+ 379              		.cfi_offset 6, -28
+ 380              		.cfi_offset 7, -24
+ 381              		.cfi_offset 8, -20
+ 382              		.cfi_offset 9, -16
+ 383              		.cfi_offset 10, -12
+ 384              		.cfi_offset 11, -8
+ 385              		.cfi_offset 14, -4
+ 386 0004 8E46     		mov	lr, r1
+ 387 0006 9446     		mov	ip, r2
+ 388 0008 DDF82480 		ldr	r8, [sp, #36]
+ 217:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+ 389              		.loc 1 217 0
+ 390 000c D0F8DC21 		ldr	r2, [r0, #476]
+ 391              	.LVL47:
+ 218:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int r, g, b;
+ 219:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register INT32 * ctab = cconvert->rgb_y_tab;
+ARM GAS  /tmp/ccM20jrO.s 			page 12
+
+
+ 392              		.loc 1 219 0
+ 393 0010 9469     		ldr	r4, [r2, #24]
+ 394              	.LVL48:
+ 220:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW outptr;
+ 221:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr0, inptr1, inptr2;
+ 222:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION col;
+ 223:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 395              		.loc 1 223 0
+ 396 0012 056F     		ldr	r5, [r0, #112]
+ 397              	.LVL49:
+ 224:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 225:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 398              		.loc 1 225 0
+ 399 0014 17E0     		b	.L19
+ 400              	.LVL50:
+ 401              	.L21:
+ 226:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 227:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 228:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 229:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 230:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 231:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 232:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       r = GETJSAMPLE(inptr0[col]);
+ 402              		.loc 1 232 0 discriminator 3
+ 403 0016 0B5C     		ldrb	r3, [r1, r0]	@ zero_extendqisi2
+ 404              	.LVL51:
+ 233:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       g = GETJSAMPLE(inptr1[col]);
+ 405              		.loc 1 233 0 discriminator 3
+ 406 0018 12F800B0 		ldrb	fp, [r2, r0]	@ zero_extendqisi2
+ 407              	.LVL52:
+ 234:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       b = GETJSAMPLE(inptr2[col]);
+ 408              		.loc 1 234 0 discriminator 3
+ 409 001c 17F800A0 		ldrb	r10, [r7, r0]	@ zero_extendqisi2
+ 410              	.LVL53:
+ 235:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* Y */
+ 236:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[col] = (JSAMPLE)
+ 237:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		((ctab[r+R_Y_OFF] + ctab[g+G_Y_OFF] + ctab[b+B_Y_OFF])
+ 411              		.loc 1 237 0 discriminator 3
+ 412 0020 54F82330 		ldr	r3, [r4, r3, lsl #2]
+ 413              	.LVL54:
+ 414 0024 0BF5807B 		add	fp, fp, #256
+ 415              	.LVL55:
+ 416 0028 54F82BB0 		ldr	fp, [r4, fp, lsl #2]
+ 417              	.LVL56:
+ 418 002c 5B44     		add	r3, r3, fp
+ 419 002e 0AF5007A 		add	r10, r10, #512
+ 420              	.LVL57:
+ 421 0032 54F82AA0 		ldr	r10, [r4, r10, lsl #2]
+ 422              	.LVL58:
+ 423 0036 5344     		add	r3, r3, r10
+ 236:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		((ctab[r+R_Y_OFF] + ctab[g+G_Y_OFF] + ctab[b+B_Y_OFF])
+ 424              		.loc 1 236 0 discriminator 3
+ 425 0038 C3F30743 		ubfx	r3, r3, #16, #8
+ 426 003c 3354     		strb	r3, [r6, r0]
+ 427              	.LVL59:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       r = GETJSAMPLE(inptr0[col]);
+ 428              		.loc 1 231 0 discriminator 3
+ARM GAS  /tmp/ccM20jrO.s 			page 13
+
+
+ 429 003e 0130     		adds	r0, r0, #1
+ 430              	.LVL60:
+ 431              	.L20:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       r = GETJSAMPLE(inptr0[col]);
+ 432              		.loc 1 231 0 is_stmt 0 discriminator 1
+ 433 0040 A842     		cmp	r0, r5
+ 434 0042 E8D3     		bcc	.L21
+ 230:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 435              		.loc 1 230 0 is_stmt 1
+ 436 0044 4B46     		mov	r3, r9
+ 437              	.LVL61:
+ 438              	.L19:
+ 225:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 439              		.loc 1 225 0
+ 440 0046 B8F10108 		subs	r8, r8, #1
+ 441              	.LVL62:
+ 442 004a 12D4     		bmi	.L24
+ 226:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 443              		.loc 1 226 0
+ 444 004c DEF80020 		ldr	r2, [lr]
+ 445 0050 52F82C10 		ldr	r1, [r2, ip, lsl #2]
+ 446              	.LVL63:
+ 227:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 447              		.loc 1 227 0
+ 448 0054 DEF80420 		ldr	r2, [lr, #4]
+ 449 0058 52F82C20 		ldr	r2, [r2, ip, lsl #2]
+ 450              	.LVL64:
+ 228:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 451              		.loc 1 228 0
+ 452 005c DEF80800 		ldr	r0, [lr, #8]
+ 453 0060 50F82C70 		ldr	r7, [r0, ip, lsl #2]
+ 454              	.LVL65:
+ 229:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 455              		.loc 1 229 0
+ 456 0064 0CF1010C 		add	ip, ip, #1
+ 457              	.LVL66:
+ 230:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 458              		.loc 1 230 0
+ 459 0068 03F10409 		add	r9, r3, #4
+ 460              	.LVL67:
+ 461 006c 1E68     		ldr	r6, [r3]
+ 462              	.LVL68:
+ 231:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       r = GETJSAMPLE(inptr0[col]);
+ 463              		.loc 1 231 0
+ 464 006e 0020     		movs	r0, #0
+ 465 0070 E6E7     		b	.L20
+ 466              	.LVL69:
+ 467              	.L24:
+ 238:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		 >> SCALEBITS);
+ 239:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 240:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 241:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 468              		.loc 1 241 0
+ 469 0072 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 470              		.cfi_endproc
+ 471              	.LFE6:
+ 473              		.section	.text.rgb_convert,"ax",%progbits
+ARM GAS  /tmp/ccM20jrO.s 			page 14
+
+
+ 474              		.align	1
+ 475              		.syntax unified
+ 476              		.thumb
+ 477              		.thumb_func
+ 478              		.fpu fpv5-sp-d16
+ 480              	rgb_convert:
+ 481              	.LFB7:
+ 242:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 243:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 244:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 245:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * No colorspace change, but conversion from separate-planes
+ 246:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * to interleaved representation.
+ 247:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 248:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 249:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 250:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** rgb_convert (j_decompress_ptr cinfo,
+ 251:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	     JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 252:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	     JSAMPARRAY output_buf, int num_rows)
+ 253:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 482              		.loc 1 253 0
+ 483              		.cfi_startproc
+ 484              		@ args = 4, pretend = 0, frame = 0
+ 485              		@ frame_needed = 0, uses_anonymous_args = 0
+ 486              	.LVL70:
+ 487 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 488              	.LCFI6:
+ 489              		.cfi_def_cfa_offset 24
+ 490              		.cfi_offset 4, -24
+ 491              		.cfi_offset 5, -20
+ 492              		.cfi_offset 6, -16
+ 493              		.cfi_offset 7, -12
+ 494              		.cfi_offset 8, -8
+ 495              		.cfi_offset 14, -4
+ 496 0004 9446     		mov	ip, r2
+ 497 0006 DDF818E0 		ldr	lr, [sp, #24]
+ 254:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW outptr;
+ 255:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr0, inptr1, inptr2;
+ 256:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION col;
+ 257:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 498              		.loc 1 257 0
+ 499 000a 056F     		ldr	r5, [r0, #112]
+ 500              	.LVL71:
+ 258:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 259:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 501              		.loc 1 259 0
+ 502 000c 0AE0     		b	.L26
+ 503              	.LVL72:
+ 504              	.L28:
+ 260:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 261:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 262:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 263:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 264:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 265:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 266:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 267:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_RED]   = inptr0[col];
+ 505              		.loc 1 267 0 discriminator 3
+ARM GAS  /tmp/ccM20jrO.s 			page 15
+
+
+ 506 000e D45C     		ldrb	r4, [r2, r3]	@ zero_extendqisi2
+ 507 0010 0470     		strb	r4, [r0]
+ 268:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_GREEN] = inptr1[col];
+ 508              		.loc 1 268 0 discriminator 3
+ 509 0012 FC5C     		ldrb	r4, [r7, r3]	@ zero_extendqisi2
+ 510 0014 4470     		strb	r4, [r0, #1]
+ 269:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_BLUE]  = inptr2[col];
+ 511              		.loc 1 269 0 discriminator 3
+ 512 0016 F45C     		ldrb	r4, [r6, r3]	@ zero_extendqisi2
+ 513 0018 8470     		strb	r4, [r0, #2]
+ 270:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr += RGB_PIXELSIZE;
+ 514              		.loc 1 270 0 discriminator 3
+ 515 001a 0330     		adds	r0, r0, #3
+ 516              	.LVL73:
+ 265:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 517              		.loc 1 265 0 discriminator 3
+ 518 001c 0133     		adds	r3, r3, #1
+ 519              	.LVL74:
+ 520              	.L27:
+ 265:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 521              		.loc 1 265 0 is_stmt 0 discriminator 1
+ 522 001e AB42     		cmp	r3, r5
+ 523 0020 F5D3     		bcc	.L28
+ 264:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 524              		.loc 1 264 0 is_stmt 1
+ 525 0022 4346     		mov	r3, r8
+ 526              	.LVL75:
+ 527              	.L26:
+ 259:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 528              		.loc 1 259 0
+ 529 0024 BEF1010E 		subs	lr, lr, #1
+ 530              	.LVL76:
+ 531 0028 0FD4     		bmi	.L31
+ 260:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 532              		.loc 1 260 0
+ 533 002a 0A68     		ldr	r2, [r1]
+ 534 002c 52F82C20 		ldr	r2, [r2, ip, lsl #2]
+ 535              	.LVL77:
+ 261:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 536              		.loc 1 261 0
+ 537 0030 4868     		ldr	r0, [r1, #4]
+ 538 0032 50F82C70 		ldr	r7, [r0, ip, lsl #2]
+ 539              	.LVL78:
+ 262:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 540              		.loc 1 262 0
+ 541 0036 8868     		ldr	r0, [r1, #8]
+ 542 0038 50F82C60 		ldr	r6, [r0, ip, lsl #2]
+ 543              	.LVL79:
+ 263:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 544              		.loc 1 263 0
+ 545 003c 0CF1010C 		add	ip, ip, #1
+ 546              	.LVL80:
+ 264:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 547              		.loc 1 264 0
+ 548 0040 03F10408 		add	r8, r3, #4
+ 549              	.LVL81:
+ 550 0044 1868     		ldr	r0, [r3]
+ARM GAS  /tmp/ccM20jrO.s 			page 16
+
+
+ 551              	.LVL82:
+ 265:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 552              		.loc 1 265 0
+ 553 0046 0023     		movs	r3, #0
+ 554 0048 E9E7     		b	.L27
+ 555              	.LVL83:
+ 556              	.L31:
+ 271:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 272:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 273:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 557              		.loc 1 273 0
+ 558 004a BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 559              		.cfi_endproc
+ 560              	.LFE7:
+ 562              		.section	.text.null_convert,"ax",%progbits
+ 563              		.align	1
+ 564              		.syntax unified
+ 565              		.thumb
+ 566              		.thumb_func
+ 567              		.fpu fpv5-sp-d16
+ 569              	null_convert:
+ 570              	.LFB8:
+ 274:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 275:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 276:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 277:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Color conversion for no colorspace change: just copy the data,
+ 278:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * converting from separate-planes to interleaved representation.
+ 279:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 280:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 281:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 282:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** null_convert (j_decompress_ptr cinfo,
+ 283:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	      JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 284:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	      JSAMPARRAY output_buf, int num_rows)
+ 285:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 571              		.loc 1 285 0
+ 572              		.cfi_startproc
+ 573              		@ args = 4, pretend = 0, frame = 0
+ 574              		@ frame_needed = 0, uses_anonymous_args = 0
+ 575              	.LVL84:
+ 576 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 577              	.LCFI7:
+ 578              		.cfi_def_cfa_offset 24
+ 579              		.cfi_offset 4, -24
+ 580              		.cfi_offset 5, -20
+ 581              		.cfi_offset 6, -16
+ 582              		.cfi_offset 7, -12
+ 583              		.cfi_offset 8, -8
+ 584              		.cfi_offset 14, -4
+ 585 0004 DDF81880 		ldr	r8, [sp, #24]
+ 286:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr, outptr;
+ 287:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION count;
+ 288:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int num_components = cinfo->num_components;
+ 586              		.loc 1 288 0
+ 587 0008 476A     		ldr	r7, [r0, #36]
+ 588              	.LVL85:
+ 289:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 589              		.loc 1 289 0
+ARM GAS  /tmp/ccM20jrO.s 			page 17
+
+
+ 590 000a D0F870E0 		ldr	lr, [r0, #112]
+ 591              	.LVL86:
+ 290:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   int ci;
+ 291:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 292:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 592              		.loc 1 292 0
+ 593 000e 14E0     		b	.L33
+ 594              	.LVL87:
+ 595              	.L35:
+ 293:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (ci = 0; ci < num_components; ci++) {
+ 294:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       inptr = input_buf[ci][input_row];
+ 295:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr = output_buf[0] + ci;
+ 296:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       for (count = num_cols; count > 0; count--) {
+ 297:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	*outptr = *inptr++;	/* needn't bother with GETJSAMPLE() here */
+ 596              		.loc 1 297 0 discriminator 3
+ 597 0010 2E78     		ldrb	r6, [r5]	@ zero_extendqisi2
+ 598 0012 0670     		strb	r6, [r0]
+ 298:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	outptr += num_components;
+ 599              		.loc 1 298 0 discriminator 3
+ 600 0014 3844     		add	r0, r0, r7
+ 601              	.LVL88:
+ 296:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	*outptr = *inptr++;	/* needn't bother with GETJSAMPLE() here */
+ 602              		.loc 1 296 0 discriminator 3
+ 603 0016 013C     		subs	r4, r4, #1
+ 604              	.LVL89:
+ 297:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	outptr += num_components;
+ 605              		.loc 1 297 0 discriminator 3
+ 606 0018 0135     		adds	r5, r5, #1
+ 607              	.LVL90:
+ 608              	.L34:
+ 296:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	*outptr = *inptr++;	/* needn't bother with GETJSAMPLE() here */
+ 609              		.loc 1 296 0 discriminator 1
+ 610 001a 002C     		cmp	r4, #0
+ 611 001c F8D1     		bne	.L35
+ 293:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       inptr = input_buf[ci][input_row];
+ 612              		.loc 1 293 0 discriminator 2
+ 613 001e 0CF1010C 		add	ip, ip, #1
+ 614              	.LVL91:
+ 615              	.L37:
+ 293:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       inptr = input_buf[ci][input_row];
+ 616              		.loc 1 293 0 is_stmt 0 discriminator 1
+ 617 0022 BC45     		cmp	ip, r7
+ 618 0024 07DA     		bge	.L40
+ 294:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr = output_buf[0] + ci;
+ 619              		.loc 1 294 0 is_stmt 1
+ 620 0026 51F82C00 		ldr	r0, [r1, ip, lsl #2]
+ 621 002a 50F82250 		ldr	r5, [r0, r2, lsl #2]
+ 622              	.LVL92:
+ 295:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       for (count = num_cols; count > 0; count--) {
+ 623              		.loc 1 295 0
+ 624 002e 1868     		ldr	r0, [r3]
+ 625 0030 6044     		add	r0, r0, ip
+ 626              	.LVL93:
+ 296:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	*outptr = *inptr++;	/* needn't bother with GETJSAMPLE() here */
+ 627              		.loc 1 296 0
+ 628 0032 7446     		mov	r4, lr
+ 629 0034 F1E7     		b	.L34
+ARM GAS  /tmp/ccM20jrO.s 			page 18
+
+
+ 630              	.LVL94:
+ 631              	.L40:
+ 299:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       }
+ 300:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 301:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 632              		.loc 1 301 0
+ 633 0036 0132     		adds	r2, r2, #1
+ 634              	.LVL95:
+ 302:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     output_buf++;
+ 635              		.loc 1 302 0
+ 636 0038 0433     		adds	r3, r3, #4
+ 637              	.LVL96:
+ 638              	.L33:
+ 292:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (ci = 0; ci < num_components; ci++) {
+ 639              		.loc 1 292 0
+ 640 003a B8F10108 		subs	r8, r8, #1
+ 641              	.LVL97:
+ 642 003e 02D4     		bmi	.L41
+ 293:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       inptr = input_buf[ci][input_row];
+ 643              		.loc 1 293 0
+ 644 0040 4FF0000C 		mov	ip, #0
+ 645 0044 EDE7     		b	.L37
+ 646              	.L41:
+ 303:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 304:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 647              		.loc 1 304 0
+ 648 0046 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 649              		.cfi_endproc
+ 650              	.LFE8:
+ 652              		.section	.text.gray_rgb_convert,"ax",%progbits
+ 653              		.align	1
+ 654              		.syntax unified
+ 655              		.thumb
+ 656              		.thumb_func
+ 657              		.fpu fpv5-sp-d16
+ 659              	gray_rgb_convert:
+ 660              	.LFB10:
+ 305:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 306:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 307:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 308:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Color conversion for grayscale: just copy the data.
+ 309:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * This also works for YCbCr -> grayscale conversion, in which
+ 310:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * we just copy the Y (luminance) component and ignore chrominance.
+ 311:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 312:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 313:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 314:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** grayscale_convert (j_decompress_ptr cinfo,
+ 315:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		   JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 316:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		   JSAMPARRAY output_buf, int num_rows)
+ 317:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 318:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   jcopy_sample_rows(input_buf[0], (int) input_row, output_buf, 0,
+ 319:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    num_rows, cinfo->output_width);
+ 320:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 321:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 322:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 323:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 324:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Convert grayscale to RGB: just duplicate the graylevel three times.
+ARM GAS  /tmp/ccM20jrO.s 			page 19
+
+
+ 325:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * This is provided to support applications that don't want to cope
+ 326:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * with grayscale as a separate case.
+ 327:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 328:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 329:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 330:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** gray_rgb_convert (j_decompress_ptr cinfo,
+ 331:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		  JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 332:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		  JSAMPARRAY output_buf, int num_rows)
+ 333:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 661              		.loc 1 333 0
+ 662              		.cfi_startproc
+ 663              		@ args = 4, pretend = 0, frame = 0
+ 664              		@ frame_needed = 0, uses_anonymous_args = 0
+ 665              		@ link register save eliminated.
+ 666              	.LVL98:
+ 667 0000 F0B4     		push	{r4, r5, r6, r7}
+ 668              	.LCFI8:
+ 669              		.cfi_def_cfa_offset 16
+ 670              		.cfi_offset 4, -16
+ 671              		.cfi_offset 5, -12
+ 672              		.cfi_offset 6, -8
+ 673              		.cfi_offset 7, -4
+ 674 0002 049E     		ldr	r6, [sp, #16]
+ 334:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr, outptr;
+ 335:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION col;
+ 336:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 675              		.loc 1 336 0
+ 676 0004 046F     		ldr	r4, [r0, #112]
+ 677              	.LVL99:
+ 337:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 338:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 678              		.loc 1 338 0
+ 679 0006 09E0     		b	.L43
+ 680              	.LVL100:
+ 681              	.L45:
+ 339:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr = input_buf[0][input_row++];
+ 340:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 341:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 342:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 343:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[RGB_RED] = outptr[RGB_GREEN] = outptr[RGB_BLUE] = inptr[col];
+ 682              		.loc 1 343 0 discriminator 3
+ 683 0008 E85C     		ldrb	r0, [r5, r3]	@ zero_extendqisi2
+ 684 000a 9070     		strb	r0, [r2, #2]
+ 685 000c 5070     		strb	r0, [r2, #1]
+ 686 000e 02F8030B 		strb	r0, [r2], #3
+ 687              	.LVL101:
+ 341:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 688              		.loc 1 341 0 discriminator 3
+ 689 0012 0133     		adds	r3, r3, #1
+ 690              	.LVL102:
+ 691              	.L44:
+ 341:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 692              		.loc 1 341 0 is_stmt 0 discriminator 1
+ 693 0014 A342     		cmp	r3, r4
+ 694 0016 F7D3     		bcc	.L45
+ 340:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 695              		.loc 1 340 0 is_stmt 1
+ARM GAS  /tmp/ccM20jrO.s 			page 20
+
+
+ 696 0018 6346     		mov	r3, ip
+ 697              	.LVL103:
+ 339:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr = input_buf[0][input_row++];
+ 698              		.loc 1 339 0
+ 699 001a 3A46     		mov	r2, r7
+ 700              	.LVL104:
+ 701              	.L43:
+ 338:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr = input_buf[0][input_row++];
+ 702              		.loc 1 338 0
+ 703 001c 013E     		subs	r6, r6, #1
+ 704              	.LVL105:
+ 705 001e 08D4     		bmi	.L48
+ 339:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 706              		.loc 1 339 0
+ 707 0020 0868     		ldr	r0, [r1]
+ 708 0022 571C     		adds	r7, r2, #1
+ 709              	.LVL106:
+ 710 0024 50F82250 		ldr	r5, [r0, r2, lsl #2]
+ 711              	.LVL107:
+ 340:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 712              		.loc 1 340 0
+ 713 0028 03F1040C 		add	ip, r3, #4
+ 714              	.LVL108:
+ 715 002c 1A68     		ldr	r2, [r3]
+ 716              	.LVL109:
+ 341:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* We can dispense with GETJSAMPLE() here */
+ 717              		.loc 1 341 0
+ 718 002e 0023     		movs	r3, #0
+ 719 0030 F0E7     		b	.L44
+ 720              	.LVL110:
+ 721              	.L48:
+ 344:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr += RGB_PIXELSIZE;
+ 345:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 346:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 347:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 722              		.loc 1 347 0
+ 723 0032 F0BC     		pop	{r4, r5, r6, r7}
+ 724              	.LCFI9:
+ 725              		.cfi_restore 7
+ 726              		.cfi_restore 6
+ 727              		.cfi_restore 5
+ 728              		.cfi_restore 4
+ 729              		.cfi_def_cfa_offset 0
+ 730              	.LVL111:
+ 731 0034 7047     		bx	lr
+ 732              		.cfi_endproc
+ 733              	.LFE10:
+ 735              		.section	.text.ycck_cmyk_convert,"ax",%progbits
+ 736              		.align	1
+ 737              		.syntax unified
+ 738              		.thumb
+ 739              		.thumb_func
+ 740              		.fpu fpv5-sp-d16
+ 742              	ycck_cmyk_convert:
+ 743              	.LFB11:
+ 348:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 349:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ARM GAS  /tmp/ccM20jrO.s 			page 21
+
+
+ 350:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 351:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Adobe-style YCCK->CMYK conversion.
+ 352:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * We convert YCbCr to R=1-C, G=1-M, and B=1-Y using the same
+ 353:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * conversion as above, while passing K (black) unchanged.
+ 354:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * We assume build_ycc_rgb_table has been called.
+ 355:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 356:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 357:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 358:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** ycck_cmyk_convert (j_decompress_ptr cinfo,
+ 359:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		   JSAMPIMAGE input_buf, JDIMENSION input_row,
+ 360:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		   JSAMPARRAY output_buf, int num_rows)
+ 361:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 744              		.loc 1 361 0
+ 745              		.cfi_startproc
+ 746              		@ args = 4, pretend = 0, frame = 24
+ 747              		@ frame_needed = 0, uses_anonymous_args = 0
+ 748              	.LVL112:
+ 749 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 750              	.LCFI10:
+ 751              		.cfi_def_cfa_offset 36
+ 752              		.cfi_offset 4, -36
+ 753              		.cfi_offset 5, -32
+ 754              		.cfi_offset 6, -28
+ 755              		.cfi_offset 7, -24
+ 756              		.cfi_offset 8, -20
+ 757              		.cfi_offset 9, -16
+ 758              		.cfi_offset 10, -12
+ 759              		.cfi_offset 11, -8
+ 760              		.cfi_offset 14, -4
+ 761 0004 87B0     		sub	sp, sp, #28
+ 762              	.LCFI11:
+ 763              		.cfi_def_cfa_offset 64
+ 764 0006 8C46     		mov	ip, r1
+ 765 0008 0392     		str	r2, [sp, #12]
+ 362:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+ 766              		.loc 1 362 0
+ 767 000a D0F8DC21 		ldr	r2, [r0, #476]
+ 768              	.LVL113:
+ 363:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int y, cb, cr;
+ 364:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW outptr;
+ 365:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPROW inptr0, inptr1, inptr2, inptr3;
+ 366:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JDIMENSION col;
+ 367:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   JDIMENSION num_cols = cinfo->output_width;
+ 769              		.loc 1 367 0
+ 770 000e D0F870A0 		ldr	r10, [r0, #112]
+ 771              	.LVL114:
+ 368:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* copy these pointers into registers if possible */
+ 369:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register JSAMPLE * range_limit = cinfo->sample_range_limit;
+ 772              		.loc 1 369 0
+ 773 0012 D0F84C41 		ldr	r4, [r0, #332]
+ 774              	.LVL115:
+ 370:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int * Crrtab = cconvert->Cr_r_tab;
+ 775              		.loc 1 370 0
+ 776 0016 D2F80890 		ldr	r9, [r2, #8]
+ 777              	.LVL116:
+ 371:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register int * Cbbtab = cconvert->Cb_b_tab;
+ 778              		.loc 1 371 0
+ARM GAS  /tmp/ccM20jrO.s 			page 22
+
+
+ 779 001a D168     		ldr	r1, [r2, #12]
+ 780              	.LVL117:
+ 781 001c 0191     		str	r1, [sp, #4]
+ 782              	.LVL118:
+ 372:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register INT32 * Crgtab = cconvert->Cr_g_tab;
+ 783              		.loc 1 372 0
+ 784 001e 1169     		ldr	r1, [r2, #16]
+ 785              	.LVL119:
+ 786 0020 0291     		str	r1, [sp, #8]
+ 787              	.LVL120:
+ 373:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   register INT32 * Cbgtab = cconvert->Cb_g_tab;
+ 788              		.loc 1 373 0
+ 789 0022 D2F814B0 		ldr	fp, [r2, #20]
+ 790              	.LVL121:
+ 374:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   SHIFT_TEMPS
+ 375:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 376:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   while (--num_rows >= 0) {
+ 791              		.loc 1 376 0
+ 792 0026 2BE0     		b	.L50
+ 793              	.LVL122:
+ 794              	.L52:
+ 377:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 378:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 379:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ 380:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr3 = input_buf[3][input_row];
+ 381:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 382:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 383:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 384:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 795              		.loc 1 384 0 discriminator 3
+ 796 0028 1EF80120 		ldrb	r2, [lr, r1]	@ zero_extendqisi2
+ 797              	.LVL123:
+ 385:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cb = GETJSAMPLE(inptr1[col]);
+ 798              		.loc 1 385 0 discriminator 3
+ 799 002c 7D5C     		ldrb	r5, [r7, r1]	@ zero_extendqisi2
+ 800              	.LVL124:
+ 386:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cr = GETJSAMPLE(inptr2[col]);
+ 801              		.loc 1 386 0 discriminator 3
+ 802 002e 18F80160 		ldrb	r6, [r8, r1]	@ zero_extendqisi2
+ 803              	.LVL125:
+ 387:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* Range-limiting is essential due to noise introduced by DCT losses. */
+ 388:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[0] = range_limit[MAXJSAMPLE - (y + Crrtab[cr])];	/* red */
+ 804              		.loc 1 388 0 discriminator 3
+ 805 0032 59F82630 		ldr	r3, [r9, r6, lsl #2]
+ 806 0036 1344     		add	r3, r3, r2
+ 807 0038 C3F1FF03 		rsb	r3, r3, #255
+ 808 003c E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 809 003e 0370     		strb	r3, [r0]
+ 389:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[1] = range_limit[MAXJSAMPLE - (y +			/* green */
+ 390:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 			      ((int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr],
+ 810              		.loc 1 390 0 discriminator 3
+ 811 0040 5BF82530 		ldr	r3, [fp, r5, lsl #2]
+ 812 0044 0093     		str	r3, [sp]
+ 813 0046 029B     		ldr	r3, [sp, #8]
+ 814 0048 53F82660 		ldr	r6, [r3, r6, lsl #2]
+ 815              	.LVL126:
+ 816 004c 009B     		ldr	r3, [sp]
+ARM GAS  /tmp/ccM20jrO.s 			page 23
+
+
+ 817 004e 3344     		add	r3, r3, r6
+ 389:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[1] = range_limit[MAXJSAMPLE - (y +			/* green */
+ 818              		.loc 1 389 0 discriminator 3
+ 819 0050 02EB2343 		add	r3, r2, r3, asr #16
+ 820 0054 C3F1FF03 		rsb	r3, r3, #255
+ 821 0058 E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 822 005a 4370     		strb	r3, [r0, #1]
+ 391:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 						 SCALEBITS)))];
+ 392:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[2] = range_limit[MAXJSAMPLE - (y + Cbbtab[cb])];	/* blue */
+ 823              		.loc 1 392 0 discriminator 3
+ 824 005c 019B     		ldr	r3, [sp, #4]
+ 825 005e 53F82530 		ldr	r3, [r3, r5, lsl #2]
+ 826 0062 1A44     		add	r2, r2, r3
+ 827              	.LVL127:
+ 828 0064 C2F1FF02 		rsb	r2, r2, #255
+ 829 0068 A35C     		ldrb	r3, [r4, r2]	@ zero_extendqisi2
+ 830 006a 8370     		strb	r3, [r0, #2]
+ 393:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* K passes through unchanged */
+ 394:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr[3] = inptr3[col];	/* don't need GETJSAMPLE here */
+ 831              		.loc 1 394 0 discriminator 3
+ 832 006c 1CF80130 		ldrb	r3, [ip, r1]	@ zero_extendqisi2
+ 833 0070 C370     		strb	r3, [r0, #3]
+ 395:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       outptr += 4;
+ 834              		.loc 1 395 0 discriminator 3
+ 835 0072 0430     		adds	r0, r0, #4
+ 836              	.LVL128:
+ 383:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 837              		.loc 1 383 0 discriminator 3
+ 838 0074 0131     		adds	r1, r1, #1
+ 839              	.LVL129:
+ 840              	.L51:
+ 383:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 841              		.loc 1 383 0 is_stmt 0 discriminator 1
+ 842 0076 5145     		cmp	r1, r10
+ 843 0078 D6D3     		bcc	.L52
+ 844 007a DDF814C0 		ldr	ip, [sp, #20]
+ 845              	.LVL130:
+ 382:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 846              		.loc 1 382 0 is_stmt 1
+ 847 007e 049B     		ldr	r3, [sp, #16]
+ 848              	.LVL131:
+ 849              	.L50:
+ 376:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr0 = input_buf[0][input_row];
+ 850              		.loc 1 376 0
+ 851 0080 109A     		ldr	r2, [sp, #64]
+ 852 0082 013A     		subs	r2, r2, #1
+ 853              	.LVL132:
+ 854 0084 1092     		str	r2, [sp, #64]
+ 855 0086 1AD4     		bmi	.L55
+ 377:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr1 = input_buf[1][input_row];
+ 856              		.loc 1 377 0
+ 857 0088 DCF80020 		ldr	r2, [ip]
+ 858              	.LVL133:
+ 859 008c 0399     		ldr	r1, [sp, #12]
+ 860 008e 52F821E0 		ldr	lr, [r2, r1, lsl #2]
+ 861              	.LVL134:
+ 378:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr2 = input_buf[2][input_row];
+ARM GAS  /tmp/ccM20jrO.s 			page 24
+
+
+ 862              		.loc 1 378 0
+ 863 0092 DCF80420 		ldr	r2, [ip, #4]
+ 864 0096 52F82170 		ldr	r7, [r2, r1, lsl #2]
+ 865              	.LVL135:
+ 379:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     inptr3 = input_buf[3][input_row];
+ 866              		.loc 1 379 0
+ 867 009a DCF80820 		ldr	r2, [ip, #8]
+ 868 009e 52F82180 		ldr	r8, [r2, r1, lsl #2]
+ 869              	.LVL136:
+ 380:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     input_row++;
+ 870              		.loc 1 380 0
+ 871 00a2 DCF80C20 		ldr	r2, [ip, #12]
+ 872 00a6 52F82120 		ldr	r2, [r2, r1, lsl #2]
+ 873              	.LVL137:
+ 381:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     outptr = *output_buf++;
+ 874              		.loc 1 381 0
+ 875 00aa 0131     		adds	r1, r1, #1
+ 876 00ac 0391     		str	r1, [sp, #12]
+ 877              	.LVL138:
+ 382:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     for (col = 0; col < num_cols; col++) {
+ 878              		.loc 1 382 0
+ 879 00ae 191D     		adds	r1, r3, #4
+ 880              	.LVL139:
+ 881 00b0 0491     		str	r1, [sp, #16]
+ 882              	.LVL140:
+ 883 00b2 1868     		ldr	r0, [r3]
+ 884              	.LVL141:
+ 383:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       y  = GETJSAMPLE(inptr0[col]);
+ 885              		.loc 1 383 0
+ 886 00b4 0021     		movs	r1, #0
+ 887              	.LVL142:
+ 888 00b6 CDF814C0 		str	ip, [sp, #20]
+ 889 00ba 9446     		mov	ip, r2
+ 890 00bc DBE7     		b	.L51
+ 891              	.LVL143:
+ 892              	.L55:
+ 396:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     }
+ 397:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 398:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 893              		.loc 1 398 0
+ 894 00be 07B0     		add	sp, sp, #28
+ 895              	.LCFI12:
+ 896              		.cfi_def_cfa_offset 36
+ 897              		@ sp needed
+ 898 00c0 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 899              		.cfi_endproc
+ 900              	.LFE11:
+ 902              		.section	.text.start_pass_dcolor,"ax",%progbits
+ 903              		.align	1
+ 904              		.syntax unified
+ 905              		.thumb
+ 906              		.thumb_func
+ 907              		.fpu fpv5-sp-d16
+ 909              	start_pass_dcolor:
+ 910              	.LFB12:
+ 399:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 400:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ARM GAS  /tmp/ccM20jrO.s 			page 25
+
+
+ 401:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 402:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Empty method for start_pass.
+ 403:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 404:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 405:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** METHODDEF(void)
+ 406:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** start_pass_dcolor (j_decompress_ptr cinfo)
+ 407:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 911              		.loc 1 407 0
+ 912              		.cfi_startproc
+ 913              		@ args = 0, pretend = 0, frame = 0
+ 914              		@ frame_needed = 0, uses_anonymous_args = 0
+ 915              		@ link register save eliminated.
+ 916              	.LVL144:
+ 408:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* no work needed */
+ 409:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 917              		.loc 1 409 0
+ 918 0000 7047     		bx	lr
+ 919              		.cfi_endproc
+ 920              	.LFE12:
+ 922              		.section	.text.grayscale_convert,"ax",%progbits
+ 923              		.align	1
+ 924              		.syntax unified
+ 925              		.thumb
+ 926              		.thumb_func
+ 927              		.fpu fpv5-sp-d16
+ 929              	grayscale_convert:
+ 930              	.LFB9:
+ 317:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   jcopy_sample_rows(input_buf[0], (int) input_row, output_buf, 0,
+ 931              		.loc 1 317 0
+ 932              		.cfi_startproc
+ 933              		@ args = 4, pretend = 0, frame = 0
+ 934              		@ frame_needed = 0, uses_anonymous_args = 0
+ 935              	.LVL145:
+ 936 0000 30B5     		push	{r4, r5, lr}
+ 937              	.LCFI13:
+ 938              		.cfi_def_cfa_offset 12
+ 939              		.cfi_offset 4, -12
+ 940              		.cfi_offset 5, -8
+ 941              		.cfi_offset 14, -4
+ 942 0002 83B0     		sub	sp, sp, #12
+ 943              	.LCFI14:
+ 944              		.cfi_def_cfa_offset 24
+ 945 0004 1546     		mov	r5, r2
+ 946 0006 1A46     		mov	r2, r3
+ 947              	.LVL146:
+ 318:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 		    num_rows, cinfo->output_width);
+ 948              		.loc 1 318 0
+ 949 0008 0C68     		ldr	r4, [r1]
+ 950 000a 036F     		ldr	r3, [r0, #112]
+ 951              	.LVL147:
+ 952 000c 0193     		str	r3, [sp, #4]
+ 953 000e 069B     		ldr	r3, [sp, #24]
+ 954 0010 0093     		str	r3, [sp]
+ 955 0012 0023     		movs	r3, #0
+ 956 0014 2946     		mov	r1, r5
+ 957              	.LVL148:
+ 958 0016 2046     		mov	r0, r4
+ARM GAS  /tmp/ccM20jrO.s 			page 26
+
+
+ 959              	.LVL149:
+ 960 0018 FFF7FEFF 		bl	jcopy_sample_rows
+ 961              	.LVL150:
+ 320:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 962              		.loc 1 320 0
+ 963 001c 03B0     		add	sp, sp, #12
+ 964              	.LCFI15:
+ 965              		.cfi_def_cfa_offset 12
+ 966              		@ sp needed
+ 967 001e 30BD     		pop	{r4, r5, pc}
+ 968              		.cfi_endproc
+ 969              	.LFE9:
+ 971              		.section	.text.jinit_color_deconverter,"ax",%progbits
+ 972              		.align	1
+ 973              		.global	jinit_color_deconverter
+ 974              		.syntax unified
+ 975              		.thumb
+ 976              		.thumb_func
+ 977              		.fpu fpv5-sp-d16
+ 979              	jinit_color_deconverter:
+ 980              	.LFB13:
+ 410:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 411:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 412:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** /*
+ 413:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  * Module initialization routine for output colorspace conversion.
+ 414:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****  */
+ 415:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 416:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** GLOBAL(void)
+ 417:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** jinit_color_deconverter (j_decompress_ptr cinfo)
+ 418:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** {
+ 981              		.loc 1 418 0
+ 982              		.cfi_startproc
+ 983              		@ args = 0, pretend = 0, frame = 0
+ 984              		@ frame_needed = 0, uses_anonymous_args = 0
+ 985              	.LVL151:
+ 986 0000 38B5     		push	{r3, r4, r5, lr}
+ 987              	.LCFI16:
+ 988              		.cfi_def_cfa_offset 16
+ 989              		.cfi_offset 3, -16
+ 990              		.cfi_offset 4, -12
+ 991              		.cfi_offset 5, -8
+ 992              		.cfi_offset 14, -4
+ 993 0002 0446     		mov	r4, r0
+ 419:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   my_cconvert_ptr cconvert;
+ 420:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   int ci;
+ 421:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 422:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert = (my_cconvert_ptr)
+ 423:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 994              		.loc 1 423 0
+ 995 0004 4368     		ldr	r3, [r0, #4]
+ 996 0006 1B68     		ldr	r3, [r3]
+ 422:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 997              		.loc 1 422 0
+ 998 0008 1C22     		movs	r2, #28
+ 999 000a 0121     		movs	r1, #1
+ 1000 000c 9847     		blx	r3
+ 1001              	.LVL152:
+ARM GAS  /tmp/ccM20jrO.s 			page 27
+
+
+ 1002 000e 0546     		mov	r5, r0
+ 1003              	.LVL153:
+ 424:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 				SIZEOF(my_color_deconverter));
+ 425:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cinfo->cconvert = (struct jpeg_color_deconverter *) cconvert;
+ 1004              		.loc 1 425 0
+ 1005 0010 C4F8DC01 		str	r0, [r4, #476]
+ 426:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   cconvert->pub.start_pass = start_pass_dcolor;
+ 1006              		.loc 1 426 0
+ 1007 0014 5B4B     		ldr	r3, .L94
+ 1008 0016 0360     		str	r3, [r0]
+ 427:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 428:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* Make sure num_components agrees with jpeg_color_space */
+ 429:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   switch (cinfo->jpeg_color_space) {
+ 1009              		.loc 1 429 0
+ 1010 0018 94F82830 		ldrb	r3, [r4, #40]	@ zero_extendqisi2
+ 1011 001c 013B     		subs	r3, r3, #1
+ 1012 001e 042B     		cmp	r3, #4
+ 1013 0020 3FD8     		bhi	.L60
+ 1014 0022 DFE803F0 		tbb	[pc, r3]
+ 1015              	.L62:
+ 1016 0026 03       		.byte	(.L61-.L62)/2
+ 1017 0027 28       		.byte	(.L63-.L62)/2
+ 1018 0028 28       		.byte	(.L63-.L62)/2
+ 1019 0029 33       		.byte	(.L64-.L62)/2
+ 1020 002a 33       		.byte	(.L64-.L62)/2
+ 1021 002b 00       		.p2align 1
+ 1022              	.L61:
+ 430:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_GRAYSCALE:
+ 431:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->num_components != 1)
+ 1023              		.loc 1 431 0
+ 1024 002c 636A     		ldr	r3, [r4, #36]
+ 1025 002e 012B     		cmp	r3, #1
+ 1026 0030 06D0     		beq	.L65
+ 432:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 1027              		.loc 1 432 0
+ 1028 0032 2368     		ldr	r3, [r4]
+ 1029 0034 0B22     		movs	r2, #11
+ 1030 0036 5A61     		str	r2, [r3, #20]
+ 1031 0038 2368     		ldr	r3, [r4]
+ 1032 003a 1B68     		ldr	r3, [r3]
+ 1033 003c 2046     		mov	r0, r4
+ 1034              	.LVL154:
+ 1035 003e 9847     		blx	r3
+ 1036              	.LVL155:
+ 1037              	.L65:
+ 433:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 434:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 435:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_RGB:
+ 436:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_YCbCr:
+ 437:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->num_components != 3)
+ 438:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 439:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 440:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 441:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_CMYK:
+ 442:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_YCCK:
+ 443:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->num_components != 4)
+ 444:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ARM GAS  /tmp/ccM20jrO.s 			page 28
+
+
+ 445:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 446:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 447:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   default:			/* JCS_UNKNOWN can be anything */
+ 448:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->num_components < 1)
+ 449:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 450:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 451:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 452:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 453:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   /* Set out_color_components and conversion method based on requested space.
+ 454:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****    * Also clear the component_needed flags for any unused components,
+ 455:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****    * so that earlier pipeline stages can avoid useless computation.
+ 456:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****    */
+ 457:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 458:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   switch (cinfo->out_color_space) {
+ 1038              		.loc 1 458 0
+ 1039 0040 94F82930 		ldrb	r3, [r4, #41]	@ zero_extendqisi2
+ 1040 0044 022B     		cmp	r3, #2
+ 1041 0046 5ED0     		beq	.L67
+ 1042 0048 042B     		cmp	r3, #4
+ 1043 004a 7AD0     		beq	.L68
+ 1044 004c 012B     		cmp	r3, #1
+ 1045 004e 33D0     		beq	.L85
+ 459:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_GRAYSCALE:
+ 460:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cinfo->out_color_components = 1;
+ 461:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_GRAYSCALE ||
+ 462:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->jpeg_color_space == JCS_YCbCr) {
+ 463:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = grayscale_convert;
+ 464:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* For color->grayscale conversion, only the Y (0) component is needed */
+ 465:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       for (ci = 1; ci < cinfo->num_components; ci++)
+ 466:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->comp_info[ci].component_needed = FALSE;
+ 467:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_RGB) {
+ 468:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = rgb_gray_convert;
+ 469:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_rgb_y_table(cinfo);
+ 470:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 471:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_CONVERSION_NOTIMPL);
+ 472:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 473:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 474:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_RGB:
+ 475:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cinfo->out_color_components = RGB_PIXELSIZE;
+ 476:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_YCbCr) {
+ 477:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = ycc_rgb_convert;
+ 478:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_ycc_rgb_table(cinfo);
+ 479:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_GRAYSCALE) {
+ 480:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = gray_rgb_convert;
+ 481:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_RGB) {
+ 482:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = rgb_convert;
+ 483:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 484:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_CONVERSION_NOTIMPL);
+ 485:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 486:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 487:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   case JCS_CMYK:
+ 488:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cinfo->out_color_components = 4;
+ 489:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_YCCK) {
+ 490:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = ycck_cmyk_convert;
+ 491:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_ycc_rgb_table(cinfo);
+ 492:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_CMYK) {
+ 493:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = null_convert;
+ARM GAS  /tmp/ccM20jrO.s 			page 29
+
+
+ 494:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 495:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_CONVERSION_NOTIMPL);
+ 496:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 497:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 498:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   default:
+ 499:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     /* Permit null conversion to same output space */
+ 500:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->out_color_space == cinfo->jpeg_color_space) {
+ 1046              		.loc 1 500 0
+ 1047 0050 94F82820 		ldrb	r2, [r4, #40]	@ zero_extendqisi2
+ 1048 0054 9342     		cmp	r3, r2
+ 1049 0056 00F08D80 		beq	.L86
+ 501:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cinfo->out_color_components = cinfo->num_components;
+ 502:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = null_convert;
+ 503:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else			/* unsupported non-null conversion */
+ 504:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_CONVERSION_NOTIMPL);
+ 1050              		.loc 1 504 0
+ 1051 005a 2368     		ldr	r3, [r4]
+ 1052 005c 1C22     		movs	r2, #28
+ 1053 005e 5A61     		str	r2, [r3, #20]
+ 1054 0060 2368     		ldr	r3, [r4]
+ 1055 0062 1B68     		ldr	r3, [r3]
+ 1056 0064 2046     		mov	r0, r4
+ 1057 0066 9847     		blx	r3
+ 1058              	.LVL156:
+ 1059              	.L73:
+ 505:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 506:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   }
+ 507:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 
+ 508:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   if (cinfo->quantize_colors)
+ 1060              		.loc 1 508 0
+ 1061 0068 636D     		ldr	r3, [r4, #84]
+ 1062 006a 002B     		cmp	r3, #0
+ 1063 006c 40F08780 		bne	.L87
+ 509:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cinfo->output_components = 1; /* single colormapped output component */
+ 510:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   else
+ 511:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     cinfo->output_components = cinfo->out_color_components;
+ 1064              		.loc 1 511 0
+ 1065 0070 A36F     		ldr	r3, [r4, #120]
+ 1066 0072 E367     		str	r3, [r4, #124]
+ 1067              	.L59:
+ 512:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** }
+ 1068              		.loc 1 512 0
+ 1069 0074 38BD     		pop	{r3, r4, r5, pc}
+ 1070              	.LVL157:
+ 1071              	.L63:
+ 437:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 1072              		.loc 1 437 0
+ 1073 0076 636A     		ldr	r3, [r4, #36]
+ 1074 0078 032B     		cmp	r3, #3
+ 1075 007a E1D0     		beq	.L65
+ 438:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1076              		.loc 1 438 0
+ 1077 007c 2368     		ldr	r3, [r4]
+ 1078 007e 0B22     		movs	r2, #11
+ 1079 0080 5A61     		str	r2, [r3, #20]
+ 1080 0082 2368     		ldr	r3, [r4]
+ 1081 0084 1B68     		ldr	r3, [r3]
+ARM GAS  /tmp/ccM20jrO.s 			page 30
+
+
+ 1082 0086 2046     		mov	r0, r4
+ 1083              	.LVL158:
+ 1084 0088 9847     		blx	r3
+ 1085              	.LVL159:
+ 1086 008a D9E7     		b	.L65
+ 1087              	.LVL160:
+ 1088              	.L64:
+ 443:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 1089              		.loc 1 443 0
+ 1090 008c 636A     		ldr	r3, [r4, #36]
+ 1091 008e 042B     		cmp	r3, #4
+ 1092 0090 D6D0     		beq	.L65
+ 444:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1093              		.loc 1 444 0
+ 1094 0092 2368     		ldr	r3, [r4]
+ 1095 0094 0B22     		movs	r2, #11
+ 1096 0096 5A61     		str	r2, [r3, #20]
+ 1097 0098 2368     		ldr	r3, [r4]
+ 1098 009a 1B68     		ldr	r3, [r3]
+ 1099 009c 2046     		mov	r0, r4
+ 1100              	.LVL161:
+ 1101 009e 9847     		blx	r3
+ 1102              	.LVL162:
+ 1103 00a0 CEE7     		b	.L65
+ 1104              	.LVL163:
+ 1105              	.L60:
+ 448:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       ERREXIT(cinfo, JERR_BAD_J_COLORSPACE);
+ 1106              		.loc 1 448 0
+ 1107 00a2 636A     		ldr	r3, [r4, #36]
+ 1108 00a4 002B     		cmp	r3, #0
+ 1109 00a6 CBDC     		bgt	.L65
+ 449:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1110              		.loc 1 449 0
+ 1111 00a8 2368     		ldr	r3, [r4]
+ 1112 00aa 0B22     		movs	r2, #11
+ 1113 00ac 5A61     		str	r2, [r3, #20]
+ 1114 00ae 2368     		ldr	r3, [r4]
+ 1115 00b0 1B68     		ldr	r3, [r3]
+ 1116 00b2 2046     		mov	r0, r4
+ 1117              	.LVL164:
+ 1118 00b4 9847     		blx	r3
+ 1119              	.LVL165:
+ 1120 00b6 C3E7     		b	.L65
+ 1121              	.L85:
+ 460:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_GRAYSCALE ||
+ 1122              		.loc 1 460 0
+ 1123 00b8 A367     		str	r3, [r4, #120]
+ 461:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->jpeg_color_space == JCS_YCbCr) {
+ 1124              		.loc 1 461 0
+ 1125 00ba 94F82830 		ldrb	r3, [r4, #40]	@ zero_extendqisi2
+ 1126 00be 032B     		cmp	r3, #3
+ 1127 00c0 18BF     		it	ne
+ 1128 00c2 012B     		cmpne	r3, #1
+ 1129 00c4 0FD1     		bne	.L70
+ 463:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       /* For color->grayscale conversion, only the Y (0) component is needed */
+ 1130              		.loc 1 463 0
+ 1131 00c6 304B     		ldr	r3, .L94+4
+ARM GAS  /tmp/ccM20jrO.s 			page 31
+
+
+ 1132 00c8 6B60     		str	r3, [r5, #4]
+ 1133              	.LVL166:
+ 465:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->comp_info[ci].component_needed = FALSE;
+ 1134              		.loc 1 465 0
+ 1135 00ca 0123     		movs	r3, #1
+ 1136 00cc 07E0     		b	.L71
+ 1137              	.LVL167:
+ 1138              	.L72:
+ 466:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_RGB) {
+ 1139              		.loc 1 466 0 discriminator 3
+ 1140 00ce D4F8D810 		ldr	r1, [r4, #216]
+ 1141 00d2 5822     		movs	r2, #88
+ 1142 00d4 02FB0312 		mla	r2, r2, r3, r1
+ 1143 00d8 0021     		movs	r1, #0
+ 1144 00da 5163     		str	r1, [r2, #52]
+ 465:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->comp_info[ci].component_needed = FALSE;
+ 1145              		.loc 1 465 0 discriminator 3
+ 1146 00dc 0133     		adds	r3, r3, #1
+ 1147              	.LVL168:
+ 1148              	.L71:
+ 465:Middlewares/Third_Party/LibJPEG/source/jdcolor.c **** 	cinfo->comp_info[ci].component_needed = FALSE;
+ 1149              		.loc 1 465 0 is_stmt 0 discriminator 1
+ 1150 00de 626A     		ldr	r2, [r4, #36]
+ 1151 00e0 9A42     		cmp	r2, r3
+ 1152 00e2 F4DC     		bgt	.L72
+ 1153 00e4 C0E7     		b	.L73
+ 1154              	.LVL169:
+ 1155              	.L70:
+ 467:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = rgb_gray_convert;
+ 1156              		.loc 1 467 0 is_stmt 1
+ 1157 00e6 022B     		cmp	r3, #2
+ 1158 00e8 07D0     		beq	.L88
+ 471:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1159              		.loc 1 471 0
+ 1160 00ea 2368     		ldr	r3, [r4]
+ 1161 00ec 1C22     		movs	r2, #28
+ 1162 00ee 5A61     		str	r2, [r3, #20]
+ 1163 00f0 2368     		ldr	r3, [r4]
+ 1164 00f2 1B68     		ldr	r3, [r3]
+ 1165 00f4 2046     		mov	r0, r4
+ 1166 00f6 9847     		blx	r3
+ 1167              	.LVL170:
+ 1168 00f8 B6E7     		b	.L73
+ 1169              	.L88:
+ 468:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_rgb_y_table(cinfo);
+ 1170              		.loc 1 468 0
+ 1171 00fa 244B     		ldr	r3, .L94+8
+ 1172 00fc 6B60     		str	r3, [r5, #4]
+ 469:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 1173              		.loc 1 469 0
+ 1174 00fe 2046     		mov	r0, r4
+ 1175 0100 FFF7FEFF 		bl	build_rgb_y_table
+ 1176              	.LVL171:
+ 1177 0104 B0E7     		b	.L73
+ 1178              	.L67:
+ 475:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_YCbCr) {
+ 1179              		.loc 1 475 0
+ARM GAS  /tmp/ccM20jrO.s 			page 32
+
+
+ 1180 0106 0323     		movs	r3, #3
+ 1181 0108 A367     		str	r3, [r4, #120]
+ 476:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = ycc_rgb_convert;
+ 1182              		.loc 1 476 0
+ 1183 010a 94F82830 		ldrb	r3, [r4, #40]	@ zero_extendqisi2
+ 1184 010e 032B     		cmp	r3, #3
+ 1185 0110 0BD0     		beq	.L89
+ 479:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = gray_rgb_convert;
+ 1186              		.loc 1 479 0
+ 1187 0112 012B     		cmp	r3, #1
+ 1188 0114 0FD0     		beq	.L90
+ 481:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = rgb_convert;
+ 1189              		.loc 1 481 0
+ 1190 0116 022B     		cmp	r3, #2
+ 1191 0118 10D0     		beq	.L91
+ 484:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1192              		.loc 1 484 0
+ 1193 011a 2368     		ldr	r3, [r4]
+ 1194 011c 1C22     		movs	r2, #28
+ 1195 011e 5A61     		str	r2, [r3, #20]
+ 1196 0120 2368     		ldr	r3, [r4]
+ 1197 0122 1B68     		ldr	r3, [r3]
+ 1198 0124 2046     		mov	r0, r4
+ 1199 0126 9847     		blx	r3
+ 1200              	.LVL172:
+ 1201 0128 9EE7     		b	.L73
+ 1202              	.L89:
+ 477:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_ycc_rgb_table(cinfo);
+ 1203              		.loc 1 477 0
+ 1204 012a 194B     		ldr	r3, .L94+12
+ 1205 012c 6B60     		str	r3, [r5, #4]
+ 478:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_GRAYSCALE) {
+ 1206              		.loc 1 478 0
+ 1207 012e 2046     		mov	r0, r4
+ 1208 0130 FFF7FEFF 		bl	build_ycc_rgb_table
+ 1209              	.LVL173:
+ 1210 0134 98E7     		b	.L73
+ 1211              	.L90:
+ 480:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_RGB) {
+ 1212              		.loc 1 480 0
+ 1213 0136 174B     		ldr	r3, .L94+16
+ 1214 0138 6B60     		str	r3, [r5, #4]
+ 1215 013a 95E7     		b	.L73
+ 1216              	.L91:
+ 482:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 1217              		.loc 1 482 0
+ 1218 013c 164B     		ldr	r3, .L94+20
+ 1219 013e 6B60     		str	r3, [r5, #4]
+ 1220 0140 92E7     		b	.L73
+ 1221              	.L68:
+ 488:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     if (cinfo->jpeg_color_space == JCS_YCCK) {
+ 1222              		.loc 1 488 0
+ 1223 0142 0423     		movs	r3, #4
+ 1224 0144 A367     		str	r3, [r4, #120]
+ 489:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = ycck_cmyk_convert;
+ 1225              		.loc 1 489 0
+ 1226 0146 94F82830 		ldrb	r3, [r4, #40]	@ zero_extendqisi2
+ARM GAS  /tmp/ccM20jrO.s 			page 33
+
+
+ 1227 014a 052B     		cmp	r3, #5
+ 1228 014c 09D0     		beq	.L92
+ 492:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = null_convert;
+ 1229              		.loc 1 492 0
+ 1230 014e 042B     		cmp	r3, #4
+ 1231 0150 0DD0     		beq	.L93
+ 495:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     break;
+ 1232              		.loc 1 495 0
+ 1233 0152 2368     		ldr	r3, [r4]
+ 1234 0154 1C22     		movs	r2, #28
+ 1235 0156 5A61     		str	r2, [r3, #20]
+ 1236 0158 2368     		ldr	r3, [r4]
+ 1237 015a 1B68     		ldr	r3, [r3]
+ 1238 015c 2046     		mov	r0, r4
+ 1239 015e 9847     		blx	r3
+ 1240              	.LVL174:
+ 1241 0160 82E7     		b	.L73
+ 1242              	.L92:
+ 490:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       build_ycc_rgb_table(cinfo);
+ 1243              		.loc 1 490 0
+ 1244 0162 0E4B     		ldr	r3, .L94+24
+ 1245 0164 6B60     		str	r3, [r5, #4]
+ 491:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else if (cinfo->jpeg_color_space == JCS_CMYK) {
+ 1246              		.loc 1 491 0
+ 1247 0166 2046     		mov	r0, r4
+ 1248 0168 FFF7FEFF 		bl	build_ycc_rgb_table
+ 1249              	.LVL175:
+ 1250 016c 7CE7     		b	.L73
+ 1251              	.L93:
+ 493:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else
+ 1252              		.loc 1 493 0
+ 1253 016e 0C4B     		ldr	r3, .L94+28
+ 1254 0170 6B60     		str	r3, [r5, #4]
+ 1255 0172 79E7     		b	.L73
+ 1256              	.L86:
+ 501:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****       cconvert->pub.color_convert = null_convert;
+ 1257              		.loc 1 501 0
+ 1258 0174 636A     		ldr	r3, [r4, #36]
+ 1259 0176 A367     		str	r3, [r4, #120]
+ 502:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****     } else			/* unsupported non-null conversion */
+ 1260              		.loc 1 502 0
+ 1261 0178 094B     		ldr	r3, .L94+28
+ 1262 017a 6B60     		str	r3, [r5, #4]
+ 1263 017c 74E7     		b	.L73
+ 1264              	.L87:
+ 509:Middlewares/Third_Party/LibJPEG/source/jdcolor.c ****   else
+ 1265              		.loc 1 509 0
+ 1266 017e 0123     		movs	r3, #1
+ 1267 0180 E367     		str	r3, [r4, #124]
+ 1268 0182 77E7     		b	.L59
+ 1269              	.L95:
+ 1270              		.align	2
+ 1271              	.L94:
+ 1272 0184 00000000 		.word	start_pass_dcolor
+ 1273 0188 00000000 		.word	grayscale_convert
+ 1274 018c 00000000 		.word	rgb_gray_convert
+ 1275 0190 00000000 		.word	ycc_rgb_convert
+ARM GAS  /tmp/ccM20jrO.s 			page 34
+
+
+ 1276 0194 00000000 		.word	gray_rgb_convert
+ 1277 0198 00000000 		.word	rgb_convert
+ 1278 019c 00000000 		.word	ycck_cmyk_convert
+ 1279 01a0 00000000 		.word	null_convert
+ 1280              		.cfi_endproc
+ 1281              	.LFE13:
+ 1283              		.text
+ 1284              	.Letext0:
+ 1285              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 1286              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 1287              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 1288              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 1289              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 1290              		.file 7 "Inc/jmorecfg.h"
+ 1291              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 1292              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 1293              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ARM GAS  /tmp/ccM20jrO.s 			page 35
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jdcolor.c
+     /tmp/ccM20jrO.s:18     .text.build_ycc_rgb_table:0000000000000000 $t
+     /tmp/ccM20jrO.s:24     .text.build_ycc_rgb_table:0000000000000000 build_ycc_rgb_table
+     /tmp/ccM20jrO.s:135    .text.build_ycc_rgb_table:0000000000000098 $d
+     /tmp/ccM20jrO.s:143    .text.ycc_rgb_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:149    .text.ycc_rgb_convert:0000000000000000 ycc_rgb_convert
+     /tmp/ccM20jrO.s:297    .text.build_rgb_y_table:0000000000000000 $t
+     /tmp/ccM20jrO.s:303    .text.build_rgb_y_table:0000000000000000 build_rgb_y_table
+     /tmp/ccM20jrO.s:361    .text.rgb_gray_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:367    .text.rgb_gray_convert:0000000000000000 rgb_gray_convert
+     /tmp/ccM20jrO.s:474    .text.rgb_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:480    .text.rgb_convert:0000000000000000 rgb_convert
+     /tmp/ccM20jrO.s:563    .text.null_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:569    .text.null_convert:0000000000000000 null_convert
+     /tmp/ccM20jrO.s:653    .text.gray_rgb_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:659    .text.gray_rgb_convert:0000000000000000 gray_rgb_convert
+     /tmp/ccM20jrO.s:736    .text.ycck_cmyk_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:742    .text.ycck_cmyk_convert:0000000000000000 ycck_cmyk_convert
+     /tmp/ccM20jrO.s:903    .text.start_pass_dcolor:0000000000000000 $t
+     /tmp/ccM20jrO.s:909    .text.start_pass_dcolor:0000000000000000 start_pass_dcolor
+     /tmp/ccM20jrO.s:923    .text.grayscale_convert:0000000000000000 $t
+     /tmp/ccM20jrO.s:929    .text.grayscale_convert:0000000000000000 grayscale_convert
+     /tmp/ccM20jrO.s:972    .text.jinit_color_deconverter:0000000000000000 $t
+     /tmp/ccM20jrO.s:979    .text.jinit_color_deconverter:0000000000000000 jinit_color_deconverter
+     /tmp/ccM20jrO.s:1016   .text.jinit_color_deconverter:0000000000000026 $d
+     /tmp/ccM20jrO.s:1272   .text.jinit_color_deconverter:0000000000000184 $d
+     /tmp/ccM20jrO.s:1021   .text.jinit_color_deconverter:000000000000002b $d
+     /tmp/ccM20jrO.s:1021   .text.jinit_color_deconverter:000000000000002c $t
+
+UNDEFINED SYMBOLS
+jcopy_sample_rows

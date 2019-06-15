@@ -1,0 +1,132 @@
+ARM GAS  /tmp/ccWTSmON.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"libjpeg.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.MX_LIBJPEG_Init,"ax",%progbits
+  18              		.align	1
+  19              		.global	MX_LIBJPEG_Init
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  23              		.fpu fpv5-sp-d16
+  25              	MX_LIBJPEG_Init:
+  26              	.LFB3:
+  27              		.file 1 "Src/libjpeg.c"
+   1:Src/libjpeg.c **** /**
+   2:Src/libjpeg.c ****  ******************************************************************************
+   3:Src/libjpeg.c ****   * File Name          : libjpeg.c
+   4:Src/libjpeg.c ****   * Description        : This file provides code for the configuration
+   5:Src/libjpeg.c ****   *                      of the libjpeg instances.
+   6:Src/libjpeg.c ****   ******************************************************************************
+   7:Src/libjpeg.c ****   * This notice applies to any and all portions of this file
+   8:Src/libjpeg.c ****   * that are not between comment pairs USER CODE BEGIN and
+   9:Src/libjpeg.c ****   * USER CODE END. Other portions of this file, whether 
+  10:Src/libjpeg.c ****   * inserted by the user or by software development tools
+  11:Src/libjpeg.c ****   * are owned by their respective copyright owners.
+  12:Src/libjpeg.c ****   *
+  13:Src/libjpeg.c ****   * Copyright (c) 2019 STMicroelectronics International N.V. 
+  14:Src/libjpeg.c ****   * All rights reserved.
+  15:Src/libjpeg.c ****   *
+  16:Src/libjpeg.c ****   * Redistribution and use in source and binary forms, with or without 
+  17:Src/libjpeg.c ****   * modification, are permitted, provided that the following conditions are met:
+  18:Src/libjpeg.c ****   *
+  19:Src/libjpeg.c ****   * 1. Redistribution of source code must retain the above copyright notice, 
+  20:Src/libjpeg.c ****   *    this list of conditions and the following disclaimer.
+  21:Src/libjpeg.c ****   * 2. Redistributions in binary form must reproduce the above copyright notice,
+  22:Src/libjpeg.c ****   *    this list of conditions and the following disclaimer in the documentation
+  23:Src/libjpeg.c ****   *    and/or other materials provided with the distribution.
+  24:Src/libjpeg.c ****   * 3. Neither the name of STMicroelectronics nor the names of other 
+  25:Src/libjpeg.c ****   *    contributors to this software may be used to endorse or promote products 
+  26:Src/libjpeg.c ****   *    derived from this software without specific written permission.
+  27:Src/libjpeg.c ****   * 4. This software, including modifications and/or derivative works of this 
+  28:Src/libjpeg.c ****   *    software, must execute solely and exclusively on microcontroller or
+  29:Src/libjpeg.c ****   *    microprocessor devices manufactured by or for STMicroelectronics.
+  30:Src/libjpeg.c ****   * 5. Redistribution and use of this software other than as permitted under 
+  31:Src/libjpeg.c ****   *    this license is void and will automatically terminate your rights under 
+ARM GAS  /tmp/ccWTSmON.s 			page 2
+
+
+  32:Src/libjpeg.c ****   *    this license. 
+  33:Src/libjpeg.c ****   *
+  34:Src/libjpeg.c ****   * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS" 
+  35:Src/libjpeg.c ****   * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT 
+  36:Src/libjpeg.c ****   * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+  37:Src/libjpeg.c ****   * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
+  38:Src/libjpeg.c ****   * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT 
+  39:Src/libjpeg.c ****   * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  40:Src/libjpeg.c ****   * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  41:Src/libjpeg.c ****   * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, 
+  42:Src/libjpeg.c ****   * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+  43:Src/libjpeg.c ****   * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+  44:Src/libjpeg.c ****   * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  45:Src/libjpeg.c ****   * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  46:Src/libjpeg.c ****   *
+  47:Src/libjpeg.c ****   ******************************************************************************
+  48:Src/libjpeg.c ****   */
+  49:Src/libjpeg.c **** 
+  50:Src/libjpeg.c **** /* Includes ------------------------------------------------------------------*/
+  51:Src/libjpeg.c **** #include "libjpeg.h"
+  52:Src/libjpeg.c **** 
+  53:Src/libjpeg.c **** /* USER CODE BEGIN 0 */
+  54:Src/libjpeg.c **** /* USER CODE END 0 */
+  55:Src/libjpeg.c **** 
+  56:Src/libjpeg.c **** /* USER CODE BEGIN 1 */
+  57:Src/libjpeg.c **** /* USER CODE END 1 */
+  58:Src/libjpeg.c **** 
+  59:Src/libjpeg.c **** /* Global variables ---------------------------------------------------------*/
+  60:Src/libjpeg.c **** 
+  61:Src/libjpeg.c **** /* USER CODE BEGIN 2 */
+  62:Src/libjpeg.c **** /* USER CODE END 2 */
+  63:Src/libjpeg.c **** 
+  64:Src/libjpeg.c **** /* LIBJPEG init function */
+  65:Src/libjpeg.c **** void MX_LIBJPEG_Init(void)
+  66:Src/libjpeg.c **** {
+  28              		.loc 1 66 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  67:Src/libjpeg.c ****    /** 
+  68:Src/libjpeg.c ****   */
+  69:Src/libjpeg.c **** 
+  70:Src/libjpeg.c ****   /* USER CODE BEGIN 3 */
+  71:Src/libjpeg.c ****   /* USER CODE END 3 */
+  72:Src/libjpeg.c **** 
+  73:Src/libjpeg.c **** }
+  33              		.loc 1 73 0
+  34 0000 7047     		bx	lr
+  35              		.cfi_endproc
+  36              	.LFE3:
+  38              		.text
+  39              	.Letext0:
+  40              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+  41              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+  42              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+  43              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ARM GAS  /tmp/ccWTSmON.s 			page 3
+
+
+ARM GAS  /tmp/ccWTSmON.s 			page 4
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 libjpeg.c
+     /tmp/ccWTSmON.s:18     .text.MX_LIBJPEG_Init:0000000000000000 $t
+     /tmp/ccWTSmON.s:25     .text.MX_LIBJPEG_Init:0000000000000000 MX_LIBJPEG_Init
+
+NO UNDEFINED SYMBOLS

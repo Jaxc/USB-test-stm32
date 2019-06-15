@@ -1,0 +1,1527 @@
+ARM GAS  /tmp/ccHooPdb.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jctrans.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.start_iMCU_row,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	start_iMCU_row:
+  25              	.LFB6:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jctrans.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * jctrans.c
+   3:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Copyright (C) 1995-1998, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Modified 2000-2011 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * This file contains library routines for transcoding compression,
+  10:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * that is, writing raw DCT coefficient arrays to an output JPEG file.
+  11:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * The routines in jcapimin.c will also be needed by a transcoder.
+  12:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+  13:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  14:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** #define JPEG_INTERNALS
+  15:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** #include "jinclude.h"
+  16:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** #include "jpeglib.h"
+  17:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  18:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  19:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /* Forward declarations */
+  20:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** LOCAL(void) transencode_master_selection
+  21:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	JPP((j_compress_ptr cinfo, jvirt_barray_ptr * coef_arrays));
+  22:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** LOCAL(void) transencode_coef_controller
+  23:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	JPP((j_compress_ptr cinfo, jvirt_barray_ptr * coef_arrays));
+  24:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  25:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  26:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+  27:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Compression initialization for writing raw-coefficient data.
+  28:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Before calling this, all parameters and a data destination must be set up.
+  29:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Call jpeg_finish_compress() to actually write the data.
+  30:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  *
+  31:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * The number of passed virtual arrays must match cinfo->num_components.
+  32:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Note that the virtual arrays need not be filled or even realized at
+ARM GAS  /tmp/ccHooPdb.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * the time write_coefficients is called; indeed, if the virtual arrays
+  34:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * were requested from this compression object's memory manager, they
+  35:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * typically will be realized during this routine and filled afterwards.
+  36:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+  37:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  38:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** GLOBAL(void)
+  39:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** jpeg_write_coefficients (j_compress_ptr cinfo, jvirt_barray_ptr * coef_arrays)
+  40:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+  41:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (cinfo->global_state != CSTATE_START)
+  42:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+  43:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Mark all tables to be written */
+  44:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jpeg_suppress_tables(cinfo, FALSE);
+  45:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* (Re)initialize error mgr and destination modules */
+  46:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   (*cinfo->err->reset_error_mgr) ((j_common_ptr) cinfo);
+  47:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   (*cinfo->dest->init_destination) (cinfo);
+  48:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Perform master selection of active modules */
+  49:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   transencode_master_selection(cinfo, coef_arrays);
+  50:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Wait for jpeg_finish_compress() call */
+  51:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   cinfo->next_scanline = 0;	/* so jpeg_write_marker works */
+  52:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   cinfo->global_state = CSTATE_WRCOEFS;
+  53:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+  54:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  55:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  56:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+  57:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Initialize the compression object with default parameters,
+  58:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * then copy from the source object all parameters needed for lossless
+  59:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * transcoding.  Parameters that can be varied without loss (such as
+  60:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * scan script and Huffman optimization) are left in their default states.
+  61:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+  62:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  63:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** GLOBAL(void)
+  64:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** jpeg_copy_critical_parameters (j_decompress_ptr srcinfo,
+  65:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 			       j_compress_ptr dstinfo)
+  66:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+  67:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JQUANT_TBL ** qtblptr;
+  68:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jpeg_component_info *incomp, *outcomp;
+  69:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JQUANT_TBL *c_quant, *slot_quant;
+  70:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   int tblno, ci, coefi;
+  71:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+  72:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Safety check to ensure start_compress not called yet. */
+  73:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (dstinfo->global_state != CSTATE_START)
+  74:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT1(dstinfo, JERR_BAD_STATE, dstinfo->global_state);
+  75:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Copy fundamental image dimensions */
+  76:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->image_width = srcinfo->image_width;
+  77:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->image_height = srcinfo->image_height;
+  78:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->input_components = srcinfo->num_components;
+  79:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->in_color_space = srcinfo->jpeg_color_space;
+  80:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->jpeg_width = srcinfo->output_width;
+  81:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->jpeg_height = srcinfo->output_height;
+  82:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->min_DCT_h_scaled_size = srcinfo->min_DCT_h_scaled_size;
+  83:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->min_DCT_v_scaled_size = srcinfo->min_DCT_v_scaled_size;
+  84:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Initialize all parameters to default values */
+  85:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jpeg_set_defaults(dstinfo);
+  86:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* jpeg_set_defaults may choose wrong colorspace, eg YCbCr if input is RGB.
+  87:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * Fix it to get the right header markers for the image colorspace.
+  88:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    */
+  89:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jpeg_set_colorspace(dstinfo, srcinfo->jpeg_color_space);
+ARM GAS  /tmp/ccHooPdb.s 			page 3
+
+
+  90:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->data_precision = srcinfo->data_precision;
+  91:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->CCIR601_sampling = srcinfo->CCIR601_sampling;
+  92:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Copy the source's quantization tables. */
+  93:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (tblno = 0; tblno < NUM_QUANT_TBLS; tblno++) {
+  94:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->quant_tbl_ptrs[tblno] != NULL) {
+  95:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       qtblptr = & dstinfo->quant_tbl_ptrs[tblno];
+  96:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       if (*qtblptr == NULL)
+  97:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	*qtblptr = jpeg_alloc_quant_table((j_common_ptr) dstinfo);
+  98:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       MEMCOPY((*qtblptr)->quantval,
+  99:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      srcinfo->quant_tbl_ptrs[tblno]->quantval,
+ 100:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      SIZEOF((*qtblptr)->quantval));
+ 101:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       (*qtblptr)->sent_table = FALSE;
+ 102:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 103:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 104:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Copy the source's per-component info.
+ 105:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * Note we assume jpeg_set_defaults has allocated the dest comp_info array.
+ 106:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    */
+ 107:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->num_components = srcinfo->num_components;
+ 108:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (dstinfo->num_components < 1 || dstinfo->num_components > MAX_COMPONENTS)
+ 109:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT2(dstinfo, JERR_COMPONENT_COUNT, dstinfo->num_components,
+ 110:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	     MAX_COMPONENTS);
+ 111:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (ci = 0, incomp = srcinfo->comp_info, outcomp = dstinfo->comp_info;
+ 112:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        ci < dstinfo->num_components; ci++, incomp++, outcomp++) {
+ 113:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->component_id = incomp->component_id;
+ 114:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->h_samp_factor = incomp->h_samp_factor;
+ 115:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->v_samp_factor = incomp->v_samp_factor;
+ 116:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->quant_tbl_no = incomp->quant_tbl_no;
+ 117:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     /* Make sure saved quantization table for component matches the qtable
+ 118:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****      * slot.  If not, the input file re-used this qtable slot.
+ 119:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****      * IJG encoder currently cannot duplicate this.
+ 120:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****      */
+ 121:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     tblno = outcomp->quant_tbl_no;
+ 122:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (tblno < 0 || tblno >= NUM_QUANT_TBLS ||
+ 123:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	srcinfo->quant_tbl_ptrs[tblno] == NULL)
+ 124:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       ERREXIT1(dstinfo, JERR_NO_QUANT_TABLE, tblno);
+ 125:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     slot_quant = srcinfo->quant_tbl_ptrs[tblno];
+ 126:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     c_quant = incomp->quant_table;
+ 127:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (c_quant != NULL) {
+ 128:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       for (coefi = 0; coefi < DCTSIZE2; coefi++) {
+ 129:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	if (c_quant->quantval[coefi] != slot_quant->quantval[coefi])
+ 130:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  ERREXIT1(dstinfo, JERR_MISMATCHED_QUANT_TABLE, tblno);
+ 131:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       }
+ 132:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 133:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     /* Note: we do not copy the source's Huffman table assignments;
+ 134:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****      * instead we rely on jpeg_set_colorspace to have made a suitable choice.
+ 135:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****      */
+ 136:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 137:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Also copy JFIF version and resolution information, if available.
+ 138:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * Strictly speaking this isn't "critical" info, but it's nearly
+ 139:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * always appropriate to copy it if available.  In particular,
+ 140:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * if the application chooses to copy JFIF 1.02 extension markers from
+ 141:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * the source file, we need to copy the version to make sure we don't
+ 142:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * emit a file that has 1.02 extensions but a claimed version of 1.01.
+ 143:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * We will *not*, however, copy version info from mislabeled "2.01" files.
+ 144:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    */
+ 145:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (srcinfo->saw_JFIF_marker) {
+ 146:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->JFIF_major_version == 1) {
+ARM GAS  /tmp/ccHooPdb.s 			page 4
+
+
+ 147:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       dstinfo->JFIF_major_version = srcinfo->JFIF_major_version;
+ 148:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       dstinfo->JFIF_minor_version = srcinfo->JFIF_minor_version;
+ 149:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 150:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     dstinfo->density_unit = srcinfo->density_unit;
+ 151:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     dstinfo->X_density = srcinfo->X_density;
+ 152:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     dstinfo->Y_density = srcinfo->Y_density;
+ 153:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 154:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 155:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 156:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 157:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+ 158:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Master selection of compression modules for transcoding.
+ 159:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * This substitutes for jcinit.c's initialization of the full compressor.
+ 160:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+ 161:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 162:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** LOCAL(void)
+ 163:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** transencode_master_selection (j_compress_ptr cinfo,
+ 164:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 			      jvirt_barray_ptr * coef_arrays)
+ 165:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+ 166:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Initialize master control (includes parameter checking/processing) */
+ 167:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jinit_c_master_control(cinfo, TRUE /* transcode only */);
+ 168:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 169:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Entropy encoding: either Huffman or arithmetic coding. */
+ 170:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (cinfo->arith_code)
+ 171:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     jinit_arith_encoder(cinfo);
+ 172:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   else {
+ 173:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     jinit_huff_encoder(cinfo);
+ 174:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 175:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 176:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* We need a special coefficient buffer controller. */
+ 177:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   transencode_coef_controller(cinfo, coef_arrays);
+ 178:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 179:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jinit_marker_writer(cinfo);
+ 180:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 181:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* We can now tell the memory manager to allocate virtual arrays. */
+ 182:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   (*cinfo->mem->realize_virt_arrays) ((j_common_ptr) cinfo);
+ 183:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 184:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Write the datastream header (SOI, JFIF) immediately.
+ 185:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * Frame and scan headers are postponed till later.
+ 186:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * This lets application insert special markers after the SOI.
+ 187:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    */
+ 188:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   (*cinfo->marker->write_file_header) (cinfo);
+ 189:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 190:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 191:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 192:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+ 193:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * The rest of this file is a special implementation of the coefficient
+ 194:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * buffer controller.  This is similar to jccoefct.c, but it handles only
+ 195:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * output from presupplied virtual arrays.  Furthermore, we generate any
+ 196:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * dummy padding blocks on-the-fly rather than expecting them to be present
+ 197:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * in the arrays.
+ 198:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+ 199:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 200:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /* Private buffer controller object */
+ 201:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 202:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** typedef struct {
+ 203:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   struct jpeg_c_coef_controller pub; /* public fields */
+ARM GAS  /tmp/ccHooPdb.s 			page 5
+
+
+ 204:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 205:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION iMCU_row_num;	/* iMCU row # within image */
+ 206:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION mcu_ctr;		/* counts MCUs processed in current row */
+ 207:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   int MCU_vert_offset;		/* counts MCU rows within iMCU row */
+ 208:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   int MCU_rows_per_iMCU_row;	/* number of such rows needed */
+ 209:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 210:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Virtual block array for each component. */
+ 211:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jvirt_barray_ptr * whole_image;
+ 212:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 213:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Workspace for constructing dummy blocks at right/bottom edges. */
+ 214:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JBLOCKROW dummy_buffer[C_MAX_BLOCKS_IN_MCU];
+ 215:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** } my_coef_controller;
+ 216:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 217:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** typedef my_coef_controller * my_coef_ptr;
+ 218:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 219:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 220:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** LOCAL(void)
+ 221:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** start_iMCU_row (j_compress_ptr cinfo)
+ 222:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /* Reset within-iMCU-row counters for a new row */
+ 223:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+  27              		.loc 1 223 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32              	.LVL0:
+ 224:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   my_coef_ptr coef = (my_coef_ptr) cinfo->coef;
+  33              		.loc 1 224 0
+  34 0000 D0F89031 		ldr	r3, [r0, #400]
+  35              	.LVL1:
+ 225:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 226:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* In an interleaved scan, an MCU row is the same as an iMCU row.
+ 227:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * In a noninterleaved scan, an iMCU row has v_samp_factor MCU rows.
+ 228:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    * But at the bottom of the image, process only what's left.
+ 229:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****    */
+ 230:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (cinfo->comps_in_scan > 1) {
+  36              		.loc 1 230 0
+  37 0004 D0F82021 		ldr	r2, [r0, #288]
+  38 0008 012A     		cmp	r2, #1
+  39 000a 05DD     		ble	.L2
+ 231:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     coef->MCU_rows_per_iMCU_row = 1;
+  40              		.loc 1 231 0
+  41 000c 0122     		movs	r2, #1
+  42 000e 5A61     		str	r2, [r3, #20]
+  43              	.L3:
+ 232:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   } else {
+ 233:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (coef->iMCU_row_num < (cinfo->total_iMCU_rows-1))
+ 234:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       coef->MCU_rows_per_iMCU_row = cinfo->cur_comp_info[0]->v_samp_factor;
+ 235:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     else
+ 236:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       coef->MCU_rows_per_iMCU_row = cinfo->cur_comp_info[0]->last_row_height;
+ 237:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 238:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 239:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->mcu_ctr = 0;
+  44              		.loc 1 239 0
+  45 0010 0022     		movs	r2, #0
+  46 0012 DA60     		str	r2, [r3, #12]
+ 240:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->MCU_vert_offset = 0;
+ARM GAS  /tmp/ccHooPdb.s 			page 6
+
+
+  47              		.loc 1 240 0
+  48 0014 1A61     		str	r2, [r3, #16]
+ 241:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+  49              		.loc 1 241 0
+  50 0016 7047     		bx	lr
+  51              	.L2:
+ 233:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       coef->MCU_rows_per_iMCU_row = cinfo->cur_comp_info[0]->v_samp_factor;
+  52              		.loc 1 233 0
+  53 0018 9968     		ldr	r1, [r3, #8]
+  54 001a D0F81C21 		ldr	r2, [r0, #284]
+  55 001e 013A     		subs	r2, r2, #1
+  56 0020 9142     		cmp	r1, r2
+  57 0022 04D3     		bcc	.L5
+ 236:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+  58              		.loc 1 236 0
+  59 0024 D0F82421 		ldr	r2, [r0, #292]
+  60 0028 D26C     		ldr	r2, [r2, #76]
+  61 002a 5A61     		str	r2, [r3, #20]
+  62 002c F0E7     		b	.L3
+  63              	.L5:
+ 234:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     else
+  64              		.loc 1 234 0
+  65 002e D0F82421 		ldr	r2, [r0, #292]
+  66 0032 D268     		ldr	r2, [r2, #12]
+  67 0034 5A61     		str	r2, [r3, #20]
+  68 0036 EBE7     		b	.L3
+  69              		.cfi_endproc
+  70              	.LFE6:
+  72              		.section	.text.start_pass_coef,"ax",%progbits
+  73              		.align	1
+  74              		.syntax unified
+  75              		.thumb
+  76              		.thumb_func
+  77              		.fpu fpv5-sp-d16
+  79              	start_pass_coef:
+  80              	.LFB7:
+ 242:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 243:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 244:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+ 245:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Initialize for a processing pass.
+ 246:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+ 247:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 248:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** METHODDEF(void)
+ 249:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** start_pass_coef (j_compress_ptr cinfo, J_BUF_MODE pass_mode)
+ 250:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+  81              		.loc 1 250 0
+  82              		.cfi_startproc
+  83              		@ args = 0, pretend = 0, frame = 0
+  84              		@ frame_needed = 0, uses_anonymous_args = 0
+  85              	.LVL2:
+  86 0000 38B5     		push	{r3, r4, r5, lr}
+  87              	.LCFI0:
+  88              		.cfi_def_cfa_offset 16
+  89              		.cfi_offset 3, -16
+  90              		.cfi_offset 4, -12
+  91              		.cfi_offset 5, -8
+  92              		.cfi_offset 14, -4
+ARM GAS  /tmp/ccHooPdb.s 			page 7
+
+
+  93 0002 0446     		mov	r4, r0
+ 251:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   my_coef_ptr coef = (my_coef_ptr) cinfo->coef;
+  94              		.loc 1 251 0
+  95 0004 D0F89051 		ldr	r5, [r0, #400]
+  96              	.LVL3:
+ 252:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 253:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (pass_mode != JBUF_CRANK_DEST)
+  97              		.loc 1 253 0
+  98 0008 0229     		cmp	r1, #2
+  99 000a 05D0     		beq	.L7
+ 254:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT(cinfo, JERR_BAD_BUFFER_MODE);
+ 100              		.loc 1 254 0
+ 101 000c 0368     		ldr	r3, [r0]
+ 102 000e 0322     		movs	r2, #3
+ 103 0010 5A61     		str	r2, [r3, #20]
+ 104 0012 0368     		ldr	r3, [r0]
+ 105 0014 1B68     		ldr	r3, [r3]
+ 106 0016 9847     		blx	r3
+ 107              	.LVL4:
+ 108              	.L7:
+ 255:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 256:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->iMCU_row_num = 0;
+ 109              		.loc 1 256 0
+ 110 0018 0023     		movs	r3, #0
+ 111 001a AB60     		str	r3, [r5, #8]
+ 257:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   start_iMCU_row(cinfo);
+ 112              		.loc 1 257 0
+ 113 001c 2046     		mov	r0, r4
+ 114 001e FFF7FEFF 		bl	start_iMCU_row
+ 115              	.LVL5:
+ 258:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 116              		.loc 1 258 0
+ 117 0022 38BD     		pop	{r3, r4, r5, pc}
+ 118              		.cfi_endproc
+ 119              	.LFE7:
+ 121              		.section	.text.compress_output,"ax",%progbits
+ 122              		.align	1
+ 123              		.syntax unified
+ 124              		.thumb
+ 125              		.thumb_func
+ 126              		.fpu fpv5-sp-d16
+ 128              	compress_output:
+ 129              	.LFB8:
+ 259:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 260:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 261:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+ 262:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Process some data.
+ 263:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * We process the equivalent of one fully interleaved MCU row ("iMCU" row)
+ 264:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * per call, ie, v_samp_factor block rows for each component in the scan.
+ 265:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * The data is obtained from the virtual arrays and fed to the entropy coder.
+ 266:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Returns TRUE if the iMCU row is completed, FALSE if suspended.
+ 267:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  *
+ 268:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * NB: input_buf is ignored; it is likely to be a NULL pointer.
+ 269:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+ 270:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 271:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** METHODDEF(boolean)
+ 272:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** compress_output (j_compress_ptr cinfo, JSAMPIMAGE input_buf)
+ARM GAS  /tmp/ccHooPdb.s 			page 8
+
+
+ 273:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+ 130              		.loc 1 273 0
+ 131              		.cfi_startproc
+ 132              		@ args = 0, pretend = 0, frame = 72
+ 133              		@ frame_needed = 0, uses_anonymous_args = 0
+ 134              	.LVL6:
+ 135 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 136              	.LCFI1:
+ 137              		.cfi_def_cfa_offset 36
+ 138              		.cfi_offset 4, -36
+ 139              		.cfi_offset 5, -32
+ 140              		.cfi_offset 6, -28
+ 141              		.cfi_offset 7, -24
+ 142              		.cfi_offset 8, -20
+ 143              		.cfi_offset 9, -16
+ 144              		.cfi_offset 10, -12
+ 145              		.cfi_offset 11, -8
+ 146              		.cfi_offset 14, -4
+ 147 0004 95B0     		sub	sp, sp, #84
+ 148              	.LCFI2:
+ 149              		.cfi_def_cfa_offset 120
+ 150 0006 0590     		str	r0, [sp, #20]
+ 274:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   my_coef_ptr coef = (my_coef_ptr) cinfo->coef;
+ 151              		.loc 1 274 0
+ 152 0008 D0F89041 		ldr	r4, [r0, #400]
+ 153              	.LVL7:
+ 275:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION MCU_col_num;	/* index of current MCU within row */
+ 276:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION last_MCU_col = cinfo->MCUs_per_row - 1;
+ 154              		.loc 1 276 0
+ 155 000c 0746     		mov	r7, r0
+ 156 000e D0F83431 		ldr	r3, [r0, #308]
+ 157 0012 013B     		subs	r3, r3, #1
+ 158 0014 0493     		str	r3, [sp, #16]
+ 159              	.LVL8:
+ 277:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION last_iMCU_row = cinfo->total_iMCU_rows - 1;
+ 160              		.loc 1 277 0
+ 161 0016 D0F81C61 		ldr	r6, [r0, #284]
+ 162 001a 013E     		subs	r6, r6, #1
+ 163              	.LVL9:
+ 278:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   int blkn, ci, xindex, yindex, yoffset, blockcnt;
+ 279:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JDIMENSION start_col;
+ 280:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JBLOCKARRAY buffer[MAX_COMPS_IN_SCAN];
+ 281:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JBLOCKROW MCU_buffer[C_MAX_BLOCKS_IN_MCU];
+ 282:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JBLOCKROW buffer_ptr;
+ 283:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   jpeg_component_info *compptr;
+ 284:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 285:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Align the virtual buffers for the components used in this scan. */
+ 286:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
+ 164              		.loc 1 286 0
+ 165 001c 0025     		movs	r5, #0
+ 166 001e 1AE0     		b	.L10
+ 167              	.LVL10:
+ 168              	.L11:
+ 287:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     compptr = cinfo->cur_comp_info[ci];
+ 169              		.loc 1 287 0 discriminator 3
+ 170 0020 05F14803 		add	r3, r5, #72
+ 171 0024 07EB8303 		add	r3, r7, r3, lsl #2
+ARM GAS  /tmp/ccHooPdb.s 			page 9
+
+
+ 172 0028 5B68     		ldr	r3, [r3, #4]
+ 173              	.LVL11:
+ 288:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     buffer[ci] = (*cinfo->mem->access_virt_barray)
+ 289:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       ((j_common_ptr) cinfo, coef->whole_image[compptr->component_index],
+ 174              		.loc 1 289 0 discriminator 3
+ 175 002a 5968     		ldr	r1, [r3, #4]
+ 290:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        coef->iMCU_row_num * compptr->v_samp_factor,
+ 176              		.loc 1 290 0 discriminator 3
+ 177 002c A068     		ldr	r0, [r4, #8]
+ 178 002e DA68     		ldr	r2, [r3, #12]
+ 288:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     buffer[ci] = (*cinfo->mem->access_virt_barray)
+ 179              		.loc 1 288 0 discriminator 3
+ 180 0030 A369     		ldr	r3, [r4, #24]
+ 181              	.LVL12:
+ 182 0032 53F82110 		ldr	r1, [r3, r1, lsl #2]
+ 183 0036 0023     		movs	r3, #0
+ 184 0038 0093     		str	r3, [sp]
+ 185              	.LVL13:
+ 186 003a 7B68     		ldr	r3, [r7, #4]
+ 187 003c D3F82080 		ldr	r8, [r3, #32]
+ 188 0040 1346     		mov	r3, r2
+ 189 0042 02FB00F2 		mul	r2, r2, r0
+ 190 0046 3846     		mov	r0, r7
+ 191 0048 C047     		blx	r8
+ 192              	.LVL14:
+ 193 004a 14AB     		add	r3, sp, #80
+ 194 004c 03EB8503 		add	r3, r3, r5, lsl #2
+ 195 0050 43F8100C 		str	r0, [r3, #-16]
+ 286:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     compptr = cinfo->cur_comp_info[ci];
+ 196              		.loc 1 286 0 discriminator 3
+ 197 0054 0135     		adds	r5, r5, #1
+ 198              	.LVL15:
+ 199              	.L10:
+ 286:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     compptr = cinfo->cur_comp_info[ci];
+ 200              		.loc 1 286 0 is_stmt 0 discriminator 1
+ 201 0056 D7F82031 		ldr	r3, [r7, #288]
+ 202 005a AB42     		cmp	r3, r5
+ 203 005c E0DC     		bgt	.L11
+ 291:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        (JDIMENSION) compptr->v_samp_factor, FALSE);
+ 292:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 293:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 294:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Loop to process one whole iMCU row */
+ 295:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (yoffset = coef->MCU_vert_offset; yoffset < coef->MCU_rows_per_iMCU_row;
+ 204              		.loc 1 295 0 is_stmt 1
+ 205 005e 2569     		ldr	r5, [r4, #16]
+ 206              	.LVL16:
+ 207              	.L12:
+ 208              		.loc 1 295 0 is_stmt 0 discriminator 1
+ 209 0060 6369     		ldr	r3, [r4, #20]
+ 210 0062 AB42     		cmp	r3, r5
+ 211 0064 7BDD     		ble	.L31
+ 296:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        yoffset++) {
+ 297:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     for (MCU_col_num = coef->mcu_ctr; MCU_col_num < cinfo->MCUs_per_row;
+ 212              		.loc 1 297 0 is_stmt 1
+ 213 0066 D4F80C90 		ldr	r9, [r4, #12]
+ 214              	.LVL17:
+ 215 006a 0396     		str	r6, [sp, #12]
+ARM GAS  /tmp/ccHooPdb.s 			page 10
+
+
+ 216 006c 60E0     		b	.L13
+ 217              	.LVL18:
+ 218              	.L16:
+ 298:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	 MCU_col_num++) {
+ 299:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       /* Construct list of pointers to DCT blocks belonging to this MCU */
+ 300:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       blkn = 0;			/* index of current DCT block within MCU */
+ 301:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
+ 302:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	compptr = cinfo->cur_comp_info[ci];
+ 303:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	start_col = MCU_col_num * compptr->MCU_width;
+ 304:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	blockcnt = (MCU_col_num < last_MCU_col) ? compptr->MCU_width
+ 305:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 						: compptr->last_col_width;
+ 306:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	for (yindex = 0; yindex < compptr->MCU_height; yindex++) {
+ 307:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  if (coef->iMCU_row_num < last_iMCU_row ||
+ 308:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      yindex+yoffset < compptr->last_row_height) {
+ 309:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    /* Fill in pointers to real blocks in this row */
+ 310:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    buffer_ptr = buffer[ci][yindex+yoffset] + start_col;
+ 219              		.loc 1 310 0
+ 220 006e 14AA     		add	r2, sp, #80
+ 221 0070 02EB8E02 		add	r2, r2, lr, lsl #2
+ 222 0074 52F8102C 		ldr	r2, [r2, #-16]
+ 223 0078 00EB050A 		add	r10, r0, r5
+ 224 007c 52F82A20 		ldr	r2, [r2, r10, lsl #2]
+ 225 0080 02EBCC12 		add	r2, r2, ip, lsl #7
+ 226              	.LVL19:
+ 311:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    for (xindex = 0; xindex < blockcnt; xindex++)
+ 227              		.loc 1 311 0
+ 228 0084 4FF0000A 		mov	r10, #0
+ 229 0088 08E0     		b	.L18
+ 230              	.LVL20:
+ 231              	.L19:
+ 312:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      MCU_buffer[blkn++] = buffer_ptr++;
+ 232              		.loc 1 312 0 discriminator 3
+ 233 008a 14AE     		add	r6, sp, #80
+ 234 008c 06EB8306 		add	r6, r6, r3, lsl #2
+ 235 0090 46F8382C 		str	r2, [r6, #-56]
+ 311:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    for (xindex = 0; xindex < blockcnt; xindex++)
+ 236              		.loc 1 311 0 discriminator 3
+ 237 0094 0AF1010A 		add	r10, r10, #1
+ 238              	.LVL21:
+ 239              		.loc 1 312 0 discriminator 3
+ 240 0098 8032     		adds	r2, r2, #128
+ 241              	.LVL22:
+ 242 009a 0133     		adds	r3, r3, #1
+ 243              	.LVL23:
+ 244              	.L18:
+ 311:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    for (xindex = 0; xindex < blockcnt; xindex++)
+ 245              		.loc 1 311 0 discriminator 1
+ 246 009c BA45     		cmp	r10, r7
+ 247 009e F4DB     		blt	.L19
+ 248 00a0 15E0     		b	.L20
+ 249              	.LVL24:
+ 250              	.L21:
+ 313:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  } else {
+ 314:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    /* At bottom of image, need a whole row of dummy blocks */
+ 315:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    xindex = 0;
+ 316:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  }
+ 317:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  /* Fill in any dummy blocks needed in this row.
+ARM GAS  /tmp/ccHooPdb.s 			page 11
+
+
+ 318:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	   * Dummy blocks are filled in the same way as in jccoefct.c:
+ 319:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	   * all zeroes in the AC entries, DC entries equal to previous
+ 320:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	   * block's DC value.  The init routine has already zeroed the
+ 321:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	   * AC entries, so we need only set the DC entries correctly.
+ 322:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	   */
+ 323:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  for (; xindex < compptr->MCU_width; xindex++) {
+ 324:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    MCU_buffer[blkn] = coef->dummy_buffer[blkn];
+ 251              		.loc 1 324 0 discriminator 2
+ 252 00a2 9A1D     		adds	r2, r3, #6
+ 253 00a4 04EB8202 		add	r2, r4, r2, lsl #2
+ 254 00a8 5668     		ldr	r6, [r2, #4]
+ 255 00aa 14AA     		add	r2, sp, #80
+ 256 00ac 02EB8302 		add	r2, r2, r3, lsl #2
+ 257 00b0 42F8386C 		str	r6, [r2, #-56]
+ 325:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    MCU_buffer[blkn][0][0] = MCU_buffer[blkn-1][0][0];
+ 258              		.loc 1 325 0 discriminator 2
+ 259 00b4 5A1E     		subs	r2, r3, #1
+ 260 00b6 0DF1500B 		add	fp, sp, #80
+ 261 00ba 0BEB8202 		add	r2, fp, r2, lsl #2
+ 262 00be 52F8382C 		ldr	r2, [r2, #-56]
+ 263 00c2 B2F90020 		ldrsh	r2, [r2]
+ 264 00c6 3280     		strh	r2, [r6]	@ movhi
+ 326:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    blkn++;
+ 265              		.loc 1 326 0 discriminator 2
+ 266 00c8 0133     		adds	r3, r3, #1
+ 267              	.LVL25:
+ 323:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    MCU_buffer[blkn] = coef->dummy_buffer[blkn];
+ 268              		.loc 1 323 0 discriminator 2
+ 269 00ca 0AF1010A 		add	r10, r10, #1
+ 270              	.LVL26:
+ 271              	.L20:
+ 323:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    MCU_buffer[blkn] = coef->dummy_buffer[blkn];
+ 272              		.loc 1 323 0 is_stmt 0 discriminator 1
+ 273 00ce 8A6B     		ldr	r2, [r1, #56]
+ 274 00d0 5245     		cmp	r2, r10
+ 275 00d2 E6DC     		bgt	.L21
+ 306:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  if (coef->iMCU_row_num < last_iMCU_row ||
+ 276              		.loc 1 306 0 is_stmt 1 discriminator 2
+ 277 00d4 0130     		adds	r0, r0, #1
+ 278              	.LVL27:
+ 279              	.L15:
+ 306:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  if (coef->iMCU_row_num < last_iMCU_row ||
+ 280              		.loc 1 306 0 is_stmt 0 discriminator 1
+ 281 00d6 CA6B     		ldr	r2, [r1, #60]
+ 282 00d8 8242     		cmp	r2, r0
+ 283 00da 0BDD     		ble	.L32
+ 307:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      yindex+yoffset < compptr->last_row_height) {
+ 284              		.loc 1 307 0 is_stmt 1
+ 285 00dc A268     		ldr	r2, [r4, #8]
+ 286 00de 039E     		ldr	r6, [sp, #12]
+ 287 00e0 B242     		cmp	r2, r6
+ 288 00e2 C4D3     		bcc	.L16
+ 308:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	    /* Fill in pointers to real blocks in this row */
+ 289              		.loc 1 308 0 discriminator 1
+ 290 00e4 00EB050A 		add	r10, r0, r5
+ 291 00e8 CA6C     		ldr	r2, [r1, #76]
+ 307:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      yindex+yoffset < compptr->last_row_height) {
+ARM GAS  /tmp/ccHooPdb.s 			page 12
+
+
+ 292              		.loc 1 307 0 discriminator 1
+ 293 00ea 9245     		cmp	r10, r2
+ 294 00ec BFDB     		blt	.L16
+ 315:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  }
+ 295              		.loc 1 315 0
+ 296 00ee 4FF0000A 		mov	r10, #0
+ 297 00f2 ECE7     		b	.L20
+ 298              	.L32:
+ 301:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	compptr = cinfo->cur_comp_info[ci];
+ 299              		.loc 1 301 0 discriminator 2
+ 300 00f4 0EF1010E 		add	lr, lr, #1
+ 301              	.LVL28:
+ 302              	.L26:
+ 301:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	compptr = cinfo->cur_comp_info[ci];
+ 303              		.loc 1 301 0 is_stmt 0 discriminator 1
+ 304 00f8 D8F82021 		ldr	r2, [r8, #288]
+ 305 00fc 7245     		cmp	r2, lr
+ 306 00fe 0DDD     		ble	.L33
+ 302:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	start_col = MCU_col_num * compptr->MCU_width;
+ 307              		.loc 1 302 0 is_stmt 1
+ 308 0100 0EF14802 		add	r2, lr, #72
+ 309 0104 08EB8202 		add	r2, r8, r2, lsl #2
+ 310 0108 5168     		ldr	r1, [r2, #4]
+ 311              	.LVL29:
+ 303:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	blockcnt = (MCU_col_num < last_MCU_col) ? compptr->MCU_width
+ 312              		.loc 1 303 0
+ 313 010a 8F6B     		ldr	r7, [r1, #56]
+ 314 010c 09FB07FC 		mul	ip, r9, r7
+ 315              	.LVL30:
+ 305:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	for (yindex = 0; yindex < compptr->MCU_height; yindex++) {
+ 316              		.loc 1 305 0
+ 317 0110 049A     		ldr	r2, [sp, #16]
+ 318 0112 9145     		cmp	r9, r2
+ 319 0114 00D3     		bcc	.L14
+ 305:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	for (yindex = 0; yindex < compptr->MCU_height; yindex++) {
+ 320              		.loc 1 305 0 is_stmt 0 discriminator 2
+ 321 0116 8F6C     		ldr	r7, [r1, #72]
+ 322              	.L14:
+ 323              	.LVL31:
+ 306:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  if (coef->iMCU_row_num < last_iMCU_row ||
+ 324              		.loc 1 306 0 is_stmt 1
+ 325 0118 0020     		movs	r0, #0
+ 326 011a DCE7     		b	.L15
+ 327              	.LVL32:
+ 328              	.L33:
+ 327:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  }
+ 328:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	}
+ 329:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       }
+ 330:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       /* Try to write the MCU. */
+ 331:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       if (! (*cinfo->entropy->encode_mcu) (cinfo, MCU_buffer)) {
+ 329              		.loc 1 331 0
+ 330 011c 0598     		ldr	r0, [sp, #20]
+ 331 011e D0F8A431 		ldr	r3, [r0, #420]
+ 332 0122 5B68     		ldr	r3, [r3, #4]
+ 333 0124 06A9     		add	r1, sp, #24
+ 334 0126 9847     		blx	r3
+ 335              	.LVL33:
+ARM GAS  /tmp/ccHooPdb.s 			page 13
+
+
+ 336 0128 0346     		mov	r3, r0
+ 337 012a 60B1     		cbz	r0, .L34
+ 298:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       /* Construct list of pointers to DCT blocks belonging to this MCU */
+ 338              		.loc 1 298 0
+ 339 012c 09F10109 		add	r9, r9, #1
+ 340              	.LVL34:
+ 341              	.L13:
+ 297:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	 MCU_col_num++) {
+ 342              		.loc 1 297 0 discriminator 1
+ 343 0130 059B     		ldr	r3, [sp, #20]
+ 344 0132 D3F83431 		ldr	r3, [r3, #308]
+ 345 0136 4B45     		cmp	r3, r9
+ 346 0138 0CD9     		bls	.L35
+ 301:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	compptr = cinfo->cur_comp_info[ci];
+ 347              		.loc 1 301 0
+ 348 013a 4FF0000E 		mov	lr, #0
+ 300:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
+ 349              		.loc 1 300 0
+ 350 013e 7346     		mov	r3, lr
+ 351 0140 DDF81480 		ldr	r8, [sp, #20]
+ 352 0144 D8E7     		b	.L26
+ 353              	.L34:
+ 332:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	/* Suspension forced; update state counters and exit */
+ 333:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	coef->MCU_vert_offset = yoffset;
+ 354              		.loc 1 333 0
+ 355 0146 2561     		str	r5, [r4, #16]
+ 334:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	coef->mcu_ctr = MCU_col_num;
+ 356              		.loc 1 334 0
+ 357 0148 C4F80C90 		str	r9, [r4, #12]
+ 358              	.LVL35:
+ 359              	.L9:
+ 335:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	return FALSE;
+ 336:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       }
+ 337:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 338:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     /* Completed an MCU row, but perhaps not an iMCU row */
+ 339:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     coef->mcu_ctr = 0;
+ 340:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 341:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Completed the iMCU row, advance counters for next one */
+ 342:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->iMCU_row_num++;
+ 343:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   start_iMCU_row(cinfo);
+ 344:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   return TRUE;
+ 345:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 360              		.loc 1 345 0
+ 361 014c 1846     		mov	r0, r3
+ 362 014e 15B0     		add	sp, sp, #84
+ 363              	.LCFI3:
+ 364              		.cfi_remember_state
+ 365              		.cfi_def_cfa_offset 36
+ 366              		@ sp needed
+ 367 0150 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 368              	.LVL36:
+ 369              	.L35:
+ 370              	.LCFI4:
+ 371              		.cfi_restore_state
+ 372 0154 039E     		ldr	r6, [sp, #12]
+ 339:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 373              		.loc 1 339 0
+ARM GAS  /tmp/ccHooPdb.s 			page 14
+
+
+ 374 0156 0023     		movs	r3, #0
+ 375 0158 E360     		str	r3, [r4, #12]
+ 296:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     for (MCU_col_num = coef->mcu_ctr; MCU_col_num < cinfo->MCUs_per_row;
+ 376              		.loc 1 296 0
+ 377 015a 0135     		adds	r5, r5, #1
+ 378              	.LVL37:
+ 379 015c 80E7     		b	.L12
+ 380              	.LVL38:
+ 381              	.L31:
+ 342:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   start_iMCU_row(cinfo);
+ 382              		.loc 1 342 0
+ 383 015e A368     		ldr	r3, [r4, #8]
+ 384 0160 0133     		adds	r3, r3, #1
+ 385 0162 A360     		str	r3, [r4, #8]
+ 343:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   return TRUE;
+ 386              		.loc 1 343 0
+ 387 0164 0598     		ldr	r0, [sp, #20]
+ 388 0166 FFF7FEFF 		bl	start_iMCU_row
+ 389              	.LVL39:
+ 344:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 390              		.loc 1 344 0
+ 391 016a 0123     		movs	r3, #1
+ 392 016c EEE7     		b	.L9
+ 393              		.cfi_endproc
+ 394              	.LFE8:
+ 396              		.section	.text.transencode_coef_controller,"ax",%progbits
+ 397              		.align	1
+ 398              		.syntax unified
+ 399              		.thumb
+ 400              		.thumb_func
+ 401              		.fpu fpv5-sp-d16
+ 403              	transencode_coef_controller:
+ 404              	.LFB9:
+ 346:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 347:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 348:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** /*
+ 349:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Initialize coefficient buffer controller.
+ 350:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  *
+ 351:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * Each passed coefficient array must be the right size for that
+ 352:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * coefficient: width_in_blocks wide and height_in_blocks high,
+ 353:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  * with unitheight at least v_samp_factor.
+ 354:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****  */
+ 355:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 356:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** LOCAL(void)
+ 357:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** transencode_coef_controller (j_compress_ptr cinfo,
+ 358:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 			     jvirt_barray_ptr * coef_arrays)
+ 359:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** {
+ 405              		.loc 1 359 0
+ 406              		.cfi_startproc
+ 407              		@ args = 0, pretend = 0, frame = 0
+ 408              		@ frame_needed = 0, uses_anonymous_args = 0
+ 409              	.LVL40:
+ 410 0000 70B5     		push	{r4, r5, r6, lr}
+ 411              	.LCFI5:
+ 412              		.cfi_def_cfa_offset 16
+ 413              		.cfi_offset 4, -16
+ 414              		.cfi_offset 5, -12
+ARM GAS  /tmp/ccHooPdb.s 			page 15
+
+
+ 415              		.cfi_offset 6, -8
+ 416              		.cfi_offset 14, -4
+ 417 0002 0546     		mov	r5, r0
+ 418 0004 0E46     		mov	r6, r1
+ 360:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   my_coef_ptr coef;
+ 361:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JBLOCKROW buffer;
+ 362:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   int i;
+ 363:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 364:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef = (my_coef_ptr)
+ 365:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 419              		.loc 1 365 0
+ 420 0006 4368     		ldr	r3, [r0, #4]
+ 421 0008 1B68     		ldr	r3, [r3]
+ 364:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 422              		.loc 1 364 0
+ 423 000a 4422     		movs	r2, #68
+ 424 000c 0121     		movs	r1, #1
+ 425              	.LVL41:
+ 426 000e 9847     		blx	r3
+ 427              	.LVL42:
+ 428 0010 0446     		mov	r4, r0
+ 429              	.LVL43:
+ 366:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 				SIZEOF(my_coef_controller));
+ 367:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   cinfo->coef = (struct jpeg_c_coef_controller *) coef;
+ 430              		.loc 1 367 0
+ 431 0012 C5F89001 		str	r0, [r5, #400]
+ 368:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->pub.start_pass = start_pass_coef;
+ 432              		.loc 1 368 0
+ 433 0016 0F4B     		ldr	r3, .L40
+ 434 0018 0360     		str	r3, [r0]
+ 369:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->pub.compress_data = compress_output;
+ 435              		.loc 1 369 0
+ 436 001a 0F4B     		ldr	r3, .L40+4
+ 437 001c 4360     		str	r3, [r0, #4]
+ 370:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 371:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Save pointer to virtual arrays */
+ 372:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   coef->whole_image = coef_arrays;
+ 438              		.loc 1 372 0
+ 439 001e 8661     		str	r6, [r0, #24]
+ 373:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 374:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Allocate and pre-zero space for dummy DCT blocks. */
+ 375:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   buffer = (JBLOCKROW)
+ 376:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     (*cinfo->mem->alloc_large) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 440              		.loc 1 376 0
+ 441 0020 6B68     		ldr	r3, [r5, #4]
+ 442 0022 5B68     		ldr	r3, [r3, #4]
+ 375:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     (*cinfo->mem->alloc_large) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 443              		.loc 1 375 0
+ 444 0024 4FF4A062 		mov	r2, #1280
+ 445 0028 0121     		movs	r1, #1
+ 446 002a 2846     		mov	r0, r5
+ 447              	.LVL44:
+ 448 002c 9847     		blx	r3
+ 449              	.LVL45:
+ 450 002e 0546     		mov	r5, r0
+ 451              	.LVL46:
+ 377:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 				C_MAX_BLOCKS_IN_MCU * SIZEOF(JBLOCK));
+ARM GAS  /tmp/ccHooPdb.s 			page 16
+
+
+ 378:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   FMEMZERO((void FAR *) buffer, C_MAX_BLOCKS_IN_MCU * SIZEOF(JBLOCK));
+ 452              		.loc 1 378 0
+ 453 0030 4FF4A062 		mov	r2, #1280
+ 454 0034 0021     		movs	r1, #0
+ 455 0036 FFF7FEFF 		bl	memset
+ 456              	.LVL47:
+ 379:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (i = 0; i < C_MAX_BLOCKS_IN_MCU; i++) {
+ 457              		.loc 1 379 0
+ 458 003a 0023     		movs	r3, #0
+ 459 003c 06E0     		b	.L37
+ 460              	.LVL48:
+ 461              	.L38:
+ 380:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     coef->dummy_buffer[i] = buffer + i;
+ 462              		.loc 1 380 0 discriminator 3
+ 463 003e 05EBC311 		add	r1, r5, r3, lsl #7
+ 464 0042 9A1D     		adds	r2, r3, #6
+ 465 0044 04EB8202 		add	r2, r4, r2, lsl #2
+ 466 0048 5160     		str	r1, [r2, #4]
+ 379:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (i = 0; i < C_MAX_BLOCKS_IN_MCU; i++) {
+ 467              		.loc 1 379 0 discriminator 3
+ 468 004a 0133     		adds	r3, r3, #1
+ 469              	.LVL49:
+ 470              	.L37:
+ 379:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   for (i = 0; i < C_MAX_BLOCKS_IN_MCU; i++) {
+ 471              		.loc 1 379 0 is_stmt 0 discriminator 1
+ 472 004c 092B     		cmp	r3, #9
+ 473 004e F6DD     		ble	.L38
+ 381:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 382:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 474              		.loc 1 382 0 is_stmt 1
+ 475 0050 70BD     		pop	{r4, r5, r6, pc}
+ 476              	.LVL50:
+ 477              	.L41:
+ 478 0052 00BF     		.align	2
+ 479              	.L40:
+ 480 0054 00000000 		.word	start_pass_coef
+ 481 0058 00000000 		.word	compress_output
+ 482              		.cfi_endproc
+ 483              	.LFE9:
+ 485              		.section	.text.transencode_master_selection,"ax",%progbits
+ 486              		.align	1
+ 487              		.syntax unified
+ 488              		.thumb
+ 489              		.thumb_func
+ 490              		.fpu fpv5-sp-d16
+ 492              	transencode_master_selection:
+ 493              	.LFB5:
+ 165:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Initialize master control (includes parameter checking/processing) */
+ 494              		.loc 1 165 0
+ 495              		.cfi_startproc
+ 496              		@ args = 0, pretend = 0, frame = 0
+ 497              		@ frame_needed = 0, uses_anonymous_args = 0
+ 498              	.LVL51:
+ 499 0000 38B5     		push	{r3, r4, r5, lr}
+ 500              	.LCFI6:
+ 501              		.cfi_def_cfa_offset 16
+ 502              		.cfi_offset 3, -16
+ARM GAS  /tmp/ccHooPdb.s 			page 17
+
+
+ 503              		.cfi_offset 4, -12
+ 504              		.cfi_offset 5, -8
+ 505              		.cfi_offset 14, -4
+ 506 0002 0446     		mov	r4, r0
+ 507 0004 0D46     		mov	r5, r1
+ 167:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 508              		.loc 1 167 0
+ 509 0006 0121     		movs	r1, #1
+ 510              	.LVL52:
+ 511 0008 FFF7FEFF 		bl	jinit_c_master_control
+ 512              	.LVL53:
+ 170:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     jinit_arith_encoder(cinfo);
+ 513              		.loc 1 170 0
+ 514 000c D4F8D430 		ldr	r3, [r4, #212]
+ 515 0010 9BB9     		cbnz	r3, .L46
+ 173:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 516              		.loc 1 173 0
+ 517 0012 2046     		mov	r0, r4
+ 518 0014 FFF7FEFF 		bl	jinit_huff_encoder
+ 519              	.LVL54:
+ 520              	.L44:
+ 177:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 521              		.loc 1 177 0
+ 522 0018 2946     		mov	r1, r5
+ 523 001a 2046     		mov	r0, r4
+ 524 001c FFF7FEFF 		bl	transencode_coef_controller
+ 525              	.LVL55:
+ 179:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 526              		.loc 1 179 0
+ 527 0020 2046     		mov	r0, r4
+ 528 0022 FFF7FEFF 		bl	jinit_marker_writer
+ 529              	.LVL56:
+ 182:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 530              		.loc 1 182 0
+ 531 0026 6368     		ldr	r3, [r4, #4]
+ 532 0028 9B69     		ldr	r3, [r3, #24]
+ 533 002a 2046     		mov	r0, r4
+ 534 002c 9847     		blx	r3
+ 535              	.LVL57:
+ 188:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 536              		.loc 1 188 0
+ 537 002e D4F89431 		ldr	r3, [r4, #404]
+ 538 0032 1B68     		ldr	r3, [r3]
+ 539 0034 2046     		mov	r0, r4
+ 540 0036 9847     		blx	r3
+ 541              	.LVL58:
+ 189:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 542              		.loc 1 189 0
+ 543 0038 38BD     		pop	{r3, r4, r5, pc}
+ 544              	.LVL59:
+ 545              	.L46:
+ 171:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   else {
+ 546              		.loc 1 171 0
+ 547 003a 2046     		mov	r0, r4
+ 548 003c FFF7FEFF 		bl	jinit_arith_encoder
+ 549              	.LVL60:
+ 550 0040 EAE7     		b	.L44
+ARM GAS  /tmp/ccHooPdb.s 			page 18
+
+
+ 551              		.cfi_endproc
+ 552              	.LFE5:
+ 554              		.section	.text.jpeg_write_coefficients,"ax",%progbits
+ 555              		.align	1
+ 556              		.global	jpeg_write_coefficients
+ 557              		.syntax unified
+ 558              		.thumb
+ 559              		.thumb_func
+ 560              		.fpu fpv5-sp-d16
+ 562              	jpeg_write_coefficients:
+ 563              	.LFB3:
+  40:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (cinfo->global_state != CSTATE_START)
+ 564              		.loc 1 40 0
+ 565              		.cfi_startproc
+ 566              		@ args = 0, pretend = 0, frame = 0
+ 567              		@ frame_needed = 0, uses_anonymous_args = 0
+ 568              	.LVL61:
+ 569 0000 38B5     		push	{r3, r4, r5, lr}
+ 570              	.LCFI7:
+ 571              		.cfi_def_cfa_offset 16
+ 572              		.cfi_offset 3, -16
+ 573              		.cfi_offset 4, -12
+ 574              		.cfi_offset 5, -8
+ 575              		.cfi_offset 14, -4
+ 576 0002 0446     		mov	r4, r0
+ 577 0004 0D46     		mov	r5, r1
+  41:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+ 578              		.loc 1 41 0
+ 579 0006 4369     		ldr	r3, [r0, #20]
+ 580 0008 642B     		cmp	r3, #100
+ 581 000a 08D0     		beq	.L48
+  42:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Mark all tables to be written */
+ 582              		.loc 1 42 0
+ 583 000c 0368     		ldr	r3, [r0]
+ 584 000e 1522     		movs	r2, #21
+ 585 0010 5A61     		str	r2, [r3, #20]
+ 586 0012 0368     		ldr	r3, [r0]
+ 587 0014 4269     		ldr	r2, [r0, #20]
+ 588 0016 9A61     		str	r2, [r3, #24]
+ 589 0018 0368     		ldr	r3, [r0]
+ 590 001a 1B68     		ldr	r3, [r3]
+ 591 001c 9847     		blx	r3
+ 592              	.LVL62:
+ 593              	.L48:
+  44:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* (Re)initialize error mgr and destination modules */
+ 594              		.loc 1 44 0
+ 595 001e 0021     		movs	r1, #0
+ 596 0020 2046     		mov	r0, r4
+ 597 0022 FFF7FEFF 		bl	jpeg_suppress_tables
+ 598              	.LVL63:
+  46:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   (*cinfo->dest->init_destination) (cinfo);
+ 599              		.loc 1 46 0
+ 600 0026 2368     		ldr	r3, [r4]
+ 601 0028 1B69     		ldr	r3, [r3, #16]
+ 602 002a 2046     		mov	r0, r4
+ 603 002c 9847     		blx	r3
+ 604              	.LVL64:
+ARM GAS  /tmp/ccHooPdb.s 			page 19
+
+
+  47:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Perform master selection of active modules */
+ 605              		.loc 1 47 0
+ 606 002e A369     		ldr	r3, [r4, #24]
+ 607 0030 9B68     		ldr	r3, [r3, #8]
+ 608 0032 2046     		mov	r0, r4
+ 609 0034 9847     		blx	r3
+ 610              	.LVL65:
+  49:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Wait for jpeg_finish_compress() call */
+ 611              		.loc 1 49 0
+ 612 0036 2946     		mov	r1, r5
+ 613 0038 2046     		mov	r0, r4
+ 614 003a FFF7FEFF 		bl	transencode_master_selection
+ 615              	.LVL66:
+  51:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   cinfo->global_state = CSTATE_WRCOEFS;
+ 616              		.loc 1 51 0
+ 617 003e 0023     		movs	r3, #0
+ 618 0040 C4F80431 		str	r3, [r4, #260]
+  52:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** }
+ 619              		.loc 1 52 0
+ 620 0044 6723     		movs	r3, #103
+ 621 0046 6361     		str	r3, [r4, #20]
+  53:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 622              		.loc 1 53 0
+ 623 0048 38BD     		pop	{r3, r4, r5, pc}
+ 624              		.cfi_endproc
+ 625              	.LFE3:
+ 627              		.section	.text.jpeg_copy_critical_parameters,"ax",%progbits
+ 628              		.align	1
+ 629              		.global	jpeg_copy_critical_parameters
+ 630              		.syntax unified
+ 631              		.thumb
+ 632              		.thumb_func
+ 633              		.fpu fpv5-sp-d16
+ 635              	jpeg_copy_critical_parameters:
+ 636              	.LFB4:
+  66:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   JQUANT_TBL ** qtblptr;
+ 637              		.loc 1 66 0
+ 638              		.cfi_startproc
+ 639              		@ args = 0, pretend = 0, frame = 8
+ 640              		@ frame_needed = 0, uses_anonymous_args = 0
+ 641              	.LVL67:
+ 642 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 643              	.LCFI8:
+ 644              		.cfi_def_cfa_offset 36
+ 645              		.cfi_offset 4, -36
+ 646              		.cfi_offset 5, -32
+ 647              		.cfi_offset 6, -28
+ 648              		.cfi_offset 7, -24
+ 649              		.cfi_offset 8, -20
+ 650              		.cfi_offset 9, -16
+ 651              		.cfi_offset 10, -12
+ 652              		.cfi_offset 11, -8
+ 653              		.cfi_offset 14, -4
+ 654 0004 83B0     		sub	sp, sp, #12
+ 655              	.LCFI9:
+ 656              		.cfi_def_cfa_offset 48
+ 657 0006 8346     		mov	fp, r0
+ARM GAS  /tmp/ccHooPdb.s 			page 20
+
+
+ 658 0008 0D46     		mov	r5, r1
+  73:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT1(dstinfo, JERR_BAD_STATE, dstinfo->global_state);
+ 659              		.loc 1 73 0
+ 660 000a 4B69     		ldr	r3, [r1, #20]
+ 661 000c 642B     		cmp	r3, #100
+ 662 000e 09D0     		beq	.L51
+  74:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Copy fundamental image dimensions */
+ 663              		.loc 1 74 0
+ 664 0010 0B68     		ldr	r3, [r1]
+ 665 0012 1522     		movs	r2, #21
+ 666 0014 5A61     		str	r2, [r3, #20]
+ 667 0016 0B68     		ldr	r3, [r1]
+ 668 0018 4A69     		ldr	r2, [r1, #20]
+ 669 001a 9A61     		str	r2, [r3, #24]
+ 670 001c 0B68     		ldr	r3, [r1]
+ 671 001e 1B68     		ldr	r3, [r3]
+ 672 0020 0846     		mov	r0, r1
+ 673              	.LVL68:
+ 674 0022 9847     		blx	r3
+ 675              	.LVL69:
+ 676              	.L51:
+  76:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->image_height = srcinfo->image_height;
+ 677              		.loc 1 76 0
+ 678 0024 DBF81C30 		ldr	r3, [fp, #28]
+ 679 0028 EB61     		str	r3, [r5, #28]
+  77:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->input_components = srcinfo->num_components;
+ 680              		.loc 1 77 0
+ 681 002a DBF82030 		ldr	r3, [fp, #32]
+ 682 002e 2B62     		str	r3, [r5, #32]
+  78:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->in_color_space = srcinfo->jpeg_color_space;
+ 683              		.loc 1 78 0
+ 684 0030 DBF82430 		ldr	r3, [fp, #36]
+ 685 0034 6B62     		str	r3, [r5, #36]
+  79:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->jpeg_width = srcinfo->output_width;
+ 686              		.loc 1 79 0
+ 687 0036 9BF82830 		ldrb	r3, [fp, #40]	@ zero_extendqisi2
+ 688 003a 85F82830 		strb	r3, [r5, #40]
+  80:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->jpeg_height = srcinfo->output_height;
+ 689              		.loc 1 80 0
+ 690 003e DBF87030 		ldr	r3, [fp, #112]
+ 691 0042 2B64     		str	r3, [r5, #64]
+  81:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->min_DCT_h_scaled_size = srcinfo->min_DCT_h_scaled_size;
+ 692              		.loc 1 81 0
+ 693 0044 DBF87430 		ldr	r3, [fp, #116]
+ 694 0048 6B64     		str	r3, [r5, #68]
+  82:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->min_DCT_v_scaled_size = srcinfo->min_DCT_v_scaled_size;
+ 695              		.loc 1 82 0
+ 696 004a DBF84031 		ldr	r3, [fp, #320]
+ 697 004e C5F81431 		str	r3, [r5, #276]
+  83:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Initialize all parameters to default values */
+ 698              		.loc 1 83 0
+ 699 0052 DBF84431 		ldr	r3, [fp, #324]
+ 700 0056 C5F81831 		str	r3, [r5, #280]
+  85:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* jpeg_set_defaults may choose wrong colorspace, eg YCbCr if input is RGB.
+ 701              		.loc 1 85 0
+ 702 005a 2846     		mov	r0, r5
+ 703 005c FFF7FEFF 		bl	jpeg_set_defaults
+ARM GAS  /tmp/ccHooPdb.s 			page 21
+
+
+ 704              	.LVL70:
+  89:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->data_precision = srcinfo->data_precision;
+ 705              		.loc 1 89 0
+ 706 0060 9BF82810 		ldrb	r1, [fp, #40]	@ zero_extendqisi2
+ 707 0064 2846     		mov	r0, r5
+ 708 0066 FFF7FEFF 		bl	jpeg_set_colorspace
+ 709              	.LVL71:
+  90:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   dstinfo->CCIR601_sampling = srcinfo->CCIR601_sampling;
+ 710              		.loc 1 90 0
+ 711 006a DBF8D430 		ldr	r3, [fp, #212]
+ 712 006e AB64     		str	r3, [r5, #72]
+  91:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   /* Copy the source's quantization tables. */
+ 713              		.loc 1 91 0
+ 714 0070 DBF83031 		ldr	r3, [fp, #304]
+ 715 0074 C5F8DC30 		str	r3, [r5, #220]
+ 716              	.LVL72:
+  93:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->quant_tbl_ptrs[tblno] != NULL) {
+ 717              		.loc 1 93 0
+ 718 0078 0024     		movs	r4, #0
+ 719 007a 11E0     		b	.L52
+ 720              	.LVL73:
+ 721              	.L54:
+  98:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	      srcinfo->quant_tbl_ptrs[tblno]->quantval,
+ 722              		.loc 1 98 0
+ 723 007c 04F11606 		add	r6, r4, #22
+ 724 0080 04F12803 		add	r3, r4, #40
+ 725 0084 0BEB8303 		add	r3, fp, r3, lsl #2
+ 726 0088 8022     		movs	r2, #128
+ 727 008a 5968     		ldr	r1, [r3, #4]
+ 728 008c 55F82600 		ldr	r0, [r5, r6, lsl #2]
+ 729 0090 FFF7FEFF 		bl	memcpy
+ 730              	.LVL74:
+ 101:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 731              		.loc 1 101 0
+ 732 0094 55F82630 		ldr	r3, [r5, r6, lsl #2]
+ 733 0098 0022     		movs	r2, #0
+ 734 009a C3F88020 		str	r2, [r3, #128]
+ 735              	.LVL75:
+ 736              	.L53:
+  93:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->quant_tbl_ptrs[tblno] != NULL) {
+ 737              		.loc 1 93 0 discriminator 2
+ 738 009e 0134     		adds	r4, r4, #1
+ 739              	.LVL76:
+ 740              	.L52:
+  93:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->quant_tbl_ptrs[tblno] != NULL) {
+ 741              		.loc 1 93 0 is_stmt 0 discriminator 1
+ 742 00a0 032C     		cmp	r4, #3
+ 743 00a2 14DC     		bgt	.L69
+  94:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       qtblptr = & dstinfo->quant_tbl_ptrs[tblno];
+ 744              		.loc 1 94 0 is_stmt 1
+ 745 00a4 04F12803 		add	r3, r4, #40
+ 746 00a8 0BEB8303 		add	r3, fp, r3, lsl #2
+ 747 00ac 5B68     		ldr	r3, [r3, #4]
+ 748 00ae 002B     		cmp	r3, #0
+ 749 00b0 F5D0     		beq	.L53
+ 750              	.LVL77:
+  96:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	*qtblptr = jpeg_alloc_quant_table((j_common_ptr) dstinfo);
+ARM GAS  /tmp/ccHooPdb.s 			page 22
+
+
+ 751              		.loc 1 96 0
+ 752 00b2 04F11603 		add	r3, r4, #22
+ 753 00b6 55F82330 		ldr	r3, [r5, r3, lsl #2]
+ 754 00ba 002B     		cmp	r3, #0
+ 755 00bc DED1     		bne	.L54
+  97:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       MEMCOPY((*qtblptr)->quantval,
+ 756              		.loc 1 97 0
+ 757 00be 2846     		mov	r0, r5
+ 758 00c0 FFF7FEFF 		bl	jpeg_alloc_quant_table
+ 759              	.LVL78:
+ 760 00c4 04F11603 		add	r3, r4, #22
+ 761 00c8 45F82300 		str	r0, [r5, r3, lsl #2]
+ 762 00cc D6E7     		b	.L54
+ 763              	.LVL79:
+ 764              	.L69:
+ 107:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   if (dstinfo->num_components < 1 || dstinfo->num_components > MAX_COMPONENTS)
+ 765              		.loc 1 107 0
+ 766 00ce DBF82430 		ldr	r3, [fp, #36]
+ 767 00d2 EB64     		str	r3, [r5, #76]
+ 108:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     ERREXIT2(dstinfo, JERR_COMPONENT_COUNT, dstinfo->num_components,
+ 768              		.loc 1 108 0
+ 769 00d4 013B     		subs	r3, r3, #1
+ 770 00d6 092B     		cmp	r3, #9
+ 771 00d8 0CD9     		bls	.L56
+ 109:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	     MAX_COMPONENTS);
+ 772              		.loc 1 109 0
+ 773 00da 2B68     		ldr	r3, [r5]
+ 774 00dc 1B22     		movs	r2, #27
+ 775 00de 5A61     		str	r2, [r3, #20]
+ 776 00e0 2B68     		ldr	r3, [r5]
+ 777 00e2 EA6C     		ldr	r2, [r5, #76]
+ 778 00e4 9A61     		str	r2, [r3, #24]
+ 779 00e6 2B68     		ldr	r3, [r5]
+ 780 00e8 0A22     		movs	r2, #10
+ 781 00ea DA61     		str	r2, [r3, #28]
+ 782 00ec 2B68     		ldr	r3, [r5]
+ 783 00ee 1B68     		ldr	r3, [r3]
+ 784 00f0 2846     		mov	r0, r5
+ 785 00f2 9847     		blx	r3
+ 786              	.LVL80:
+ 787              	.L56:
+ 111:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        ci < dstinfo->num_components; ci++, incomp++, outcomp++) {
+ 788              		.loc 1 111 0
+ 789 00f4 DBF8D890 		ldr	r9, [fp, #216]
+ 790              	.LVL81:
+ 791 00f8 D5F854A0 		ldr	r10, [r5, #84]
+ 792              	.LVL82:
+ 793 00fc 0023     		movs	r3, #0
+ 794 00fe 0193     		str	r3, [sp, #4]
+ 795 0100 21E0     		b	.L57
+ 796              	.LVL83:
+ 797              	.L71:
+ 123:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       ERREXIT1(dstinfo, JERR_NO_QUANT_TABLE, tblno);
+ 798              		.loc 1 123 0 discriminator 1
+ 799 0102 06F12803 		add	r3, r6, #40
+ 800 0106 0BEB8303 		add	r3, fp, r3, lsl #2
+ 801 010a 5B68     		ldr	r3, [r3, #4]
+ARM GAS  /tmp/ccHooPdb.s 			page 23
+
+
+ 122:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	srcinfo->quant_tbl_ptrs[tblno] == NULL)
+ 802              		.loc 1 122 0 discriminator 1
+ 803 010c 002B     		cmp	r3, #0
+ 804 010e 39D1     		bne	.L59
+ 805 0110 2FE0     		b	.L58
+ 806              	.LVL84:
+ 807              	.L62:
+ 128:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	if (c_quant->quantval[coefi] != slot_quant->quantval[coefi])
+ 808              		.loc 1 128 0 discriminator 2
+ 809 0112 0134     		adds	r4, r4, #1
+ 810              	.LVL85:
+ 811              	.L60:
+ 128:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	if (c_quant->quantval[coefi] != slot_quant->quantval[coefi])
+ 812              		.loc 1 128 0 is_stmt 0 discriminator 1
+ 813 0114 3F2C     		cmp	r4, #63
+ 814 0116 0FDC     		bgt	.L61
+ 129:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	  ERREXIT1(dstinfo, JERR_MISMATCHED_QUANT_TABLE, tblno);
+ 815              		.loc 1 129 0 is_stmt 1
+ 816 0118 37F81420 		ldrh	r2, [r7, r4, lsl #1]
+ 817 011c 38F81430 		ldrh	r3, [r8, r4, lsl #1]
+ 818 0120 9A42     		cmp	r2, r3
+ 819 0122 F6D0     		beq	.L62
+ 130:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       }
+ 820              		.loc 1 130 0
+ 821 0124 2B68     		ldr	r3, [r5]
+ 822 0126 2D22     		movs	r2, #45
+ 823 0128 5A61     		str	r2, [r3, #20]
+ 824 012a 2B68     		ldr	r3, [r5]
+ 825 012c 9E61     		str	r6, [r3, #24]
+ 826 012e 2B68     		ldr	r3, [r5]
+ 827 0130 1B68     		ldr	r3, [r3]
+ 828 0132 2846     		mov	r0, r5
+ 829 0134 9847     		blx	r3
+ 830              	.LVL86:
+ 831 0136 ECE7     		b	.L62
+ 832              	.LVL87:
+ 833              	.L61:
+ 112:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->component_id = incomp->component_id;
+ 834              		.loc 1 112 0 discriminator 1
+ 835 0138 019B     		ldr	r3, [sp, #4]
+ 836 013a 0133     		adds	r3, r3, #1
+ 837 013c 0193     		str	r3, [sp, #4]
+ 838              	.LVL88:
+ 839 013e 09F15809 		add	r9, r9, #88
+ 840              	.LVL89:
+ 841 0142 0AF1580A 		add	r10, r10, #88
+ 842              	.LVL90:
+ 843              	.L57:
+ 844 0146 EB6C     		ldr	r3, [r5, #76]
+ 111:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****        ci < dstinfo->num_components; ci++, incomp++, outcomp++) {
+ 845              		.loc 1 111 0 discriminator 1
+ 846 0148 019A     		ldr	r2, [sp, #4]
+ 847 014a 9342     		cmp	r3, r2
+ 848 014c 26DD     		ble	.L70
+ 113:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->h_samp_factor = incomp->h_samp_factor;
+ 849              		.loc 1 113 0
+ 850 014e D9F80030 		ldr	r3, [r9]
+ARM GAS  /tmp/ccHooPdb.s 			page 24
+
+
+ 851 0152 CAF80030 		str	r3, [r10]
+ 114:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->v_samp_factor = incomp->v_samp_factor;
+ 852              		.loc 1 114 0
+ 853 0156 D9F80830 		ldr	r3, [r9, #8]
+ 854 015a CAF80830 		str	r3, [r10, #8]
+ 115:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     outcomp->quant_tbl_no = incomp->quant_tbl_no;
+ 855              		.loc 1 115 0
+ 856 015e D9F80C30 		ldr	r3, [r9, #12]
+ 857 0162 CAF80C30 		str	r3, [r10, #12]
+ 116:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     /* Make sure saved quantization table for component matches the qtable
+ 858              		.loc 1 116 0
+ 859 0166 D9F81060 		ldr	r6, [r9, #16]
+ 860 016a CAF81060 		str	r6, [r10, #16]
+ 861              	.LVL91:
+ 122:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	srcinfo->quant_tbl_ptrs[tblno] == NULL)
+ 862              		.loc 1 122 0
+ 863 016e 032E     		cmp	r6, #3
+ 864 0170 C7D9     		bls	.L71
+ 865              	.L58:
+ 124:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     slot_quant = srcinfo->quant_tbl_ptrs[tblno];
+ 866              		.loc 1 124 0
+ 867 0172 2B68     		ldr	r3, [r5]
+ 868 0174 3622     		movs	r2, #54
+ 869 0176 5A61     		str	r2, [r3, #20]
+ 870 0178 2B68     		ldr	r3, [r5]
+ 871 017a 9E61     		str	r6, [r3, #24]
+ 872 017c 2B68     		ldr	r3, [r5]
+ 873 017e 1B68     		ldr	r3, [r3]
+ 874 0180 2846     		mov	r0, r5
+ 875 0182 9847     		blx	r3
+ 876              	.LVL92:
+ 877              	.L59:
+ 125:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     c_quant = incomp->quant_table;
+ 878              		.loc 1 125 0
+ 879 0184 06F12803 		add	r3, r6, #40
+ 880 0188 0BEB8303 		add	r3, fp, r3, lsl #2
+ 881 018c D3F80480 		ldr	r8, [r3, #4]
+ 882              	.LVL93:
+ 126:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (c_quant != NULL) {
+ 883              		.loc 1 126 0
+ 884 0190 D9F85070 		ldr	r7, [r9, #80]
+ 885              	.LVL94:
+ 127:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       for (coefi = 0; coefi < DCTSIZE2; coefi++) {
+ 886              		.loc 1 127 0
+ 887 0194 002F     		cmp	r7, #0
+ 888 0196 CFD0     		beq	.L61
+ 128:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 	if (c_quant->quantval[coefi] != slot_quant->quantval[coefi])
+ 889              		.loc 1 128 0
+ 890 0198 0024     		movs	r4, #0
+ 891 019a BBE7     		b	.L60
+ 892              	.LVL95:
+ 893              	.L70:
+ 145:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     if (srcinfo->JFIF_major_version == 1) {
+ 894              		.loc 1 145 0
+ 895 019c DBF81C31 		ldr	r3, [fp, #284]
+ 896 01a0 7BB1     		cbz	r3, .L50
+ 146:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       dstinfo->JFIF_major_version = srcinfo->JFIF_major_version;
+ARM GAS  /tmp/ccHooPdb.s 			page 25
+
+
+ 897              		.loc 1 146 0
+ 898 01a2 9BF82031 		ldrb	r3, [fp, #288]	@ zero_extendqisi2
+ 899 01a6 012B     		cmp	r3, #1
+ 900 01a8 0ED0     		beq	.L72
+ 901              	.L66:
+ 150:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     dstinfo->X_density = srcinfo->X_density;
+ 902              		.loc 1 150 0
+ 903 01aa 9BF82231 		ldrb	r3, [fp, #290]	@ zero_extendqisi2
+ 904 01ae 85F8FA30 		strb	r3, [r5, #250]
+ 151:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     dstinfo->Y_density = srcinfo->Y_density;
+ 905              		.loc 1 151 0
+ 906 01b2 BBF82431 		ldrh	r3, [fp, #292]
+ 907 01b6 A5F8FC30 		strh	r3, [r5, #252]	@ movhi
+ 152:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****   }
+ 908              		.loc 1 152 0
+ 909 01ba BBF82631 		ldrh	r3, [fp, #294]
+ 910 01be A5F8FE30 		strh	r3, [r5, #254]	@ movhi
+ 911              	.L50:
+ 154:Middlewares/Third_Party/LibJPEG/source/jctrans.c **** 
+ 912              		.loc 1 154 0
+ 913 01c2 03B0     		add	sp, sp, #12
+ 914              	.LCFI10:
+ 915              		.cfi_remember_state
+ 916              		.cfi_def_cfa_offset 36
+ 917              		@ sp needed
+ 918 01c4 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 919              	.LVL96:
+ 920              	.L72:
+ 921              	.LCFI11:
+ 922              		.cfi_restore_state
+ 147:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****       dstinfo->JFIF_minor_version = srcinfo->JFIF_minor_version;
+ 923              		.loc 1 147 0
+ 924 01c8 85F8F830 		strb	r3, [r5, #248]
+ 148:Middlewares/Third_Party/LibJPEG/source/jctrans.c ****     }
+ 925              		.loc 1 148 0
+ 926 01cc 9BF82131 		ldrb	r3, [fp, #289]	@ zero_extendqisi2
+ 927 01d0 85F8F930 		strb	r3, [r5, #249]
+ 928 01d4 E9E7     		b	.L66
+ 929              		.cfi_endproc
+ 930              	.LFE4:
+ 932              		.text
+ 933              	.Letext0:
+ 934              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 935              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 936              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 937              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 938              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 939              		.file 7 "Inc/jmorecfg.h"
+ 940              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 941              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 942              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ 943              		.file 11 "<built-in>"
+ARM GAS  /tmp/ccHooPdb.s 			page 26
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jctrans.c
+     /tmp/ccHooPdb.s:18     .text.start_iMCU_row:0000000000000000 $t
+     /tmp/ccHooPdb.s:24     .text.start_iMCU_row:0000000000000000 start_iMCU_row
+     /tmp/ccHooPdb.s:73     .text.start_pass_coef:0000000000000000 $t
+     /tmp/ccHooPdb.s:79     .text.start_pass_coef:0000000000000000 start_pass_coef
+     /tmp/ccHooPdb.s:122    .text.compress_output:0000000000000000 $t
+     /tmp/ccHooPdb.s:128    .text.compress_output:0000000000000000 compress_output
+     /tmp/ccHooPdb.s:397    .text.transencode_coef_controller:0000000000000000 $t
+     /tmp/ccHooPdb.s:403    .text.transencode_coef_controller:0000000000000000 transencode_coef_controller
+     /tmp/ccHooPdb.s:480    .text.transencode_coef_controller:0000000000000054 $d
+     /tmp/ccHooPdb.s:486    .text.transencode_master_selection:0000000000000000 $t
+     /tmp/ccHooPdb.s:492    .text.transencode_master_selection:0000000000000000 transencode_master_selection
+     /tmp/ccHooPdb.s:555    .text.jpeg_write_coefficients:0000000000000000 $t
+     /tmp/ccHooPdb.s:562    .text.jpeg_write_coefficients:0000000000000000 jpeg_write_coefficients
+     /tmp/ccHooPdb.s:628    .text.jpeg_copy_critical_parameters:0000000000000000 $t
+     /tmp/ccHooPdb.s:635    .text.jpeg_copy_critical_parameters:0000000000000000 jpeg_copy_critical_parameters
+
+UNDEFINED SYMBOLS
+memset
+jinit_c_master_control
+jinit_huff_encoder
+jinit_marker_writer
+jinit_arith_encoder
+jpeg_suppress_tables
+jpeg_set_defaults
+jpeg_set_colorspace
+memcpy
+jpeg_alloc_quant_table

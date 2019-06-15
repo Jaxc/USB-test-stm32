@@ -1,0 +1,879 @@
+ARM GAS  /tmp/ccm5hMv7.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jdatadst.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.init_destination,"ax",%progbits
+  18              		.align	1
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu fpv5-sp-d16
+  24              	init_destination:
+  25              	.LFB3:
+  26              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jdatadst.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * jdatadst.c
+   3:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Copyright (C) 1994-1996, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Modified 2009-2012 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * This file contains compression data destination routines for the case of
+  10:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * emitting JPEG data to memory or to a file (or any stdio stream).
+  11:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * While these routines are sufficient for most applications,
+  12:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * some will want to use a different destination manager.
+  13:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * IMPORTANT: we assume that fwrite() will correctly transcribe an array of
+  14:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * JOCTETs into 8-bit-wide elements on external storage.  If char is wider
+  15:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * than 8 bits on your machine, you may need to do some tweaking.
+  16:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+  17:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  18:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /* this is not a core library module, so it doesn't define JPEG_INTERNALS */
+  19:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #include "jinclude.h"
+  20:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #include "jpeglib.h"
+  21:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #include "jerror.h"
+  22:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  23:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifndef HAVE_STDLIB_H		/* <stdlib.h> should declare malloc(),free() */
+  24:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** extern void * malloc JPP((size_t size));
+  25:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** extern void free JPP((void *ptr));
+  26:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif
+  27:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  28:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  29:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /* Expanded data destination object for stdio output */
+  30:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  31:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** typedef struct {
+  32:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   struct jpeg_destination_mgr pub; /* public fields */
+ARM GAS  /tmp/ccm5hMv7.s 			page 2
+
+
+  33:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifdef JFILE  
+  34:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   JFILE * outfile;		/* target stream */
+  35:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+  36:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   JOCTET * buffer;		/* start of buffer */
+  37:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** } my_destination_mgr;
+  38:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  39:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** typedef my_destination_mgr * my_dest_ptr;
+  40:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  41:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  42:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #define OUTPUT_BUF_SIZE  4096	/* choose an efficiently fwrite'able size */
+  43:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  44:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  45:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /* Expanded data destination object for memory output */
+  46:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  47:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** typedef struct {
+  48:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   struct jpeg_destination_mgr pub; /* public fields */
+  49:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  50:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   unsigned char ** outbuffer;	/* target buffer */
+  51:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   unsigned long * outsize;
+  52:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   unsigned char * newbuffer;	/* newly allocated buffer */
+  53:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   JOCTET * buffer;		/* start of buffer */
+  54:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   size_t bufsize;
+  55:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** } my_mem_destination_mgr;
+  56:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  57:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** typedef my_mem_destination_mgr * my_mem_dest_ptr;
+  58:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  59:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  60:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+  61:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Initialize destination --- called by jpeg_start_compress
+  62:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * before any data is actually written.
+  63:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+  64:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifdef JFILE
+  65:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(void)
+  66:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** init_destination (j_compress_ptr cinfo)
+  67:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+  27              		.loc 1 67 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 10B5     		push	{r4, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 4, -8
+  36              		.cfi_offset 14, -4
+  68:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+  37              		.loc 1 68 0
+  38 0002 8469     		ldr	r4, [r0, #24]
+  39              	.LVL1:
+  69:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  70:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* Allocate the output buffer --- it will be released when done with image */
+  71:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->buffer = (JOCTET *)
+  72:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  40              		.loc 1 72 0
+  41 0004 4368     		ldr	r3, [r0, #4]
+  42 0006 1B68     		ldr	r3, [r3]
+  43 0008 4FF48052 		mov	r2, #4096
+ARM GAS  /tmp/ccm5hMv7.s 			page 3
+
+
+  44 000c 0121     		movs	r1, #1
+  45 000e 9847     		blx	r3
+  46              	.LVL2:
+  71:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+  47              		.loc 1 71 0
+  48 0010 A061     		str	r0, [r4, #24]
+  73:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 				  OUTPUT_BUF_SIZE * SIZEOF(JOCTET));
+  74:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  75:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.next_output_byte = dest->buffer;
+  49              		.loc 1 75 0
+  50 0012 2060     		str	r0, [r4]
+  76:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+  51              		.loc 1 76 0
+  52 0014 4FF48053 		mov	r3, #4096
+  53 0018 6360     		str	r3, [r4, #4]
+  77:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+  54              		.loc 1 77 0
+  55 001a 10BD     		pop	{r4, pc}
+  56              		.cfi_endproc
+  57              	.LFE3:
+  59              		.section	.text.init_mem_destination,"ax",%progbits
+  60              		.align	1
+  61              		.syntax unified
+  62              		.thumb
+  63              		.thumb_func
+  64              		.fpu fpv5-sp-d16
+  66              	init_mem_destination:
+  67              	.LFB4:
+  78:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+  79:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  80:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(void)
+  81:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** init_mem_destination (j_compress_ptr cinfo)
+  82:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+  68              		.loc 1 82 0
+  69              		.cfi_startproc
+  70              		@ args = 0, pretend = 0, frame = 0
+  71              		@ frame_needed = 0, uses_anonymous_args = 0
+  72              		@ link register save eliminated.
+  73              	.LVL3:
+  83:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* no work necessary here */
+  84:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+  74              		.loc 1 84 0
+  75 0000 7047     		bx	lr
+  76              		.cfi_endproc
+  77              	.LFE4:
+  79              		.section	.text.term_mem_destination,"ax",%progbits
+  80              		.align	1
+  81              		.syntax unified
+  82              		.thumb
+  83              		.thumb_func
+  84              		.fpu fpv5-sp-d16
+  86              	term_mem_destination:
+  87              	.LFB8:
+  85:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  86:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+  87:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+  88:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Empty the output buffer --- called whenever buffer fills up.
+ARM GAS  /tmp/ccm5hMv7.s 			page 4
+
+
+  89:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+  90:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * In typical applications, this should write the entire output buffer
+  91:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * (ignoring the current state of next_output_byte & free_in_buffer),
+  92:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * reset the pointer & count to the start of the buffer, and return TRUE
+  93:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * indicating that the buffer has been dumped.
+  94:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+  95:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * In applications that need to be able to suspend compression due to output
+  96:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * overrun, a FALSE return indicates that the buffer cannot be emptied now.
+  97:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * In this situation, the compressor will return to its caller (possibly with
+  98:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * an indication that it has not accepted all the supplied scanlines).  The
+  99:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * application should resume compression after it has made more room in the
+ 100:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * output buffer.  Note that there are substantial restrictions on the use of
+ 101:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * suspension --- see the documentation.
+ 102:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+ 103:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * When suspending, the compressor will back up to a convenient restart point
+ 104:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * (typically the start of the current MCU). next_output_byte & free_in_buffer
+ 105:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * indicate where the restart point will be if the current call returns FALSE.
+ 106:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Data beyond this point will be regenerated after resumption, so do not
+ 107:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * write it out when emptying the buffer externally.
+ 108:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+ 109:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifdef JFILE
+ 110:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(boolean)
+ 111:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** empty_output_buffer (j_compress_ptr cinfo)
+ 112:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+ 113:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+ 114:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 115:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (JFWRITE(dest->outfile, dest->buffer, OUTPUT_BUF_SIZE) !=
+ 116:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (size_t) OUTPUT_BUF_SIZE)
+ 117:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     ERREXIT(cinfo, JERR_FILE_WRITE);
+ 118:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 119:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.next_output_byte = dest->buffer;
+ 120:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+ 121:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 122:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   return TRUE;
+ 123:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 124:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 125:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 126:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(boolean)
+ 127:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** empty_mem_output_buffer (j_compress_ptr cinfo)
+ 128:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+ 129:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   size_t nextsize;
+ 130:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   JOCTET * nextbuffer;
+ 131:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_mem_dest_ptr dest = (my_mem_dest_ptr) cinfo->dest;
+ 132:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 133:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* Try to allocate new buffer with double size */
+ 134:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   nextsize = dest->bufsize * 2;
+ 135:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   nextbuffer = (JOCTET *) malloc(nextsize);
+ 136:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 137:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (nextbuffer == NULL)
+ 138:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     ERREXIT1(cinfo, JERR_OUT_OF_MEMORY, 10);
+ 139:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 140:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   MEMCOPY(nextbuffer, dest->buffer, dest->bufsize);
+ 141:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 142:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (dest->newbuffer != NULL)
+ 143:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     free(dest->newbuffer);
+ 144:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 145:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->newbuffer = nextbuffer;
+ARM GAS  /tmp/ccm5hMv7.s 			page 5
+
+
+ 146:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 147:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.next_output_byte = nextbuffer + dest->bufsize;
+ 148:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = dest->bufsize;
+ 149:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 150:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->buffer = nextbuffer;
+ 151:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->bufsize = nextsize;
+ 152:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 153:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   return TRUE;
+ 154:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 155:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 156:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 157:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+ 158:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Terminate destination --- called by jpeg_finish_compress
+ 159:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * after all data has been written.  Usually needs to flush buffer.
+ 160:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  *
+ 161:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * NB: *not* called by jpeg_abort or jpeg_destroy; surrounding
+ 162:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * application must deal with any cleanup that should happen even
+ 163:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * for error exit.
+ 164:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+ 165:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifdef JFILE
+ 166:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(void)
+ 167:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** term_destination (j_compress_ptr cinfo)
+ 168:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+ 169:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+ 170:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   size_t datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
+ 171:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 172:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* Write any data remaining in the buffer */
+ 173:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (datacount > 0) {
+ 174:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     if (JFWRITE(dest->outfile, dest->buffer, datacount) != datacount)
+ 175:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       ERREXIT(cinfo, JERR_FILE_WRITE);
+ 176:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   }
+ 177:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 178:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 179:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 180:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** METHODDEF(void)
+ 181:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** term_mem_destination (j_compress_ptr cinfo)
+ 182:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+  88              		.loc 1 182 0
+  89              		.cfi_startproc
+  90              		@ args = 0, pretend = 0, frame = 0
+  91              		@ frame_needed = 0, uses_anonymous_args = 0
+  92              		@ link register save eliminated.
+  93              	.LVL4:
+ 183:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_mem_dest_ptr dest = (my_mem_dest_ptr) cinfo->dest;
+  94              		.loc 1 183 0
+  95 0000 8369     		ldr	r3, [r0, #24]
+  96              	.LVL5:
+ 184:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 185:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   *dest->outbuffer = dest->buffer;
+  97              		.loc 1 185 0
+  98 0002 5A69     		ldr	r2, [r3, #20]
+  99 0004 196A     		ldr	r1, [r3, #32]
+ 100 0006 1160     		str	r1, [r2]
+ 186:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   *dest->outsize = dest->bufsize - dest->pub.free_in_buffer;
+ 101              		.loc 1 186 0
+ 102 0008 5A6A     		ldr	r2, [r3, #36]
+ 103 000a 5868     		ldr	r0, [r3, #4]
+ARM GAS  /tmp/ccm5hMv7.s 			page 6
+
+
+ 104              	.LVL6:
+ 105 000c 9969     		ldr	r1, [r3, #24]
+ 106 000e 121A     		subs	r2, r2, r0
+ 107 0010 0A60     		str	r2, [r1]
+ 187:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 108              		.loc 1 187 0
+ 109 0012 7047     		bx	lr
+ 110              		.cfi_endproc
+ 111              	.LFE8:
+ 113              		.section	.text.term_destination,"ax",%progbits
+ 114              		.align	1
+ 115              		.syntax unified
+ 116              		.thumb
+ 117              		.thumb_func
+ 118              		.fpu fpv5-sp-d16
+ 120              	term_destination:
+ 121              	.LFB7:
+ 168:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+ 122              		.loc 1 168 0
+ 123              		.cfi_startproc
+ 124              		@ args = 0, pretend = 0, frame = 0
+ 125              		@ frame_needed = 0, uses_anonymous_args = 0
+ 126              	.LVL7:
+ 127 0000 70B5     		push	{r4, r5, r6, lr}
+ 128              	.LCFI1:
+ 129              		.cfi_def_cfa_offset 16
+ 130              		.cfi_offset 4, -16
+ 131              		.cfi_offset 5, -12
+ 132              		.cfi_offset 6, -8
+ 133              		.cfi_offset 14, -4
+ 169:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   size_t datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
+ 134              		.loc 1 169 0
+ 135 0002 8669     		ldr	r6, [r0, #24]
+ 136              	.LVL8:
+ 170:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 137              		.loc 1 170 0
+ 138 0004 7268     		ldr	r2, [r6, #4]
+ 139              	.LVL9:
+ 173:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     if (JFWRITE(dest->outfile, dest->buffer, datacount) != datacount)
+ 140              		.loc 1 173 0
+ 141 0006 D2F58054 		rsbs	r4, r2, #4096
+ 142              	.LVL10:
+ 143 000a 00D1     		bne	.L8
+ 144              	.LVL11:
+ 145              	.L5:
+ 177:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 146              		.loc 1 177 0
+ 147 000c 70BD     		pop	{r4, r5, r6, pc}
+ 148              	.LVL12:
+ 149              	.L8:
+ 150 000e 0546     		mov	r5, r0
+ 174:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       ERREXIT(cinfo, JERR_FILE_WRITE);
+ 151              		.loc 1 174 0
+ 152 0010 7369     		ldr	r3, [r6, #20]
+ 153 0012 2246     		mov	r2, r4
+ 154 0014 0121     		movs	r1, #1
+ 155 0016 B069     		ldr	r0, [r6, #24]
+ARM GAS  /tmp/ccm5hMv7.s 			page 7
+
+
+ 156              	.LVL13:
+ 157 0018 FFF7FEFF 		bl	fwrite
+ 158              	.LVL14:
+ 159 001c A042     		cmp	r0, r4
+ 160 001e F5D0     		beq	.L5
+ 175:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   }
+ 161              		.loc 1 175 0
+ 162 0020 2B68     		ldr	r3, [r5]
+ 163 0022 2622     		movs	r2, #38
+ 164 0024 5A61     		str	r2, [r3, #20]
+ 165 0026 2B68     		ldr	r3, [r5]
+ 166 0028 1B68     		ldr	r3, [r3]
+ 167 002a 2846     		mov	r0, r5
+ 168 002c 9847     		blx	r3
+ 169              	.LVL15:
+ 177:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 170              		.loc 1 177 0
+ 171 002e EDE7     		b	.L5
+ 172              		.cfi_endproc
+ 173              	.LFE7:
+ 175              		.section	.text.empty_output_buffer,"ax",%progbits
+ 176              		.align	1
+ 177              		.syntax unified
+ 178              		.thumb
+ 179              		.thumb_func
+ 180              		.fpu fpv5-sp-d16
+ 182              	empty_output_buffer:
+ 183              	.LFB5:
+ 112:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+ 184              		.loc 1 112 0
+ 185              		.cfi_startproc
+ 186              		@ args = 0, pretend = 0, frame = 0
+ 187              		@ frame_needed = 0, uses_anonymous_args = 0
+ 188              	.LVL16:
+ 189 0000 38B5     		push	{r3, r4, r5, lr}
+ 190              	.LCFI2:
+ 191              		.cfi_def_cfa_offset 16
+ 192              		.cfi_offset 3, -16
+ 193              		.cfi_offset 4, -12
+ 194              		.cfi_offset 5, -8
+ 195              		.cfi_offset 14, -4
+ 196 0002 0546     		mov	r5, r0
+ 113:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 197              		.loc 1 113 0
+ 198 0004 8469     		ldr	r4, [r0, #24]
+ 199              	.LVL17:
+ 115:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (size_t) OUTPUT_BUF_SIZE)
+ 200              		.loc 1 115 0
+ 201 0006 6369     		ldr	r3, [r4, #20]
+ 202 0008 4FF48052 		mov	r2, #4096
+ 203 000c 0121     		movs	r1, #1
+ 204 000e A069     		ldr	r0, [r4, #24]
+ 205              	.LVL18:
+ 206 0010 FFF7FEFF 		bl	fwrite
+ 207              	.LVL19:
+ 208 0014 B0F5805F 		cmp	r0, #4096
+ 209 0018 06D0     		beq	.L10
+ARM GAS  /tmp/ccm5hMv7.s 			page 8
+
+
+ 117:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 210              		.loc 1 117 0
+ 211 001a 2B68     		ldr	r3, [r5]
+ 212 001c 2622     		movs	r2, #38
+ 213 001e 5A61     		str	r2, [r3, #20]
+ 214 0020 2B68     		ldr	r3, [r5]
+ 215 0022 1B68     		ldr	r3, [r3]
+ 216 0024 2846     		mov	r0, r5
+ 217 0026 9847     		blx	r3
+ 218              	.LVL20:
+ 219              	.L10:
+ 119:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+ 220              		.loc 1 119 0
+ 221 0028 A369     		ldr	r3, [r4, #24]
+ 222 002a 2360     		str	r3, [r4]
+ 120:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 223              		.loc 1 120 0
+ 224 002c 4FF48053 		mov	r3, #4096
+ 225 0030 6360     		str	r3, [r4, #4]
+ 123:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 226              		.loc 1 123 0
+ 227 0032 0120     		movs	r0, #1
+ 228 0034 38BD     		pop	{r3, r4, r5, pc}
+ 229              		.cfi_endproc
+ 230              	.LFE5:
+ 232              		.section	.text.empty_mem_output_buffer,"ax",%progbits
+ 233              		.align	1
+ 234              		.syntax unified
+ 235              		.thumb
+ 236              		.thumb_func
+ 237              		.fpu fpv5-sp-d16
+ 239              	empty_mem_output_buffer:
+ 240              	.LFB6:
+ 128:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   size_t nextsize;
+ 241              		.loc 1 128 0
+ 242              		.cfi_startproc
+ 243              		@ args = 0, pretend = 0, frame = 0
+ 244              		@ frame_needed = 0, uses_anonymous_args = 0
+ 245              	.LVL21:
+ 246 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 247              	.LCFI3:
+ 248              		.cfi_def_cfa_offset 24
+ 249              		.cfi_offset 3, -24
+ 250              		.cfi_offset 4, -20
+ 251              		.cfi_offset 5, -16
+ 252              		.cfi_offset 6, -12
+ 253              		.cfi_offset 7, -8
+ 254              		.cfi_offset 14, -4
+ 255 0002 0646     		mov	r6, r0
+ 131:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 256              		.loc 1 131 0
+ 257 0004 8469     		ldr	r4, [r0, #24]
+ 258              	.LVL22:
+ 134:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   nextbuffer = (JOCTET *) malloc(nextsize);
+ 259              		.loc 1 134 0
+ 260 0006 656A     		ldr	r5, [r4, #36]
+ 261 0008 6D00     		lsls	r5, r5, #1
+ARM GAS  /tmp/ccm5hMv7.s 			page 9
+
+
+ 262              	.LVL23:
+ 135:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 263              		.loc 1 135 0
+ 264 000a 2846     		mov	r0, r5
+ 265              	.LVL24:
+ 266 000c FFF7FEFF 		bl	malloc
+ 267              	.LVL25:
+ 137:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     ERREXIT1(cinfo, JERR_OUT_OF_MEMORY, 10);
+ 268              		.loc 1 137 0
+ 269 0010 0746     		mov	r7, r0
+ 270 0012 48B9     		cbnz	r0, .L13
+ 138:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 271              		.loc 1 138 0
+ 272 0014 3368     		ldr	r3, [r6]
+ 273 0016 3822     		movs	r2, #56
+ 274 0018 5A61     		str	r2, [r3, #20]
+ 275 001a 3368     		ldr	r3, [r6]
+ 276 001c 0A22     		movs	r2, #10
+ 277 001e 9A61     		str	r2, [r3, #24]
+ 278 0020 3368     		ldr	r3, [r6]
+ 279 0022 1B68     		ldr	r3, [r3]
+ 280 0024 3046     		mov	r0, r6
+ 281              	.LVL26:
+ 282 0026 9847     		blx	r3
+ 283              	.LVL27:
+ 284              	.L13:
+ 140:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 285              		.loc 1 140 0
+ 286 0028 626A     		ldr	r2, [r4, #36]
+ 287 002a 216A     		ldr	r1, [r4, #32]
+ 288 002c 3846     		mov	r0, r7
+ 289 002e FFF7FEFF 		bl	memcpy
+ 290              	.LVL28:
+ 142:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     free(dest->newbuffer);
+ 291              		.loc 1 142 0
+ 292 0032 E069     		ldr	r0, [r4, #28]
+ 293 0034 08B1     		cbz	r0, .L14
+ 143:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 294              		.loc 1 143 0
+ 295 0036 FFF7FEFF 		bl	free
+ 296              	.LVL29:
+ 297              	.L14:
+ 145:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 298              		.loc 1 145 0
+ 299 003a E761     		str	r7, [r4, #28]
+ 147:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = dest->bufsize;
+ 300              		.loc 1 147 0
+ 301 003c 636A     		ldr	r3, [r4, #36]
+ 302 003e FA18     		adds	r2, r7, r3
+ 303 0040 2260     		str	r2, [r4]
+ 148:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 304              		.loc 1 148 0
+ 305 0042 6360     		str	r3, [r4, #4]
+ 150:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->bufsize = nextsize;
+ 306              		.loc 1 150 0
+ 307 0044 2762     		str	r7, [r4, #32]
+ 151:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ARM GAS  /tmp/ccm5hMv7.s 			page 10
+
+
+ 308              		.loc 1 151 0
+ 309 0046 6562     		str	r5, [r4, #36]
+ 154:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 310              		.loc 1 154 0
+ 311 0048 0120     		movs	r0, #1
+ 312 004a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 313              		.cfi_endproc
+ 314              	.LFE6:
+ 316              		.section	.text.jpeg_stdio_dest,"ax",%progbits
+ 317              		.align	1
+ 318              		.global	jpeg_stdio_dest
+ 319              		.syntax unified
+ 320              		.thumb
+ 321              		.thumb_func
+ 322              		.fpu fpv5-sp-d16
+ 324              	jpeg_stdio_dest:
+ 325              	.LFB9:
+ 188:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 189:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 190:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+ 191:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Prepare for output to a stdio stream.
+ 192:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * The caller must have already opened the stream, and is responsible
+ 193:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * for closing it after finishing compression.
+ 194:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+ 195:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #ifdef JFILE
+ 196:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** GLOBAL(void)
+ 197:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** jpeg_stdio_dest (j_compress_ptr cinfo, JFILE * outfile)
+ 198:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+ 326              		.loc 1 198 0
+ 327              		.cfi_startproc
+ 328              		@ args = 0, pretend = 0, frame = 0
+ 329              		@ frame_needed = 0, uses_anonymous_args = 0
+ 330              	.LVL30:
+ 331 0000 38B5     		push	{r3, r4, r5, lr}
+ 332              	.LCFI4:
+ 333              		.cfi_def_cfa_offset 16
+ 334              		.cfi_offset 3, -16
+ 335              		.cfi_offset 4, -12
+ 336              		.cfi_offset 5, -8
+ 337              		.cfi_offset 14, -4
+ 338 0002 0446     		mov	r4, r0
+ 339 0004 0D46     		mov	r5, r1
+ 199:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_dest_ptr dest;
+ 200:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 201:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* The destination object is made permanent so that multiple JPEG images
+ 202:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    * can be written to the same file without re-executing jpeg_stdio_dest.
+ 203:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    * This makes it dangerous to use this manager and a different destination
+ 204:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    * manager serially with the same JPEG object, because their private object
+ 205:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    * sizes may be different.  Caveat programmer.
+ 206:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    */
+ 207:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (cinfo->dest == NULL) {	/* first time for this JPEG object? */
+ 340              		.loc 1 207 0
+ 341 0006 8369     		ldr	r3, [r0, #24]
+ 342 0008 2BB9     		cbnz	r3, .L17
+ 208:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     cinfo->dest = (struct jpeg_destination_mgr *)
+ 209:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+ 343              		.loc 1 209 0
+ARM GAS  /tmp/ccm5hMv7.s 			page 11
+
+
+ 344 000a 4368     		ldr	r3, [r0, #4]
+ 345 000c 1B68     		ldr	r3, [r3]
+ 346 000e 1C22     		movs	r2, #28
+ 347 0010 0021     		movs	r1, #0
+ 348              	.LVL31:
+ 349 0012 9847     		blx	r3
+ 350              	.LVL32:
+ 208:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     cinfo->dest = (struct jpeg_destination_mgr *)
+ 351              		.loc 1 208 0
+ 352 0014 A061     		str	r0, [r4, #24]
+ 353              	.L17:
+ 210:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 				  SIZEOF(my_destination_mgr));
+ 211:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   }
+ 212:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 213:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest = (my_dest_ptr) cinfo->dest;
+ 354              		.loc 1 213 0
+ 355 0016 A369     		ldr	r3, [r4, #24]
+ 356              	.LVL33:
+ 214:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.init_destination = init_destination;
+ 357              		.loc 1 214 0
+ 358 0018 034A     		ldr	r2, .L19
+ 359 001a 9A60     		str	r2, [r3, #8]
+ 215:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.empty_output_buffer = empty_output_buffer;
+ 360              		.loc 1 215 0
+ 361 001c 034A     		ldr	r2, .L19+4
+ 362 001e DA60     		str	r2, [r3, #12]
+ 216:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.term_destination = term_destination;
+ 363              		.loc 1 216 0
+ 364 0020 034A     		ldr	r2, .L19+8
+ 365 0022 1A61     		str	r2, [r3, #16]
+ 217:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->outfile = outfile;
+ 366              		.loc 1 217 0
+ 367 0024 5D61     		str	r5, [r3, #20]
+ 218:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 368              		.loc 1 218 0
+ 369 0026 38BD     		pop	{r3, r4, r5, pc}
+ 370              	.LVL34:
+ 371              	.L20:
+ 372              		.align	2
+ 373              	.L19:
+ 374 0028 00000000 		.word	init_destination
+ 375 002c 00000000 		.word	empty_output_buffer
+ 376 0030 00000000 		.word	term_destination
+ 377              		.cfi_endproc
+ 378              	.LFE9:
+ 380              		.section	.text.jpeg_mem_dest,"ax",%progbits
+ 381              		.align	1
+ 382              		.global	jpeg_mem_dest
+ 383              		.syntax unified
+ 384              		.thumb
+ 385              		.thumb_func
+ 386              		.fpu fpv5-sp-d16
+ 388              	jpeg_mem_dest:
+ 389              	.LFB10:
+ 219:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** #endif /* JFILE */
+ 220:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 221:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** /*
+ARM GAS  /tmp/ccm5hMv7.s 			page 12
+
+
+ 222:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Prepare for output to a memory buffer.
+ 223:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * The caller may supply an own initial buffer with appropriate size.
+ 224:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * Otherwise, or when the actual data output exceeds the given size,
+ 225:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * the library adapts the buffer size as necessary.
+ 226:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * The standard library functions malloc/free are used for allocating
+ 227:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * larger memory, so the buffer is available to the application after
+ 228:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * finishing compression, and then the application is responsible for
+ 229:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  * freeing the requested memory.
+ 230:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****  */
+ 231:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 232:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** GLOBAL(void)
+ 233:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** jpeg_mem_dest (j_compress_ptr cinfo,
+ 234:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 	       unsigned char ** outbuffer, unsigned long * outsize)
+ 235:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** {
+ 390              		.loc 1 235 0
+ 391              		.cfi_startproc
+ 392              		@ args = 0, pretend = 0, frame = 0
+ 393              		@ frame_needed = 0, uses_anonymous_args = 0
+ 394              	.LVL35:
+ 395 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 396              	.LCFI5:
+ 397              		.cfi_def_cfa_offset 24
+ 398              		.cfi_offset 3, -24
+ 399              		.cfi_offset 4, -20
+ 400              		.cfi_offset 5, -16
+ 401              		.cfi_offset 6, -12
+ 402              		.cfi_offset 7, -8
+ 403              		.cfi_offset 14, -4
+ 404 0002 0546     		mov	r5, r0
+ 236:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   my_mem_dest_ptr dest;
+ 237:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 238:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (outbuffer == NULL || outsize == NULL)	/* sanity check */
+ 405              		.loc 1 238 0
+ 406 0004 0E46     		mov	r6, r1
+ 407 0006 1746     		mov	r7, r2
+ 408 0008 B2FA82F2 		clz	r2, r2
+ 409              	.LVL36:
+ 410 000c 5209     		lsrs	r2, r2, #5
+ 411 000e 0029     		cmp	r1, #0
+ 412 0010 08BF     		it	eq
+ 413 0012 0122     		moveq	r2, #1
+ 414 0014 2AB1     		cbz	r2, .L22
+ 239:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     ERREXIT(cinfo, JERR_BUFFER_SIZE);
+ 415              		.loc 1 239 0
+ 416 0016 0368     		ldr	r3, [r0]
+ 417 0018 1822     		movs	r2, #24
+ 418 001a 5A61     		str	r2, [r3, #20]
+ 419 001c 0368     		ldr	r3, [r0]
+ 420 001e 1B68     		ldr	r3, [r3]
+ 421 0020 9847     		blx	r3
+ 422              	.LVL37:
+ 423              	.L22:
+ 240:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 241:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   /* The destination object is made permanent so that multiple JPEG images
+ 242:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    * can be written to the same buffer without re-executing jpeg_mem_dest.
+ 243:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****    */
+ 244:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (cinfo->dest == NULL) {	/* first time for this JPEG object? */
+ARM GAS  /tmp/ccm5hMv7.s 			page 13
+
+
+ 424              		.loc 1 244 0
+ 425 0022 AB69     		ldr	r3, [r5, #24]
+ 426 0024 33B9     		cbnz	r3, .L23
+ 245:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     cinfo->dest = (struct jpeg_destination_mgr *)
+ 246:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+ 427              		.loc 1 246 0
+ 428 0026 6B68     		ldr	r3, [r5, #4]
+ 429 0028 1B68     		ldr	r3, [r3]
+ 430 002a 2822     		movs	r2, #40
+ 431 002c 0021     		movs	r1, #0
+ 432 002e 2846     		mov	r0, r5
+ 433 0030 9847     		blx	r3
+ 434              	.LVL38:
+ 245:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     cinfo->dest = (struct jpeg_destination_mgr *)
+ 435              		.loc 1 245 0
+ 436 0032 A861     		str	r0, [r5, #24]
+ 437              	.L23:
+ 247:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 				  SIZEOF(my_mem_destination_mgr));
+ 248:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   }
+ 249:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 250:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest = (my_mem_dest_ptr) cinfo->dest;
+ 438              		.loc 1 250 0
+ 439 0034 AC69     		ldr	r4, [r5, #24]
+ 440              	.LVL39:
+ 251:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.init_destination = init_mem_destination;
+ 441              		.loc 1 251 0
+ 442 0036 144B     		ldr	r3, .L28
+ 443 0038 A360     		str	r3, [r4, #8]
+ 252:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.empty_output_buffer = empty_mem_output_buffer;
+ 444              		.loc 1 252 0
+ 445 003a 144B     		ldr	r3, .L28+4
+ 446 003c E360     		str	r3, [r4, #12]
+ 253:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.term_destination = term_mem_destination;
+ 447              		.loc 1 253 0
+ 448 003e 144B     		ldr	r3, .L28+8
+ 449 0040 2361     		str	r3, [r4, #16]
+ 254:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->outbuffer = outbuffer;
+ 450              		.loc 1 254 0
+ 451 0042 6661     		str	r6, [r4, #20]
+ 255:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->outsize = outsize;
+ 452              		.loc 1 255 0
+ 453 0044 A761     		str	r7, [r4, #24]
+ 256:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->newbuffer = NULL;
+ 454              		.loc 1 256 0
+ 455 0046 0023     		movs	r3, #0
+ 456 0048 E361     		str	r3, [r4, #28]
+ 257:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 258:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   if (*outbuffer == NULL || *outsize == 0) {
+ 457              		.loc 1 258 0
+ 458 004a 3368     		ldr	r3, [r6]
+ 459 004c 0BB1     		cbz	r3, .L24
+ 460              		.loc 1 258 0 is_stmt 0 discriminator 1
+ 461 004e 3B68     		ldr	r3, [r7]
+ 462 0050 9BB9     		cbnz	r3, .L25
+ 463              	.L24:
+ 259:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     /* Allocate initial buffer */
+ 260:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     dest->newbuffer = *outbuffer = (unsigned char *) malloc(OUTPUT_BUF_SIZE);
+ARM GAS  /tmp/ccm5hMv7.s 			page 14
+
+
+ 464              		.loc 1 260 0 is_stmt 1
+ 465 0052 4FF48050 		mov	r0, #4096
+ 466 0056 FFF7FEFF 		bl	malloc
+ 467              	.LVL40:
+ 468 005a 3060     		str	r0, [r6]
+ 469 005c E061     		str	r0, [r4, #28]
+ 261:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     if (dest->newbuffer == NULL)
+ 470              		.loc 1 261 0
+ 471 005e 48B9     		cbnz	r0, .L26
+ 262:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****       ERREXIT1(cinfo, JERR_OUT_OF_MEMORY, 10);
+ 472              		.loc 1 262 0
+ 473 0060 2B68     		ldr	r3, [r5]
+ 474 0062 3822     		movs	r2, #56
+ 475 0064 5A61     		str	r2, [r3, #20]
+ 476 0066 2B68     		ldr	r3, [r5]
+ 477 0068 0A22     		movs	r2, #10
+ 478 006a 9A61     		str	r2, [r3, #24]
+ 479 006c 2B68     		ldr	r3, [r5]
+ 480 006e 1B68     		ldr	r3, [r3]
+ 481 0070 2846     		mov	r0, r5
+ 482 0072 9847     		blx	r3
+ 483              	.LVL41:
+ 484              	.L26:
+ 263:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****     *outsize = OUTPUT_BUF_SIZE;
+ 485              		.loc 1 263 0
+ 486 0074 4FF48053 		mov	r3, #4096
+ 487 0078 3B60     		str	r3, [r7]
+ 488              	.L25:
+ 264:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   }
+ 265:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** 
+ 266:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.next_output_byte = dest->buffer = *outbuffer;
+ 489              		.loc 1 266 0
+ 490 007a 3368     		ldr	r3, [r6]
+ 491 007c 2362     		str	r3, [r4, #32]
+ 492 007e 2360     		str	r3, [r4]
+ 267:Middlewares/Third_Party/LibJPEG/source/jdatadst.c ****   dest->pub.free_in_buffer = dest->bufsize = *outsize;
+ 493              		.loc 1 267 0
+ 494 0080 3B68     		ldr	r3, [r7]
+ 495 0082 6362     		str	r3, [r4, #36]
+ 496 0084 6360     		str	r3, [r4, #4]
+ 268:Middlewares/Third_Party/LibJPEG/source/jdatadst.c **** }
+ 497              		.loc 1 268 0
+ 498 0086 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 499              	.LVL42:
+ 500              	.L29:
+ 501              		.align	2
+ 502              	.L28:
+ 503 0088 00000000 		.word	init_mem_destination
+ 504 008c 00000000 		.word	empty_mem_output_buffer
+ 505 0090 00000000 		.word	term_mem_destination
+ 506              		.cfi_endproc
+ 507              	.LFE10:
+ 509              		.text
+ 510              	.Letext0:
+ 511              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 512              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 513              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ARM GAS  /tmp/ccm5hMv7.s 			page 15
+
+
+ 514              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 515              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdio.h"
+ 516              		.file 7 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 517              		.file 8 "Inc/jmorecfg.h"
+ 518              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 519              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jerror.h"
+ 520              		.file 11 "<built-in>"
+ARM GAS  /tmp/ccm5hMv7.s 			page 16
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jdatadst.c
+     /tmp/ccm5hMv7.s:18     .text.init_destination:0000000000000000 $t
+     /tmp/ccm5hMv7.s:24     .text.init_destination:0000000000000000 init_destination
+     /tmp/ccm5hMv7.s:60     .text.init_mem_destination:0000000000000000 $t
+     /tmp/ccm5hMv7.s:66     .text.init_mem_destination:0000000000000000 init_mem_destination
+     /tmp/ccm5hMv7.s:80     .text.term_mem_destination:0000000000000000 $t
+     /tmp/ccm5hMv7.s:86     .text.term_mem_destination:0000000000000000 term_mem_destination
+     /tmp/ccm5hMv7.s:114    .text.term_destination:0000000000000000 $t
+     /tmp/ccm5hMv7.s:120    .text.term_destination:0000000000000000 term_destination
+     /tmp/ccm5hMv7.s:176    .text.empty_output_buffer:0000000000000000 $t
+     /tmp/ccm5hMv7.s:182    .text.empty_output_buffer:0000000000000000 empty_output_buffer
+     /tmp/ccm5hMv7.s:233    .text.empty_mem_output_buffer:0000000000000000 $t
+     /tmp/ccm5hMv7.s:239    .text.empty_mem_output_buffer:0000000000000000 empty_mem_output_buffer
+     /tmp/ccm5hMv7.s:317    .text.jpeg_stdio_dest:0000000000000000 $t
+     /tmp/ccm5hMv7.s:324    .text.jpeg_stdio_dest:0000000000000000 jpeg_stdio_dest
+     /tmp/ccm5hMv7.s:374    .text.jpeg_stdio_dest:0000000000000028 $d
+     /tmp/ccm5hMv7.s:381    .text.jpeg_mem_dest:0000000000000000 $t
+     /tmp/ccm5hMv7.s:388    .text.jpeg_mem_dest:0000000000000000 jpeg_mem_dest
+     /tmp/ccm5hMv7.s:503    .text.jpeg_mem_dest:0000000000000088 $d
+
+UNDEFINED SYMBOLS
+fwrite
+malloc
+memcpy
+free

@@ -1,0 +1,824 @@
+ARM GAS  /tmp/ccNFUWGD.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"jidctflt.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.jpeg_idct_float,"ax",%progbits
+  18              		.align	1
+  19              		.global	jpeg_idct_float
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  23              		.fpu fpv5-sp-d16
+  25              	jpeg_idct_float:
+  26              	.LFB3:
+  27              		.file 1 "Middlewares/Third_Party/LibJPEG/source/jidctflt.c"
+   1:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** /*
+   2:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * jidctflt.c
+   3:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  *
+   4:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * Copyright (C) 1994-1998, Thomas G. Lane.
+   5:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * Modified 2010 by Guido Vollbeding.
+   6:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * This file is part of the Independent JPEG Group's software.
+   7:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * For conditions of distribution and use, see the accompanying README file.
+   8:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  *
+   9:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * This file contains a floating-point implementation of the
+  10:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * inverse DCT (Discrete Cosine Transform).  In the IJG code, this routine
+  11:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * must also perform dequantization of the input coefficients.
+  12:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  *
+  13:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * This implementation should be more accurate than either of the integer
+  14:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * IDCT implementations.  However, it may not give the same results on all
+  15:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * machines because of differences in roundoff behavior.  Speed will depend
+  16:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * on the hardware's floating point capacity.
+  17:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  *
+  18:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * A 2-D IDCT can be done by 1-D IDCT on each column followed by 1-D IDCT
+  19:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * on each row (or vice versa, but it's more convenient to emit a row at
+  20:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * a time).  Direct algorithms are also available, but they are much more
+  21:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * complex and seem not to be any faster when reduced to code.
+  22:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  *
+  23:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * This implementation is based on Arai, Agui, and Nakajima's algorithm for
+  24:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * scaled DCT.  Their original paper (Trans. IEICE E-71(11):1095) is in
+  25:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * Japanese, but the algorithm is described in the Pennebaker & Mitchell
+  26:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * JPEG textbook (see REFERENCES section in file README).  The following code
+  27:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * is based directly on figure 4-8 in P&M.
+  28:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * While an 8-point DCT cannot be done in less than 11 multiplies, it is
+  29:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * possible to arrange the computation so that many of the multiplies are
+  30:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * simple scalings of the final outputs.  These multiplies can then be
+  31:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * folded into the multiplications or divisions by the JPEG quantization
+ARM GAS  /tmp/ccNFUWGD.s 			page 2
+
+
+  32:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * table entries.  The AA&N method leaves only 5 multiplies and 29 adds
+  33:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * to be done in the DCT itself.
+  34:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * The primary disadvantage of this method is that with a fixed-point
+  35:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * implementation, accuracy is lost due to imprecise representation of the
+  36:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * scaled quantization values.  However, that problem does not arise if
+  37:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * we use floating point arithmetic.
+  38:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  */
+  39:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  40:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #define JPEG_INTERNALS
+  41:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #include "jinclude.h"
+  42:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #include "jpeglib.h"
+  43:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #include "jdct.h"		/* Private declarations for DCT subsystem */
+  44:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  45:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #ifdef DCT_FLOAT_SUPPORTED
+  46:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  47:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  48:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** /*
+  49:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * This module is specialized to the case DCTSIZE = 8.
+  50:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  */
+  51:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  52:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #if DCTSIZE != 8
+  53:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   Sorry, this code only copes with 8x8 DCTs. /* deliberate syntax err */
+  54:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #endif
+  55:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  56:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  57:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** /* Dequantize a coefficient by multiplying it by the multiplier-table
+  58:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * entry; produce a float result.
+  59:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  */
+  60:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  61:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** #define DEQUANTIZE(coef,quantval)  (((FAST_FLOAT) (coef)) * (quantval))
+  62:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  63:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  64:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** /*
+  65:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  * Perform dequantization and inverse DCT on one block of coefficients.
+  66:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****  */
+  67:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  68:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** GLOBAL(void)
+  69:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** jpeg_idct_float (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+  70:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 		 JCOEFPTR coef_block,
+  71:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 		 JSAMPARRAY output_buf, JDIMENSION output_col)
+  72:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** {
+  28              		.loc 1 72 0
+  29              		.cfi_startproc
+  30              		@ args = 4, pretend = 0, frame = 256
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  34 0000 F0B4     		push	{r4, r5, r6, r7}
+  35              	.LCFI0:
+  36              		.cfi_def_cfa_offset 16
+  37              		.cfi_offset 4, -16
+  38              		.cfi_offset 5, -12
+  39              		.cfi_offset 6, -8
+  40              		.cfi_offset 7, -4
+  41 0002 C0B0     		sub	sp, sp, #256
+  42              	.LCFI1:
+  43              		.cfi_def_cfa_offset 272
+ARM GAS  /tmp/ccNFUWGD.s 			page 3
+
+
+  44 0004 449C     		ldr	r4, [sp, #272]
+  73:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FAST_FLOAT tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+  74:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FAST_FLOAT tmp10, tmp11, tmp12, tmp13;
+  75:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FAST_FLOAT z5, z10, z11, z12, z13;
+  76:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   JCOEFPTR inptr;
+  77:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FLOAT_MULT_TYPE * quantptr;
+  78:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FAST_FLOAT * wsptr;
+  79:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   JSAMPROW outptr;
+  80:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   JSAMPLE *range_limit = cinfo->sample_range_limit;
+  45              		.loc 1 80 0
+  46 0006 D0F84C01 		ldr	r0, [r0, #332]
+  47              	.LVL1:
+  81:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   int ctr;
+  82:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   FAST_FLOAT workspace[DCTSIZE2]; /* buffers data between passes */
+  83:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  84:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   /* Pass 1: process columns from input, store into work array. */
+  85:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+  86:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   inptr = coef_block;
+  87:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   quantptr = (FLOAT_MULT_TYPE *) compptr->dct_table;
+  48              		.loc 1 87 0
+  49 000a 4E6D     		ldr	r6, [r1, #84]
+  50              	.LVL2:
+  88:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   wsptr = workspace;
+  89:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   for (ctr = DCTSIZE; ctr > 0; ctr--) {
+  51              		.loc 1 89 0
+  52 000c 0827     		movs	r7, #8
+  88:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   wsptr = workspace;
+  53              		.loc 1 88 0
+  54 000e 6D46     		mov	r5, sp
+  55              		.loc 1 89 0
+  56 0010 ADE0     		b	.L2
+  57              	.LVL3:
+  58              	.L3:
+  90:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Due to quantization, we will usually find that many of the input
+  91:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * coefficients are zero, especially the AC terms.  We can exploit this
+  92:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * by short-circuiting the IDCT calculation for any column in which all
+  93:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * the AC terms are zero.  In that case each output is equal to the
+  94:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * DC coefficient (with scale factor as needed).
+  95:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * With typical images and quantization tables, half or more of the
+  96:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * column DCT calculations can be simplified this way.
+  97:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      */
+  98:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     
+  99:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     if (inptr[DCTSIZE*1] == 0 && inptr[DCTSIZE*2] == 0 &&
+ 100:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*3] == 0 && inptr[DCTSIZE*4] == 0 &&
+ 101:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*5] == 0 && inptr[DCTSIZE*6] == 0 &&
+ 102:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*7] == 0) {
+ 103:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       /* AC terms all zero */
+ 104:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       FAST_FLOAT dcval = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]);
+ 105:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       
+ 106:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*0] = dcval;
+ 107:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*1] = dcval;
+ 108:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*2] = dcval;
+ 109:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*3] = dcval;
+ 110:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*4] = dcval;
+ 111:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*5] = dcval;
+ 112:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*6] = dcval;
+ 113:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*7] = dcval;
+ARM GAS  /tmp/ccNFUWGD.s 			page 4
+
+
+ 114:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       
+ 115:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       inptr++;			/* advance pointers to next column */
+ 116:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       quantptr++;
+ 117:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr++;
+ 118:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       continue;
+ 119:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     }
+ 120:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     
+ 121:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Even part */
+ 122:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 123:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp0 = DEQUANTIZE(inptr[DCTSIZE*0], quantptr[DCTSIZE*0]);
+  59              		.loc 1 123 0
+  60 0012 B2F900C0 		ldrsh	ip, [r2]
+  61 0016 06EE10CA 		vmov	s12, ip	@ int
+  62 001a B8EEC66A 		vcvt.f32.s32	s12, s12
+  63 001e D6ED006A 		vldr.32	s13, [r6]
+  64 0022 66EE266A 		vmul.f32	s13, s12, s13
+  65              	.LVL4:
+ 124:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp1 = DEQUANTIZE(inptr[DCTSIZE*2], quantptr[DCTSIZE*2]);
+  66              		.loc 1 124 0
+  67 0026 B2F920C0 		ldrsh	ip, [r2, #32]
+  68 002a 07EE10CA 		vmov	s14, ip	@ int
+  69 002e B8EEC77A 		vcvt.f32.s32	s14, s14
+  70 0032 96ED106A 		vldr.32	s12, [r6, #64]
+  71 0036 27EE067A 		vmul.f32	s14, s14, s12
+  72              	.LVL5:
+ 125:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp2 = DEQUANTIZE(inptr[DCTSIZE*4], quantptr[DCTSIZE*4]);
+  73              		.loc 1 125 0
+  74 003a B2F940C0 		ldrsh	ip, [r2, #64]
+  75 003e 06EE10CA 		vmov	s12, ip	@ int
+  76 0042 B8EEC66A 		vcvt.f32.s32	s12, s12
+  77 0046 D6ED207A 		vldr.32	s15, [r6, #128]
+  78 004a 26EE276A 		vmul.f32	s12, s12, s15
+  79              	.LVL6:
+ 126:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp3 = DEQUANTIZE(inptr[DCTSIZE*6], quantptr[DCTSIZE*6]);
+  80              		.loc 1 126 0
+  81 004e B2F960C0 		ldrsh	ip, [r2, #96]
+  82 0052 05EE90CA 		vmov	s11, ip	@ int
+  83 0056 F8EEE55A 		vcvt.f32.s32	s11, s11
+  84 005a D6ED307A 		vldr.32	s15, [r6, #192]
+  85 005e 65EEA75A 		vmul.f32	s11, s11, s15
+  86              	.LVL7:
+ 127:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 128:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp10 = tmp0 + tmp2;	/* phase 3 */
+  87              		.loc 1 128 0
+  88 0062 36EE864A 		vadd.f32	s8, s13, s12
+  89              	.LVL8:
+ 129:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp11 = tmp0 - tmp2;
+  90              		.loc 1 129 0
+  91 0066 36EEC66A 		vsub.f32	s12, s13, s12
+  92              	.LVL9:
+ 130:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 131:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp13 = tmp1 + tmp3;	/* phases 5-3 */
+  93              		.loc 1 131 0
+  94 006a 77EE257A 		vadd.f32	s15, s14, s11
+  95              	.LVL10:
+ 132:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp12 = (tmp1 - tmp3) * ((FAST_FLOAT) 1.414213562) - tmp13; /* 2*c4 */
+  96              		.loc 1 132 0
+ARM GAS  /tmp/ccNFUWGD.s 			page 5
+
+
+  97 006e 37EE657A 		vsub.f32	s14, s14, s11
+  98              	.LVL11:
+  99 0072 DFEDB92A 		vldr.32	s5, .L10
+ 100 0076 27EE227A 		vmul.f32	s14, s14, s5
+ 101 007a 37EE677A 		vsub.f32	s14, s14, s15
+ 102              	.LVL12:
+ 133:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 134:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp0 = tmp10 + tmp13;	/* phase 2 */
+ 103              		.loc 1 134 0
+ 104 007e 34EE273A 		vadd.f32	s6, s8, s15
+ 105              	.LVL13:
+ 135:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp3 = tmp10 - tmp13;
+ 106              		.loc 1 135 0
+ 107 0082 34EE674A 		vsub.f32	s8, s8, s15
+ 108              	.LVL14:
+ 136:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp1 = tmp11 + tmp12;
+ 109              		.loc 1 136 0
+ 110 0086 76EE073A 		vadd.f32	s7, s12, s14
+ 111              	.LVL15:
+ 137:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp2 = tmp11 - tmp12;
+ 112              		.loc 1 137 0
+ 113 008a 36EE476A 		vsub.f32	s12, s12, s14
+ 114              	.LVL16:
+ 138:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     
+ 139:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Odd part */
+ 140:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 141:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp4 = DEQUANTIZE(inptr[DCTSIZE*1], quantptr[DCTSIZE*1]);
+ 115              		.loc 1 141 0
+ 116 008e 07EE901A 		vmov	s15, r1	@ int
+ 117              	.LVL17:
+ 118 0092 B8EEE77A 		vcvt.f32.s32	s14, s15
+ 119              	.LVL18:
+ 120 0096 D6ED086A 		vldr.32	s13, [r6, #32]
+ 121              	.LVL19:
+ 122 009a 67EE266A 		vmul.f32	s13, s14, s13
+ 123              	.LVL20:
+ 142:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp5 = DEQUANTIZE(inptr[DCTSIZE*3], quantptr[DCTSIZE*3]);
+ 124              		.loc 1 142 0
+ 125 009e B2F93010 		ldrsh	r1, [r2, #48]
+ 126 00a2 04EE901A 		vmov	s9, r1	@ int
+ 127 00a6 F8EEE44A 		vcvt.f32.s32	s9, s9
+ 128 00aa D6ED185A 		vldr.32	s11, [r6, #96]
+ 129              	.LVL21:
+ 130 00ae 64EEA54A 		vmul.f32	s9, s9, s11
+ 131              	.LVL22:
+ 143:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp6 = DEQUANTIZE(inptr[DCTSIZE*5], quantptr[DCTSIZE*5]);
+ 132              		.loc 1 143 0
+ 133 00b2 B2F95010 		ldrsh	r1, [r2, #80]
+ 134 00b6 05EE901A 		vmov	s11, r1	@ int
+ 135 00ba F8EEE55A 		vcvt.f32.s32	s11, s11
+ 136 00be D6ED287A 		vldr.32	s15, [r6, #160]
+ 137 00c2 65EEA75A 		vmul.f32	s11, s11, s15
+ 138              	.LVL23:
+ 144:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp7 = DEQUANTIZE(inptr[DCTSIZE*7], quantptr[DCTSIZE*7]);
+ 139              		.loc 1 144 0
+ 140 00c6 B2F97010 		ldrsh	r1, [r2, #112]
+ 141 00ca 07EE101A 		vmov	s14, r1	@ int
+ARM GAS  /tmp/ccNFUWGD.s 			page 6
+
+
+ 142 00ce B8EEC77A 		vcvt.f32.s32	s14, s14
+ 143 00d2 D6ED387A 		vldr.32	s15, [r6, #224]
+ 144 00d6 27EE277A 		vmul.f32	s14, s14, s15
+ 145              	.LVL24:
+ 145:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 146:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z13 = tmp6 + tmp5;		/* phase 6 */
+ 146              		.loc 1 146 0
+ 147 00da 74EEA57A 		vadd.f32	s15, s9, s11
+ 148              	.LVL25:
+ 147:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z10 = tmp6 - tmp5;
+ 149              		.loc 1 147 0
+ 150 00de 75EEE45A 		vsub.f32	s11, s11, s9
+ 151              	.LVL26:
+ 148:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z11 = tmp4 + tmp7;
+ 152              		.loc 1 148 0
+ 153 00e2 36EE875A 		vadd.f32	s10, s13, s14
+ 154              	.LVL27:
+ 149:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z12 = tmp4 - tmp7;
+ 155              		.loc 1 149 0
+ 156 00e6 36EEC77A 		vsub.f32	s14, s13, s14
+ 157              	.LVL28:
+ 150:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 151:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp7 = z11 + z13;		/* phase 5 */
+ 158              		.loc 1 151 0
+ 159 00ea 77EE854A 		vadd.f32	s9, s15, s10
+ 160              	.LVL29:
+ 152:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp11 = (z11 - z13) * ((FAST_FLOAT) 1.414213562); /* 2*c4 */
+ 161              		.loc 1 152 0
+ 162 00ee 35EE675A 		vsub.f32	s10, s10, s15
+ 163              	.LVL30:
+ 164 00f2 25EE225A 		vmul.f32	s10, s10, s5
+ 165              	.LVL31:
+ 153:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 154:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z5 = (z10 + z12) * ((FAST_FLOAT) 1.847759065); /* 2*c2 */
+ 166              		.loc 1 154 0
+ 167 00f6 75EE876A 		vadd.f32	s13, s11, s14
+ 168              	.LVL32:
+ 169 00fa DFED987A 		vldr.32	s15, .L10+4
+ 170              	.LVL33:
+ 171 00fe 66EEA76A 		vmul.f32	s13, s13, s15
+ 172              	.LVL34:
+ 155:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp10 = z5 - z12 * ((FAST_FLOAT) 1.082392200); /* 2*(c2-c6) */
+ 173              		.loc 1 155 0
+ 174 0102 DFED977A 		vldr.32	s15, .L10+8
+ 175 0106 67EE277A 		vmul.f32	s15, s14, s15
+ 176 010a 76EEE77A 		vsub.f32	s15, s13, s15
+ 177              	.LVL35:
+ 156:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp12 = z5 - z10 * ((FAST_FLOAT) 2.613125930); /* 2*(c2+c6) */
+ 178              		.loc 1 156 0
+ 179 010e 9FED957A 		vldr.32	s14, .L10+12
+ 180              	.LVL36:
+ 181 0112 65EE875A 		vmul.f32	s11, s11, s14
+ 182              	.LVL37:
+ 183 0116 76EEE55A 		vsub.f32	s11, s13, s11
+ 184              	.LVL38:
+ 157:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 158:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp6 = tmp12 - tmp7;	/* phase 2 */
+ARM GAS  /tmp/ccNFUWGD.s 			page 7
+
+
+ 185              		.loc 1 158 0
+ 186 011a 75EEE45A 		vsub.f32	s11, s11, s9
+ 187              	.LVL39:
+ 159:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp5 = tmp11 - tmp6;
+ 188              		.loc 1 159 0
+ 189 011e 35EE657A 		vsub.f32	s14, s10, s11
+ 190              	.LVL40:
+ 160:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp4 = tmp10 - tmp5;
+ 191              		.loc 1 160 0
+ 192 0122 77EEC77A 		vsub.f32	s15, s15, s14
+ 193              	.LVL41:
+ 161:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 162:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*0] = tmp0 + tmp7;
+ 194              		.loc 1 162 0
+ 195 0126 73EE246A 		vadd.f32	s13, s6, s9
+ 196              	.LVL42:
+ 197 012a C5ED006A 		vstr.32	s13, [r5]
+ 198              	.LVL43:
+ 163:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*7] = tmp0 - tmp7;
+ 199              		.loc 1 163 0
+ 200 012e 33EE643A 		vsub.f32	s6, s6, s9
+ 201              	.LVL44:
+ 202 0132 85ED383A 		vstr.32	s6, [r5, #224]
+ 164:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*1] = tmp1 + tmp6;
+ 203              		.loc 1 164 0
+ 204 0136 73EEA56A 		vadd.f32	s13, s7, s11
+ 205 013a C5ED086A 		vstr.32	s13, [r5, #32]
+ 165:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*6] = tmp1 - tmp6;
+ 206              		.loc 1 165 0
+ 207 013e 73EEE55A 		vsub.f32	s11, s7, s11
+ 208              	.LVL45:
+ 209 0142 C5ED305A 		vstr.32	s11, [r5, #192]
+ 166:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*2] = tmp2 + tmp5;
+ 210              		.loc 1 166 0
+ 211 0146 76EE076A 		vadd.f32	s13, s12, s14
+ 212 014a C5ED106A 		vstr.32	s13, [r5, #64]
+ 167:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*5] = tmp2 - tmp5;
+ 213              		.loc 1 167 0
+ 214 014e 36EE476A 		vsub.f32	s12, s12, s14
+ 215              	.LVL46:
+ 216 0152 85ED286A 		vstr.32	s12, [r5, #160]
+ 168:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*3] = tmp3 + tmp4;
+ 217              		.loc 1 168 0
+ 218 0156 34EE277A 		vadd.f32	s14, s8, s15
+ 219              	.LVL47:
+ 220 015a 85ED187A 		vstr.32	s14, [r5, #96]
+ 169:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr[DCTSIZE*4] = tmp3 - tmp4;
+ 221              		.loc 1 169 0
+ 222 015e 74EE677A 		vsub.f32	s15, s8, s15
+ 223              	.LVL48:
+ 224 0162 C5ED207A 		vstr.32	s15, [r5, #128]
+ 170:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 171:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     inptr++;			/* advance pointers to next column */
+ 225              		.loc 1 171 0
+ 226 0166 0232     		adds	r2, r2, #2
+ 227              	.LVL49:
+ 172:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     quantptr++;
+ARM GAS  /tmp/ccNFUWGD.s 			page 8
+
+
+ 228              		.loc 1 172 0
+ 229 0168 0436     		adds	r6, r6, #4
+ 230              	.LVL50:
+ 173:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr++;
+ 231              		.loc 1 173 0
+ 232 016a 0435     		adds	r5, r5, #4
+ 233              	.LVL51:
+ 234              	.L4:
+  89:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Due to quantization, we will usually find that many of the input
+ 235              		.loc 1 89 0 discriminator 2
+ 236 016c 013F     		subs	r7, r7, #1
+ 237              	.LVL52:
+ 238              	.L2:
+  89:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Due to quantization, we will usually find that many of the input
+ 239              		.loc 1 89 0 is_stmt 0 discriminator 1
+ 240 016e 002F     		cmp	r7, #0
+ 241 0170 44DD     		ble	.L9
+  99:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*3] == 0 && inptr[DCTSIZE*4] == 0 &&
+ 242              		.loc 1 99 0 is_stmt 1
+ 243 0172 B2F91010 		ldrsh	r1, [r2, #16]
+ 244 0176 0029     		cmp	r1, #0
+ 245 0178 7FF44BAF 		bne	.L3
+  99:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*3] == 0 && inptr[DCTSIZE*4] == 0 &&
+ 246              		.loc 1 99 0 is_stmt 0 discriminator 1
+ 247 017c B2F920C0 		ldrsh	ip, [r2, #32]
+ 248 0180 BCF1000F 		cmp	ip, #0
+ 249 0184 7FF445AF 		bne	.L3
+ 100:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*5] == 0 && inptr[DCTSIZE*6] == 0 &&
+ 250              		.loc 1 100 0 is_stmt 1 discriminator 2
+ 251 0188 B2F930C0 		ldrsh	ip, [r2, #48]
+  99:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*3] == 0 && inptr[DCTSIZE*4] == 0 &&
+ 252              		.loc 1 99 0 discriminator 2
+ 253 018c BCF1000F 		cmp	ip, #0
+ 254 0190 7FF43FAF 		bne	.L3
+ 100:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*5] == 0 && inptr[DCTSIZE*6] == 0 &&
+ 255              		.loc 1 100 0
+ 256 0194 B2F940C0 		ldrsh	ip, [r2, #64]
+ 257 0198 BCF1000F 		cmp	ip, #0
+ 258 019c 7FF439AF 		bne	.L3
+ 101:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*7] == 0) {
+ 259              		.loc 1 101 0 discriminator 1
+ 260 01a0 B2F950C0 		ldrsh	ip, [r2, #80]
+ 100:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*5] == 0 && inptr[DCTSIZE*6] == 0 &&
+ 261              		.loc 1 100 0 discriminator 1
+ 262 01a4 BCF1000F 		cmp	ip, #0
+ 263 01a8 7FF433AF 		bne	.L3
+ 101:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*7] == 0) {
+ 264              		.loc 1 101 0
+ 265 01ac B2F960C0 		ldrsh	ip, [r2, #96]
+ 266 01b0 BCF1000F 		cmp	ip, #0
+ 267 01b4 7FF42DAF 		bne	.L3
+ 102:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       /* AC terms all zero */
+ 268              		.loc 1 102 0 discriminator 1
+ 269 01b8 B2F970C0 		ldrsh	ip, [r2, #112]
+ 101:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 	inptr[DCTSIZE*7] == 0) {
+ 270              		.loc 1 101 0 discriminator 1
+ 271 01bc BCF1000F 		cmp	ip, #0
+ARM GAS  /tmp/ccNFUWGD.s 			page 9
+
+
+ 272 01c0 7FF427AF 		bne	.L3
+ 273              	.LBB2:
+ 104:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       
+ 274              		.loc 1 104 0
+ 275 01c4 32F9021B 		ldrsh	r1, [r2], #2
+ 276              	.LVL53:
+ 277 01c8 07EE901A 		vmov	s15, r1	@ int
+ 278 01cc F8EEE77A 		vcvt.f32.s32	s15, s15
+ 279 01d0 B6EC017A 		vldmia.32	r6!, {s14}
+ 280              	.LVL54:
+ 281 01d4 67EE877A 		vmul.f32	s15, s15, s14
+ 282              	.LVL55:
+ 106:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*1] = dcval;
+ 283              		.loc 1 106 0
+ 284 01d8 C5ED007A 		vstr.32	s15, [r5]
+ 107:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*2] = dcval;
+ 285              		.loc 1 107 0
+ 286 01dc C5ED087A 		vstr.32	s15, [r5, #32]
+ 108:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*3] = dcval;
+ 287              		.loc 1 108 0
+ 288 01e0 C5ED107A 		vstr.32	s15, [r5, #64]
+ 109:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*4] = dcval;
+ 289              		.loc 1 109 0
+ 290 01e4 C5ED187A 		vstr.32	s15, [r5, #96]
+ 110:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*5] = dcval;
+ 291              		.loc 1 110 0
+ 292 01e8 C5ED207A 		vstr.32	s15, [r5, #128]
+ 111:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*6] = dcval;
+ 293              		.loc 1 111 0
+ 294 01ec C5ED287A 		vstr.32	s15, [r5, #160]
+ 112:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       wsptr[DCTSIZE*7] = dcval;
+ 295              		.loc 1 112 0
+ 296 01f0 C5ED307A 		vstr.32	s15, [r5, #192]
+ 113:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       
+ 297              		.loc 1 113 0
+ 298 01f4 C5ED387A 		vstr.32	s15, [r5, #224]
+ 299              	.LVL56:
+ 117:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****       continue;
+ 300              		.loc 1 117 0
+ 301 01f8 0435     		adds	r5, r5, #4
+ 302              	.LVL57:
+ 118:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     }
+ 303              		.loc 1 118 0
+ 304 01fa B7E7     		b	.L4
+ 305              	.LVL58:
+ 306              	.L9:
+ 307              	.LBE2:
+ 174:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   }
+ 175:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   
+ 176:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   /* Pass 2: process rows from work array, store into output array. */
+ 177:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 178:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   wsptr = workspace;
+ 179:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   for (ctr = 0; ctr < DCTSIZE; ctr++) {
+ 308              		.loc 1 179 0
+ 309 01fc 0026     		movs	r6, #0
+ 310              	.LVL59:
+ 178:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   for (ctr = 0; ctr < DCTSIZE; ctr++) {
+ARM GAS  /tmp/ccNFUWGD.s 			page 10
+
+
+ 311              		.loc 1 178 0
+ 312 01fe 6946     		mov	r1, sp
+ 313 0200 A4E0     		b	.L6
+ 314              	.LVL60:
+ 315              	.L7:
+ 180:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr = output_buf[ctr] + output_col;
+ 316              		.loc 1 180 0 discriminator 3
+ 317 0202 53F82670 		ldr	r7, [r3, r6, lsl #2]
+ 318 0206 3D19     		adds	r5, r7, r4
+ 319              	.LVL61:
+ 181:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Rows of zeroes can be exploited in the same way as we did with columns.
+ 182:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * However, the column calculation has created many nonzero AC terms, so
+ 183:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * the simplification applies less often (typically 5% to 10% of the time).
+ 184:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      * And testing floats for zero is relatively expensive, so we don't bother.
+ 185:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****      */
+ 186:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     
+ 187:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Even part */
+ 188:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 189:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Apply signed->unsigned and prepare float->int conversion */
+ 190:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z5 = wsptr[0] + ((FAST_FLOAT) CENTERJSAMPLE + (FAST_FLOAT) 0.5);
+ 320              		.loc 1 190 0 discriminator 3
+ 321 0208 D1ED007A 		vldr.32	s15, [r1]
+ 322 020c 9FED567A 		vldr.32	s14, .L10+16
+ 323 0210 77EE877A 		vadd.f32	s15, s15, s14
+ 324              	.LVL62:
+ 191:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp10 = z5 + wsptr[4];
+ 325              		.loc 1 191 0 discriminator 3
+ 326 0214 91ED047A 		vldr.32	s14, [r1, #16]
+ 327 0218 77EE273A 		vadd.f32	s7, s14, s15
+ 328              	.LVL63:
+ 192:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp11 = z5 - wsptr[4];
+ 329              		.loc 1 192 0 discriminator 3
+ 330 021c 77EEC77A 		vsub.f32	s15, s15, s14
+ 331              	.LVL64:
+ 193:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 194:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp13 = wsptr[2] + wsptr[6];
+ 332              		.loc 1 194 0 discriminator 3
+ 333 0220 91ED025A 		vldr.32	s10, [r1, #8]
+ 334 0224 D1ED066A 		vldr.32	s13, [r1, #24]
+ 335 0228 35EE267A 		vadd.f32	s14, s10, s13
+ 336              	.LVL65:
+ 195:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp12 = (wsptr[2] - wsptr[6]) * ((FAST_FLOAT) 1.414213562) - tmp13;
+ 337              		.loc 1 195 0 discriminator 3
+ 338 022c 35EE665A 		vsub.f32	s10, s10, s13
+ 339 0230 9FED492A 		vldr.32	s4, .L10
+ 340 0234 25EE025A 		vmul.f32	s10, s10, s4
+ 341 0238 35EE475A 		vsub.f32	s10, s10, s14
+ 342              	.LVL66:
+ 196:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 197:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp0 = tmp10 + tmp13;
+ 343              		.loc 1 197 0 discriminator 3
+ 344 023c 73EE874A 		vadd.f32	s9, s7, s14
+ 345              	.LVL67:
+ 198:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp3 = tmp10 - tmp13;
+ 346              		.loc 1 198 0 discriminator 3
+ 347 0240 73EEC73A 		vsub.f32	s7, s7, s14
+ 348              	.LVL68:
+ARM GAS  /tmp/ccNFUWGD.s 			page 11
+
+
+ 199:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp1 = tmp11 + tmp12;
+ 349              		.loc 1 199 0 discriminator 3
+ 350 0244 37EE853A 		vadd.f32	s6, s15, s10
+ 351              	.LVL69:
+ 200:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp2 = tmp11 - tmp12;
+ 352              		.loc 1 200 0 discriminator 3
+ 353 0248 77EEC57A 		vsub.f32	s15, s15, s10
+ 354              	.LVL70:
+ 201:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 202:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Odd part */
+ 203:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 204:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z13 = wsptr[5] + wsptr[3];
+ 355              		.loc 1 204 0 discriminator 3
+ 356 024c 91ED054A 		vldr.32	s8, [r1, #20]
+ 357 0250 D1ED035A 		vldr.32	s11, [r1, #12]
+ 358 0254 74EE251A 		vadd.f32	s3, s8, s11
+ 359              	.LVL71:
+ 205:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z10 = wsptr[5] - wsptr[3];
+ 360              		.loc 1 205 0 discriminator 3
+ 361 0258 34EE654A 		vsub.f32	s8, s8, s11
+ 362              	.LVL72:
+ 206:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z11 = wsptr[1] + wsptr[7];
+ 363              		.loc 1 206 0 discriminator 3
+ 364 025c D1ED016A 		vldr.32	s13, [r1, #4]
+ 365 0260 91ED077A 		vldr.32	s14, [r1, #28]
+ 366              	.LVL73:
+ 367 0264 36EE876A 		vadd.f32	s12, s13, s14
+ 368              	.LVL74:
+ 207:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z12 = wsptr[1] - wsptr[7];
+ 369              		.loc 1 207 0 discriminator 3
+ 370 0268 76EEC76A 		vsub.f32	s13, s13, s14
+ 371              	.LVL75:
+ 208:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 209:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp7 = z11 + z13;
+ 372              		.loc 1 209 0 discriminator 3
+ 373 026c 71EE862A 		vadd.f32	s5, s3, s12
+ 374              	.LVL76:
+ 210:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp11 = (z11 - z13) * ((FAST_FLOAT) 1.414213562);
+ 375              		.loc 1 210 0 discriminator 3
+ 376 0270 36EE616A 		vsub.f32	s12, s12, s3
+ 377              	.LVL77:
+ 378 0274 26EE026A 		vmul.f32	s12, s12, s4
+ 379              	.LVL78:
+ 211:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 212:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     z5 = (z10 + z12) * ((FAST_FLOAT) 1.847759065); /* 2*c2 */
+ 380              		.loc 1 212 0 discriminator 3
+ 381 0278 34EE265A 		vadd.f32	s10, s8, s13
+ 382              	.LVL79:
+ 383 027c DFED375A 		vldr.32	s11, .L10+4
+ 384 0280 25EE255A 		vmul.f32	s10, s10, s11
+ 385              	.LVL80:
+ 213:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp10 = z5 - z12 * ((FAST_FLOAT) 1.082392200); /* 2*(c2-c6) */
+ 386              		.loc 1 213 0 discriminator 3
+ 387 0284 9FED367A 		vldr.32	s14, .L10+8
+ 388              	.LVL81:
+ 389 0288 26EE877A 		vmul.f32	s14, s13, s14
+ 390 028c 35EE477A 		vsub.f32	s14, s10, s14
+ARM GAS  /tmp/ccNFUWGD.s 			page 12
+
+
+ 391              	.LVL82:
+ 214:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp12 = z5 - z10 * ((FAST_FLOAT) 2.613125930); /* 2*(c2+c6) */
+ 392              		.loc 1 214 0 discriminator 3
+ 393 0290 DFED345A 		vldr.32	s11, .L10+12
+ 394 0294 24EE254A 		vmul.f32	s8, s8, s11
+ 395              	.LVL83:
+ 396 0298 75EE445A 		vsub.f32	s11, s10, s8
+ 397              	.LVL84:
+ 215:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 216:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp6 = tmp12 - tmp7;
+ 398              		.loc 1 216 0 discriminator 3
+ 399 029c 75EEE25A 		vsub.f32	s11, s11, s5
+ 400              	.LVL85:
+ 217:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp5 = tmp11 - tmp6;
+ 401              		.loc 1 217 0 discriminator 3
+ 402 02a0 76EE656A 		vsub.f32	s13, s12, s11
+ 403              	.LVL86:
+ 218:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     tmp4 = tmp10 - tmp5;
+ 404              		.loc 1 218 0 discriminator 3
+ 405 02a4 37EE667A 		vsub.f32	s14, s14, s13
+ 406              	.LVL87:
+ 219:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 220:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     /* Final output stage: float->int conversion and range-limit */
+ 221:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** 
+ 222:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[0] = range_limit[((int) (tmp0 + tmp7)) & RANGE_MASK];
+ 407              		.loc 1 222 0 discriminator 3
+ 408 02a8 34EEA26A 		vadd.f32	s12, s9, s5
+ 409              	.LVL88:
+ 410 02ac BDEEC66A 		vcvt.s32.f32	s12, s12
+ 411 02b0 16EE102A 		vmov	r2, s12	@ int
+ 412 02b4 C2F30902 		ubfx	r2, r2, #0, #10
+ 413 02b8 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 414 02ba 3A55     		strb	r2, [r7, r4]
+ 415              	.LVL89:
+ 223:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[7] = range_limit[((int) (tmp0 - tmp7)) & RANGE_MASK];
+ 416              		.loc 1 223 0 discriminator 3
+ 417 02bc 74EEE24A 		vsub.f32	s9, s9, s5
+ 418              	.LVL90:
+ 419 02c0 FDEEE44A 		vcvt.s32.f32	s9, s9
+ 420 02c4 14EE902A 		vmov	r2, s9	@ int
+ 421 02c8 C2F30902 		ubfx	r2, r2, #0, #10
+ 422 02cc 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 423 02ce EA71     		strb	r2, [r5, #7]
+ 224:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[1] = range_limit[((int) (tmp1 + tmp6)) & RANGE_MASK];
+ 424              		.loc 1 224 0 discriminator 3
+ 425 02d0 33EE256A 		vadd.f32	s12, s6, s11
+ 426 02d4 BDEEC66A 		vcvt.s32.f32	s12, s12
+ 427 02d8 16EE102A 		vmov	r2, s12	@ int
+ 428 02dc C2F30902 		ubfx	r2, r2, #0, #10
+ 429 02e0 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 430 02e2 6A70     		strb	r2, [r5, #1]
+ 225:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[6] = range_limit[((int) (tmp1 - tmp6)) & RANGE_MASK];
+ 431              		.loc 1 225 0 discriminator 3
+ 432 02e4 73EE655A 		vsub.f32	s11, s6, s11
+ 433              	.LVL91:
+ 434 02e8 FDEEE55A 		vcvt.s32.f32	s11, s11
+ 435 02ec 15EE902A 		vmov	r2, s11	@ int
+ARM GAS  /tmp/ccNFUWGD.s 			page 13
+
+
+ 436 02f0 C2F30902 		ubfx	r2, r2, #0, #10
+ 437 02f4 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 438 02f6 AA71     		strb	r2, [r5, #6]
+ 226:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[2] = range_limit[((int) (tmp2 + tmp5)) & RANGE_MASK];
+ 439              		.loc 1 226 0 discriminator 3
+ 440 02f8 37EEA66A 		vadd.f32	s12, s15, s13
+ 441 02fc BDEEC66A 		vcvt.s32.f32	s12, s12
+ 442 0300 16EE102A 		vmov	r2, s12	@ int
+ 443 0304 C2F30902 		ubfx	r2, r2, #0, #10
+ 444 0308 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 445 030a AA70     		strb	r2, [r5, #2]
+ 227:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[5] = range_limit[((int) (tmp2 - tmp5)) & RANGE_MASK];
+ 446              		.loc 1 227 0 discriminator 3
+ 447 030c 77EEE67A 		vsub.f32	s15, s15, s13
+ 448              	.LVL92:
+ 449 0310 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 450 0314 17EE902A 		vmov	r2, s15	@ int
+ 451 0318 C2F30902 		ubfx	r2, r2, #0, #10
+ 452 031c 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 453 031e 6A71     		strb	r2, [r5, #5]
+ 228:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[3] = range_limit[((int) (tmp3 + tmp4)) & RANGE_MASK];
+ 454              		.loc 1 228 0 discriminator 3
+ 455 0320 73EE877A 		vadd.f32	s15, s7, s14
+ 456 0324 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 457 0328 17EE902A 		vmov	r2, s15	@ int
+ 458 032c C2F30902 		ubfx	r2, r2, #0, #10
+ 459 0330 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 460 0332 EA70     		strb	r2, [r5, #3]
+ 229:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr[4] = range_limit[((int) (tmp3 - tmp4)) & RANGE_MASK];
+ 461              		.loc 1 229 0 discriminator 3
+ 462 0334 33EEC77A 		vsub.f32	s14, s7, s14
+ 463              	.LVL93:
+ 464 0338 BDEEC77A 		vcvt.s32.f32	s14, s14
+ 465 033c 17EE102A 		vmov	r2, s14	@ int
+ 466 0340 C2F30902 		ubfx	r2, r2, #0, #10
+ 467 0344 825C     		ldrb	r2, [r0, r2]	@ zero_extendqisi2
+ 468 0346 2A71     		strb	r2, [r5, #4]
+ 230:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     
+ 231:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     wsptr += DCTSIZE;		/* advance pointer to next row */
+ 469              		.loc 1 231 0 discriminator 3
+ 470 0348 2031     		adds	r1, r1, #32
+ 471              	.LVL94:
+ 179:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr = output_buf[ctr] + output_col;
+ 472              		.loc 1 179 0 discriminator 3
+ 473 034a 0136     		adds	r6, r6, #1
+ 474              	.LVL95:
+ 475              	.L6:
+ 179:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****     outptr = output_buf[ctr] + output_col;
+ 476              		.loc 1 179 0 is_stmt 0 discriminator 1
+ 477 034c 072E     		cmp	r6, #7
+ 478 034e 7FF758AF 		ble	.L7
+ 232:Middlewares/Third_Party/LibJPEG/source/jidctflt.c ****   }
+ 233:Middlewares/Third_Party/LibJPEG/source/jidctflt.c **** }
+ 479              		.loc 1 233 0 is_stmt 1
+ 480 0352 40B0     		add	sp, sp, #256
+ 481              	.LCFI2:
+ 482              		.cfi_def_cfa_offset 16
+ARM GAS  /tmp/ccNFUWGD.s 			page 14
+
+
+ 483              		@ sp needed
+ 484 0354 F0BC     		pop	{r4, r5, r6, r7}
+ 485              	.LCFI3:
+ 486              		.cfi_restore 7
+ 487              		.cfi_restore 6
+ 488              		.cfi_restore 5
+ 489              		.cfi_restore 4
+ 490              		.cfi_def_cfa_offset 0
+ 491              	.LVL96:
+ 492 0356 7047     		bx	lr
+ 493              	.L11:
+ 494              		.align	2
+ 495              	.L10:
+ 496 0358 F304B53F 		.word	1068827891
+ 497 035c 5E83EC3F 		.word	1072464734
+ 498 0360 D48B8A3F 		.word	1066044372
+ 499 0364 753D2740 		.word	1076313461
+ 500 0368 00800043 		.word	1124106240
+ 501              		.cfi_endproc
+ 502              	.LFE3:
+ 504              		.text
+ 505              	.Letext0:
+ 506              		.file 2 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/include/std
+ 507              		.file 3 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h"
+ 508              		.file 4 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types.h"
+ 509              		.file 5 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.h"
+ 510              		.file 6 "/home/jaxc/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 511              		.file 7 "Inc/jmorecfg.h"
+ 512              		.file 8 "Middlewares/Third_Party/LibJPEG/include/jpeglib.h"
+ 513              		.file 9 "Middlewares/Third_Party/LibJPEG/include/jpegint.h"
+ 514              		.file 10 "Middlewares/Third_Party/LibJPEG/include/jdct.h"
+ARM GAS  /tmp/ccNFUWGD.s 			page 15
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 jidctflt.c
+     /tmp/ccNFUWGD.s:18     .text.jpeg_idct_float:0000000000000000 $t
+     /tmp/ccNFUWGD.s:25     .text.jpeg_idct_float:0000000000000000 jpeg_idct_float
+     /tmp/ccNFUWGD.s:496    .text.jpeg_idct_float:0000000000000358 $d
+
+NO UNDEFINED SYMBOLS
